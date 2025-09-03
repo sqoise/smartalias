@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resident Database</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+</head>
+<body class="bg-gray-50 font-sans text-gray-900">
+  <div class="min-h-screen grid lg:grid-cols-[220px_1fr]">
+    <!-- Sidebar -->
+    <aside class="bg-green-700 text-white p-4">
+      <h2 class="text-lg font-bold mb-6 flex items-center gap-2">
+        <i class="bi bi-shield-check"></i>
+        Barangay Admin
+      </h2>
+      <nav class="space-y-2 text-sm">
+        <a href="index.html" class="flex items-center gap-2 p-2 rounded bg-white/10">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a href="admin_residents.html" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-people"></i> Residents
+        </a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-ui-checks-grid"></i> Applications
+        </a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-megaphone"></i> Announcements
+        </a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-chat-left-text"></i> Messaging
+        </a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-calendar-event"></i> Events
+        </a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+          <i class="bi bi-tools"></i> Maintenance
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="p-6">
+      <!-- Header -->
+      <header class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold text-green-700">Dashboard</h1>
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <!-- Avatar -->
+            <button id="userMenuBtn" class="flex items-center gap-2 focus:outline-none">
+              <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">A</div>
+              <span class="text-sm">admin</span>
+            </button>
+            <!-- Dropdown -->
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-lg z-50">
+              <button id="logoutBtn" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <section class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="bg-white rounded-xl shadow p-4 border">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs text-gray-500">Total Residents</p>
+              <p class="text-3xl font-semibold mt-1">1248</p>
+              <p class="text-xs text-gray-500 mt-1">Registered in the barangay</p>
+            </div>
+            <i class="bi bi-people text-2xl text-gray-400"></i>
+          </div>
+        </article>
+
+        <article class="bg-white rounded-xl shadow p-4 border">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs text-gray-500">Pending Documents</p>
+              <p class="text-3xl font-semibold mt-1">23</p>
+              <p class="text-xs text-gray-500 mt-1">Awaiting processing</p>
+            </div>
+            <i class="bi bi-hourglass-split text-2xl text-gray-400"></i>
+          </div>
+        </article>
+
+        <article class="bg-white rounded-xl shadow p-4 border">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs text-gray-500">Completed Documents</p>
+              <p class="text-3xl font-semibold mt-1">156</p>
+              <p class="text-xs text-gray-500 mt-1">This month</p>
+            </div>
+            <i class="bi bi-check2-square text-2xl text-gray-400"></i>
+          </div>
+        </article>
+      </section>
+
+      <!-- Content -->
+      <section class="mt-6 grid gap-4 grid-cols-1 lg:grid-cols-3">
+        <!-- Activities -->
+        <article class="lg:col-span-2 bg-white rounded-xl shadow p-4 border">
+          <h2 class="text-sm font-semibold text-gray-700">Recent Activities</h2>
+          <ul class="mt-3 space-y-3">
+            <li class="flex items-start gap-3">
+              <div class="mt-0.5 h-6 w-6 rounded-full bg-indigo-50 text-indigo-700 grid place-items-center">
+                <i class="bi bi-person-plus"></i>
+              </div>
+              <div>
+                <p class="text-sm">New resident registered: <span class="font-medium">Juan Dela Cruz</span></p>
+                <p class="text-xs text-gray-500">2 hours ago</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="mt-0.5 h-6 w-6 rounded-full bg-emerald-50 text-emerald-700 grid place-items-center">
+                <i class="bi bi-file-earmark-check"></i>
+              </div>
+              <div>
+                <p class="text-sm">Barangay Clearance issued to <span class="font-medium">Maria Santos</span></p>
+                <p class="text-xs text-gray-500">4 hours ago</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="mt-0.5 h-6 w-6 rounded-full bg-amber-50 text-amber-700 grid place-items-center">
+                <i class="bi bi-pencil-square"></i>
+              </div>
+              <div>
+                <p class="text-sm">Updated contact information for <span class="font-medium">Kagawad Pedro</span></p>
+                <p class="text-xs text-gray-500">1 day ago</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <div class="mt-0.5 h-6 w-6 rounded-full bg-fuchsia-50 text-fuchsia-700 grid place-items-center">
+                <i class="bi bi-journal-check"></i>
+              </div>
+              <div>
+                <p class="text-sm">Certificate of Residency requested by <span class="font-medium">Ana Garcia</span></p>
+                <p class="text-xs text-gray-500">2 days ago</p>
+              </div>
+            </li>
+          </ul>
+        </article>
+
+        <!-- Quick Actions -->
+        <aside class="bg-white rounded-xl shadow p-4 border">
+          <h2 class="text-sm font-semibold text-gray-700">Quick Actions</h2>
+          <div class="mt-2 grid grid-cols-1 sm:grid-cols-1 gap-3">
+            <button
+              id="quickAddResident"
+              class="h-24 rounded-xl border hover:border-gray-300 hover:shadow-sm transition flex flex-col items-center justify-center gap-2"
+            >
+              <i class="bi bi-person-plus"></i>
+              <span class="text-sm font-medium">Add Resident</span>
+            </button>
+            <button
+              class="h-24 rounded-xl border hover:border-gray-300 hover:shadow-sm transition flex flex-col items-center justify-center gap-2"
+            >
+              <i class="bi bi-file-earmark-plus"></i>
+              <span class="text-sm font-medium">Issue Document</span>
+            </button>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add Resident Modal -->
+  <div
+    id="residentModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50"
+  >
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <h2 class="text-2xl font-bold mb-6 text-gray-800" id="modalTitle">Add Resident</h2>
+      <form id="residentForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="hidden" id="residentId" />
+        <!-- Example field -->
+        <div>
+          <label for="purok" class="block text-sm font-medium text-gray-700">Purok</label>
+          <select id="purok" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Purok</option>
+            <option value="Purok 1">Purok 1</option>
+            <option value="Purok 2">Purok 2</option>
+            <option value="Purok 3">Purok 3</option>
+            <option value="Purok 4">Purok 4</option>
+          </select>
+        </div>
+        <!-- You can keep the rest of the resident form fields here... -->
+        <div class="md:col-span-2 flex justify-end space-x-3 pt-6">
+          <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700">Save Resident</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div
+    id="logoutModal"
+    class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"
+  >
+    <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Confirm Logout</h2>
+      <p class="text-sm text-gray-600 mb-6">Are you sure you want to log out?</p>
+      <div class="flex justify-center gap-4">
+        <button id="cancelLogout" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm font-medium">Cancel</button>
+        <button id="confirmLogout" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // User menu
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const userMenu = document.getElementById("userMenu");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // Logout modal
+    const logoutModal = document.getElementById("logoutModal");
+    const cancelLogout = document.getElementById("cancelLogout");
+    const confirmLogout = document.getElementById("confirmLogout");
+
+    userMenuBtn.addEventListener("click", () => {
+      userMenu.classList.toggle("hidden");
+    });
+
+    window.addEventListener("click", (e) => {
+      if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.classList.add("hidden");
+      }
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      userMenu.classList.add("hidden");
+      logoutModal.classList.remove("hidden");
+      logoutModal.classList.add("flex");
+    });
+
+    cancelLogout.addEventListener("click", () => {
+      logoutModal.classList.add("hidden");
+      logoutModal.classList.remove("flex");
+    });
+
+    confirmLogout.addEventListener("click", () => {
+      window.location.href = "admin_login.html";
+    });
+
+    // Resident modal
+    const modal = document.getElementById("residentModal");
+    const openBtn = document.getElementById("quickAddResident");
+    const cancelBtn = document.getElementById("cancelBtn");
+
+    openBtn.addEventListener("click", () => {
+      modal.classList.remove("hidden");
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+</html>

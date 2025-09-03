@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>User Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  </head>
+  <body class="bg-gray-50 font-sans text-gray-900">
+    <div class="min-h-screen grid lg:grid-cols-[220px_1fr]">
+      <!-- Sidebar -->
+      <aside class="bg-green-700 text-white p-4">
+        <img src="/images/barangay_logo.jpg" alt="Barangay Logo" class="w-20 h-20 rounded-full mb-4 mx-auto"/>
+        <nav class="space-y-2 text-sm">
+          <a href="user-home.html" class="flex items-center gap-2 p-2 rounded bg-white/10">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+          <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+            <i class="bi bi-file-earmark-text"></i> Online Applications
+          </a>
+          <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+            <i class="bi bi-megaphone"></i> Announcements
+          </a>
+          <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+            <i class="bi bi-calendar-event"></i> Events
+          </a>
+          <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10">
+            <i class="bi bi-tools"></i> Account Management
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="p-6">
+        <h1 class="text-2xl font-bold mb-6">Welcome, Resident</h1>
+        <p class="text-gray-600 mb-8">Quick access to your barangay services</p>
+
+        <!-- User Dashboard Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Apply for Clearance -->
+          <a href="#" class="bg-white rounded-2xl shadow p-6 flex flex-col hover:shadow-lg transition">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-700 mb-4">
+              <i class="bi bi-file-earmark-text text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-semibold">Barangay Clearance</h2>
+            <p class="text-gray-500 text-sm mt-2">Request your barangay clearance online.</p>
+          </a>
+
+          <!-- Apply for ID -->
+          <a href="#" class="bg-white rounded-2xl shadow p-6 flex flex-col hover:shadow-lg transition">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-700 mb-4">
+              <i class="bi bi-person-badge text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-semibold">Barangay ID</h2>
+            <p class="text-gray-500 text-sm mt-2">Apply or renew your barangay ID.</p>
+          </a>
+
+          <!-- Announcements -->
+          <a href="#" class="bg-white rounded-2xl shadow p-6 flex flex-col hover:shadow-lg transition">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 text-purple-700 mb-4">
+              <i class="bi bi-megaphone text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-semibold">Announcements</h2>
+            <p class="text-gray-500 text-sm mt-2">Stay updated with barangay news.</p>
+          </a>
+
+          <!-- Events -->
+          <a href="#" class="bg-white rounded-2xl shadow p-6 flex flex-col hover:shadow-lg transition">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 text-yellow-700 mb-4">
+              <i class="bi bi-calendar-event text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-semibold">Events</h2>
+            <p class="text-gray-500 text-sm mt-2">Check upcoming community events.</p>
+          </a>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

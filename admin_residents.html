@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resident Database</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+</head>
+<body class="bg-gray-50 font-sans text-gray-900">
+  <div class="min-h-screen grid lg:grid-cols-[220px_1fr]">
+    <aside class="bg-green-700 text-white p-4">
+      <h2 class="text-lg font-bold mb-6 flex items-center gap-2">
+        <i class="bi bi-shield-check"></i> Barangay Admin
+      </h2>
+      <nav class="space-y-2 text-sm">
+        <a href="index.html" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a href="admin_residents.html" class="flex items-center gap-2 p-2 rounded bg-white/10"><i class="bi bi-people"></i> Residents</a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-ui-checks-grid"></i> Applications</a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-megaphone"></i> Announcements</a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-chat-left-text"></i> Messaging</a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-calendar-event"></i> Events</a>
+        <a href="#" class="flex items-center gap-2 p-2 rounded hover:bg-white/10"><i class="bi bi-tools"></i> Maintenance</a>
+      </nav>
+    </aside>
+
+    <main class="p-6">
+      <header class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold text-green-700">Resident Database</h1>
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <button id="userMenuBtn" class="flex items-center gap-2 focus:outline-none">
+              <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">A</div>
+              <span class="text-sm">admin</span>
+            </button>
+            <!-- Dropdown Menu -->
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-lg z-50">
+              <button id="logoutBtn" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
+            </div>  
+          </div>
+        </div>
+      </header>
+
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+          <input id="search" type="text" placeholder="Search residents..." class="w-64 border rounded px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500">
+          <button id="addBtn" class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 flex items-center gap-1">
+            <i class="bi bi-plus-lg"></i> Add Resident
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+              <tr>
+                <th class="px-3 py-2 text-left">ID</th>
+                <th class="px-3 py-2 text-left">Purok</th>
+                <th class="px-3 py-2 text-left">Blk</th>
+                <th class="px-3 py-2 text-left">Lot</th>
+                <th class="px-3 py-2 text-left">Street</th>
+                <th class="px-3 py-2 text-left">Last Name</th>
+                <th class="px-3 py-2 text-left">First Name</th>
+                <th class="px-3 py-2 text-left">Middle Initial</th>
+                <th class="px-3 py-2 text-left">Birth Date</th>
+                <th class="px-3 py-2 text-left">Status</th>
+                <th class="px-3 py-2 text-left">Gender</th>
+                <th class="px-3 py-2 text-left">Education</th>
+                <th class="px-3 py-2 text-left">Work</th>
+                <th class="px-3 py-2 text-left">Membership</th>
+                <th class="px-3 py-2 text-left">Category</th>
+                <th class="px-3 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="residents-table" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+
+        <div id="msg" class="mt-3 text-sm"></div>
+      </div>
+
+      <footer class="mt-6 text-xs text-gray-500">
+        © 2025 Barangay Admin • Minimal Green
+      </footer>
+    </main>
+  </div>
+
+  <!-- Add/Edit Resident Modal -->
+  <div id="residentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <h2 class="text-xl font-semibold mb-4" id="modalTitle">Add Resident</h2>
+      <form id="residentForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="hidden" id="residentId">
+        
+        <div>
+          <label for="purok" class="block text-sm font-medium text-gray-700">Purok</label>
+          <select id="purok" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Purok</option>
+            <option value="Purok 1">Purok 1</option>
+            <option value="Purok 2">Purok 2</option>
+            <option value="Purok 3">Purok 3</option>
+            <option value="Purok 4">Purok 4</option>
+            <option value="Purok 5">Purok 5</option>
+            <option value="Purok 6">Purok 6</option>
+            <option value="Purok 7">Purok 7</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="blk" class="block text-sm font-medium text-gray-700">Block</label>
+          <input type="text" id="blk" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="lot" class="block text-sm font-medium text-gray-700">Lot</label>
+          <input type="text" id="lot" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="street" class="block text-sm font-medium text-gray-700">Street</label>
+          <input type="text" id="street" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+          <input type="text" id="last_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+          <input type="text" id="first_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="middle_initial" class="block text-sm font-medium text-gray-700">Middle Initial</label>
+          <input type="text" id="middle_initial" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="birth_date" class="block text-sm font-medium text-gray-700">Birth Date</label>
+          <input type="date" id="birth_date" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="current_status" class="block text-sm font-medium text-gray-700">Current Status</label>
+          <select id="current_status" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Divorce">Divorce</option>
+            <option value="Widowed">Widowed</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="gender" class="block text-sm font-medium text-gray-700">Gender</label>
+          <select id="gender" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="educational_a" class="block text-sm font-medium text-gray-700">Educational Attainment</label>
+          <select id="educational_a" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Education</option>
+            <option value="No Formal Education">No Formal Education</option>
+            <option value="Elementary Level">Elementary Level</option>
+            <option value="Elementary Graduate">Elementary Graduate</option>
+            <option value="High School Level">High School Level</option>
+            <option value="High School Graduate">High School Graduate</option>
+            <option value="Vocational/Technical">Vocational/Technical</option>
+            <option value="College Level">College Level</option>
+            <option value="College Graduate">College Graduate</option>
+            <option value="Postgraduate/Masters">Postgraduate / Master’s</option>
+            <option value="Doctorate">Doctorate</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="work" class="block text-sm font-medium text-gray-700">Work</label>
+          <input type="text" id="work" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+        </div>
+        
+        <div>
+          <label for="membership" class="block text-sm font-medium text-gray-700">Family Membership</label>
+          <select id="membership" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Membership</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
+            <option value="Son">Son</option>
+            <option value="Daughter">Daughter</option>
+            <option value="Grandfather">Grandfather</option>
+            <option value="Grandmother">Grandmother</option>
+            <option value="Grandson">Grandson</option>
+            <option value="Granddaughter">Granddaughter</option>
+            <option value="Uncle">Uncle</option>
+            <option value="Aunt">Aunt</option>
+            <option value="Cousin">Cousin</option>
+            <option value="Sibling">Sibling</option>
+            <option value="Relative">Relative</option>
+            <option value="Guardian">Guardian</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+          <select id="category" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500">
+            <option value="">Select Category</option>
+            <option value="PWD">PWD (Person with Disability)</option>
+            <option value="Scholar">Scholar</option>
+            <option value="Senior">Senior Citizen</option>
+            <option value="4PS">4Ps Beneficiary</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2 flex justify-end space-x-3 pt-4">
+          <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700">Save Resident</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js"
+
+    const supabaseUrl = "https://fkvsynlnlmukgfjffkvp.supabase.co"
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrdnN5bmxubG11a2dmamZma3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4Njc4NDUsImV4cCI6MjA3MTQ0Mzg0NX0.366rjmJhIHdxC3Z4ZqNfJMUHuUw-WHCiHaGKXh1PTtI" // replace with your anon key
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const tbody = document.getElementById("residents-table")
+    const searchInput = document.getElementById("search")
+    const msg = document.getElementById("msg")
+    const modal = document.getElementById("residentModal")
+    const form = document.getElementById("residentForm")
+    const modalTitle = document.getElementById("modalTitle")
+    const cancelBtn = document.getElementById("cancelBtn")
+    const addBtn = document.getElementById("addBtn")
+
+    function formatDate(d) {
+      if (!d) return ""
+      try {
+        const dt = new Date(d)
+        if (isNaN(dt)) return d
+        const y = dt.getFullYear()
+        const m = String(dt.getMonth() + 1).padStart(2, "0")
+        const dd = String(dt.getDate()).padStart(2, "0")
+        return `${y}-${m}-${dd}`   // ✅ fixed template literal
+      } catch { 
+        return d 
+      }
+    }
+
+    function filterRows() {
+      const q = searchInput.value.toLowerCase().trim()
+      for (const tr of tbody.querySelectorAll("tr")) {
+        const text = tr.innerText.toLowerCase()
+        tr.classList.toggle("hidden", q && !text.includes(q))
+      }
+    }
+    searchInput.addEventListener("input", filterRows)
+
+    function renderRows(rows = []) {
+      tbody.innerHTML = ""
+      if (!rows.length) {
+        // ✅ wrap HTML in quotes/backticks
+        tbody.innerHTML = `<tr><td colspan="16" class="px-3 py-6 text-center text-gray-500">No residents found.</td></tr>`
+        return
+      }
+      
+      rows.forEach(r => {
+        const row = document.createElement("tr")
+        row.className = "odd:bg-white even:bg-gray-50"
+        row.innerHTML = `
+          <td class="px-3 py-2">${r.id ?? ""}</td>
+          <td class="px-3 py-2">${r.purok ?? ""}</td>
+          <td class="px-3 py-2">${r.blk ?? ""}</td>
+          <td class="px-3 py-2">${r.lot ?? ""}</td>
+          <td class="px-3 py-2">${r.street ?? ""}</td>
+          <td class="px-3 py-2">${r.last_name ?? ""}</td>
+          <td class="px-3 py-2">${r.first_name ?? ""}</td>
+          <td class="px-3 py-2">${r.middle_initial ?? ""}</td>
+          <td class="px-3 py-2">${formatDate(r.birth_date)}</td>
+          <td class="px-3 py-2">${r.current_status ?? ""}</td>
+          <td class="px-3 py-2">${r.gender ?? ""}</td>
+          <td class="px-3 py-2">${r.educational_a ?? ""}</td>
+          <td class="px-3 py-2">${r.work ?? ""}</td>
+          <td class="px-3 py-2">${r.membership ?? ""}</td>
+          <td class="px-3 py-2">${r.category ?? ""}</td>
+          <td class="px-3 py-2 flex gap-2">
+            <button class="edit-btn bg-green-600 text-white px-2 py-1 rounded text-xs">Edit</button>
+            <button class="delete-btn bg-red-500 text-white px-2 py-1 rounded text-xs">Delete</button>
+          </td>
+        `
+        tbody.appendChild(row)
+        row.querySelector(".edit-btn").addEventListener("click", () => editResident(r))
+        row.querySelector(".delete-btn").addEventListener("click", () => deleteResident(r.id))
+      })
+    }
+
+    async function loadResidents() {
+      msg.textContent = "Loading residents..."
+      msg.className = "mt-3 text-sm text-gray-600"
+
+      const { data, error } = await supabase
+        .from("residents")
+        .select("*")
+        .order("id", { ascending: true })
+
+      console.log("Supabase result:", { data, error })
+
+      if (error) {
+        // ✅ fix missing quotes/backticks
+        msg.textContent = `Error: ${error.message}`
+        msg.className = "mt-3 text-sm text-red-600"
+        renderRows([])
+        return
+      }
+
+      msg.textContent = `Loaded ${data?.length ?? 0} residents`
+      msg.className = "mt-3 text-sm text-green-600"
+      renderRows(data || [])
+      filterRows()
+    }
+
+    // Modal helpers
+    function openModal() {
+      modal.classList.remove("hidden")
+    }
+    function closeModal() {
+      modal.classList.add("hidden")
+      form.reset()
+    }
+
+    // Edit
+    function editResident(resident) {
+      modalTitle.textContent = "Edit Resident"
+      document.getElementById("residentId").value = resident.id
+      document.getElementById("purok").value = resident.purok || ""
+      document.getElementById("blk").value = resident.blk || ""
+      document.getElementById("lot").value = resident.lot || ""
+      document.getElementById("street").value = resident.street || ""
+      document.getElementById("last_name").value = resident.last_name || ""
+      document.getElementById("first_name").value = resident.first_name || ""
+      document.getElementById("middle_initial").value = resident.middle_initial || ""
+      document.getElementById("birth_date").value = resident.birth_date || ""
+      document.getElementById("current_status").value = resident.current_status || ""
+      document.getElementById("gender").value = resident.gender || ""
+      document.getElementById("educational_a").value = resident.educational_a || ""
+      document.getElementById("work").value = resident.work || ""
+      document.getElementById("membership").value = resident.membership || ""
+      document.getElementById("category").value = resident.category || ""
+      openModal()
+    }
+
+    // Delete
+    async function deleteResident(id) {
+      if (!confirm("Are you sure you want to delete this resident?")) return
+      
+      const { error } = await supabase
+        .from("residents")
+        .delete()
+        .eq("id", id)
+      
+      if (error) {
+        alert(`Error deleting resident: ${error.message}`)   // ✅ fixed template
+        return
+      }
+      
+      msg.textContent = "Resident deleted successfully"
+      msg.className = "mt-3 text-sm text-green-600"
+      loadResidents()
+    }
+
+    // Add button
+    addBtn.addEventListener("click", () => {
+      modalTitle.textContent = "Add Resident"
+      document.getElementById("residentId").value = ""
+      form.reset()
+      openModal()
+    })
+    cancelBtn.addEventListener("click", closeModal)
+
+    // Save (insert/update)
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault()
+      
+      const residentId = document.getElementById("residentId").value
+      const residentData = {
+        purok: document.getElementById("purok").value,
+        blk: document.getElementById("blk").value,
+        lot: document.getElementById("lot").value,
+        street: document.getElementById("street").value,
+        last_name: document.getElementById("last_name").value,
+        first_name: document.getElementById("first_name").value,
+        middle_initial: document.getElementById("middle_initial").value,
+        birth_date: document.getElementById("birth_date").value,
+        current_status: document.getElementById("current_status").value,
+        gender: document.getElementById("gender").value,
+        educational_a: document.getElementById("educational_a").value,
+        work: document.getElementById("work").value,
+        membership: document.getElementById("membership").value,
+        category: document.getElementById("category").value
+      }
+      
+      let error
+      if (residentId) {
+        const { error: updateError } = await supabase
+          .from("residents")
+          .update(residentData)
+          .eq("id", residentId)
+        error = updateError
+      } else {
+        const { error: insertError } = await supabase
+          .from("residents")
+          .insert([residentData])
+        error = insertError
+      }
+      
+      if (error) {
+        alert(`Error saving resident: ${error.message}`)   // ✅ fixed template
+        return
+      }
+      
+      closeModal()
+      msg.textContent = `Resident ${residentId ? "updated" : "added"} successfully`
+      msg.className = "mt-3 text-sm text-green-600"
+      loadResidents()
+    })
+    // Initial load
+    loadResidents()
+
+
+    // for the logout button
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const userMenu = document.getElementById("userMenu");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // Toggle dropdown
+    userMenuBtn.addEventListener("click", () => {
+      userMenu.classList.toggle("hidden");
+    });
+
+    // Close if clicking outside
+    window.addEventListener("click", (e) => {
+      if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.classList.add("hidden");
+      }
+    });
+
+    // Logout action
+    logoutBtn.addEventListener("click", () => {
+      alert("You have been logged out."); 
+      window.location.href = "admin_login.html";
+    });
+  </script>
+</body>
+</html>
