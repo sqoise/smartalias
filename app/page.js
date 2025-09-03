@@ -1,120 +1,149 @@
-import React from 'react'
-import config from '../lib/config'
-import Header from '../components/Header'
-import AdminDashboard from '../components/AdminDashboard'
-import UserDashboard from '../components/UserDashboard'
-import Sidebar from '../components/Sidebar'
-import ResidentsList from '../components/ResidentsList'
+'use client'
 
-export default function Home() {
+import { useState } from 'react'
+
+export default function LoginPage() {
+  const [showAlert, setShowAlert] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('')
+  const [alertType, setAlertType] = useState('info')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleAlert = (message, type = 'info') => {
+    setAlertMessage(message)
+    setAlertType(type)
+    setShowAlert(true)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsLoading(true)
+    handleAlert("Checking credentials…", "info")
+    
+    const formData = new FormData(e.target)
+    const username = formData.get('username')
+    const password = formData.get('password')
+
+    // Frontend-only logic for demo
+    setTimeout(() => {
+      if (username === 'admin' && password === 'admin') {
+        handleAlert("Welcome Admin! Redirecting…", "ok")
+        setTimeout(() => {
+          window.location.href = '/admin'
+        }, 600)
+      } else if (username === 'user' && password === 'user') {
+        handleAlert("Welcome User! Redirecting…", "ok")
+        setTimeout(() => {
+          window.location.href = '/user'
+        }, 600)
+      } else {
+        handleAlert("Invalid username or password", "error")
+      }
+      setIsLoading(false)
+    }, 1000)
+  }
+
+  const alertStyles = {
+    info: "border-blue-200 bg-blue-50 text-blue-700",
+    error: "border-red-200 bg-red-50 text-red-700",
+    ok: "border-emerald-200 bg-emerald-50 text-emerald-700"
+  }
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Page Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-3xl font-bold text-gray-900">SmartLias</h1>
-          <p className="text-gray-600">Barangay Lias Management System - Components Showcase</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-100 text-gray-800">
+      {/* Two-column layout matching login.html */}
+      <main className="min-h-screen grid lg:grid-cols-[70%_30%] relative">
+        {/* LEFT: Hero section with background image */}
+        <section className="relative hidden lg:block z-0">
+          <img 
+            src="/images/admin_bg.jpg" 
+            className="absolute inset-0 w-full h-full object-cover" 
+            alt="Background"
+          />
+          <div className="absolute inset-0 bg-green-900/40"></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* System Info Card */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">System Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <span className="font-semibold">Server URL:</span> {config.baseUrl}
-              </p>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800">
-                <span className="font-semibold">Port:</span> {config.port}
-              </p>
-            </div>
+          <div className="relative h-full flex flex-col justify-end p-10 text-white">
+            <img 
+              src="/images/barangay_logo.jpg" 
+              alt="Barangay Logo" 
+              className="w-20 h-20 rounded-full mb-4"
+            />
+            <h1 className="text-4xl font-extrabold">Barangay LIAS</h1>
+            <p className="mt-6 max-w-xl text-white/90">
+              Login to SMART LIAS Portal.
+            </p>
+            <p className="mt-10 text-sm text-white/70">
+              &copy; {new Date().getFullYear()} Smart LIAS
+            </p>
           </div>
-        </div>
+        </section>
 
-        {/* Components Showcase */}
-        <div className="space-y-8">
-          {/* Header Component */}
-          <section className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Header Component</h2>
-              <p className="text-gray-600 text-sm">Navigation header for the application</p>
-            </div>
-            <div className="p-6">
-              <Header />
-            </div>
-          </section>
-
-          {/* Admin Dashboard Component */}
-          <section className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Admin Dashboard Component</h2>
-              <p className="text-gray-600 text-sm">Administrative dashboard with statistics and management tools</p>
-            </div>
-            <div className="p-6">
-              <AdminDashboard />
-            </div>
-          </section>
-
-          {/* User Dashboard Component */}
-          <section className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">User Dashboard Component</h2>
-              <p className="text-gray-600 text-sm">Resident dashboard for personal information and services</p>
-            </div>
-            <div className="p-6">
-              <UserDashboard />
-            </div>
-          </section>
-
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Sidebar Component */}
-            <section className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold text-gray-900">Sidebar Component</h2>
-                <p className="text-gray-600 text-sm">Navigation sidebar menu</p>
+        {/* RIGHT: Login card (overlaps the image) */}
+        <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible">
+          {/* Overlapping card - pull left on large screens */}
+          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8 relative z-10 lg:-ml-80" style={{boxShadow: '0 16px 40px rgba(0,0,0,.12)'}}>
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center gap-2">
+                <i className="bi bi-shield-lock text-green-600 text-2xl"></i>
+                <h2 className="text-2xl font-bold text-green-700">Account Login</h2>
               </div>
-              <div className="p-6">
-                <Sidebar />
-              </div>
-            </section>
+            </div>
 
-            {/* Residents List Component */}
-            <section className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold text-gray-900">Residents List Component</h2>
-                <p className="text-gray-600 text-sm">List and management of barangay residents</p>
+            {/* Alert */}
+            {showAlert && (
+              <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${alertStyles[alertType]}`}>
+                {alertMessage}
               </div>
-              <div className="p-6">
-                <ResidentsList />
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input 
+                  id="username"
+                  name="username"
+                  type="text" 
+                  required
+                  className="w-full rounded-md border-gray-300 focus:border-green-600 focus:ring-green-600 px-3 py-2 border"
+                  placeholder="Enter your username"
+                />
               </div>
-            </section>
+              
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input 
+                  id="password"
+                  name="password"
+                  type="password" 
+                  required 
+                  minLength="4"
+                  className="w-full rounded-md border-gray-300 focus:border-green-600 focus:ring-green-600 px-3 py-2 border"
+                  placeholder="•••••"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={isLoading}
+                className={`w-full bg-green-600 hover:bg-green-700 text-white rounded-md py-2.5 font-semibold flex items-center justify-center gap-2 cursor-pointer ${isLoading ? 'opacity-60' : ''}`}
+              >
+                <i className="bi bi-box-arrow-in-right"></i>
+                <span>Sign In</span>
+                {isLoading && (
+                  <div className="animate-spin border-2 border-white/60 border-t-transparent rounded-full w-4 h-4"></div>
+                )}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-xs text-gray-500">
+              Access for registered users and administrators.
+            </p>
           </div>
-        </div>
-
-        {/* Navigation Links */}
-        <div className="mt-12 bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Available Pages</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="/admin" className="block p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
-              <h3 className="font-semibold text-blue-900">Admin Panel</h3>
-              <p className="text-blue-700 text-sm">Administrative interface</p>
-            </a>
-            <a href="/admin/residents" className="block p-4 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors">
-              <h3 className="font-semibold text-green-900">Residents Management</h3>
-              <p className="text-green-700 text-sm">Manage barangay residents</p>
-            </a>
-            <a href="/api/residents" className="block p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors">
-              <h3 className="font-semibold text-purple-900">API Endpoint</h3>
-              <p className="text-purple-700 text-sm">Residents API endpoint</p>
-            </a>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+        </section>
+      </main>
+    </div>
+  )
 }
