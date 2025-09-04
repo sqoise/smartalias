@@ -1,0 +1,46 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "juan.delacruz",
+      "password_hash": "$2b$12$XyxGtsQ8368m9SqmA3A5Ie/X0t0Cptg/MPFIvdtpkw/GFTAsMyy32",
+      "salt": "$2b$12$XyxGtsQ8368m9SqmA3A5Ie",
+      "first_name": "Juan",
+      "last_name": "Dela Cruz",
+      "birthdate": "1990-03-15",
+      "role_type": 1,
+      "password_changed": 0,
+      "failed_attempts": 0,
+      "locked_until": null,
+      "last_attempt": null
+    },
+    {
+      "id": 2,
+      "username": "maria.santos",
+      "password_hash": "$2b$12$KQPUfuuGHGb4X2uhfAlIKOQVKIys2laotmFRvWVY.8w8MIk83dYuy",
+      "salt": "$2b$12$KQPUfuuGHGb4X2uhfAlIKO",
+      "first_name": "Maria",
+      "last_name": "Santos",
+      "birthdate": "1985-12-08",
+      "role_type": 1,
+      "password_changed": 1,
+      "failed_attempts": 0,
+      "locked_until": null,
+      "last_attempt": null
+    },
+    {
+      "id": 3,
+      "username": "admin.staff",
+      "password_hash": "$2b$12$bQZ8yF3eKqF4ZO9WX5yH0OZJdXx9kLmN6tR3vC8pW1qS4dF7hG2I.",
+      "salt": "c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4",
+      "first_name": "Admin",
+      "last_name": "Staff",
+      "birthdate": "1980-01-01",
+      "role_type": 2,
+      "password_changed": 1,
+      "failed_attempts": 0,
+      "locked_until": null,
+      "last_attempt": null
+    }
+  ]
+}

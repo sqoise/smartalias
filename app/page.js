@@ -23,23 +23,43 @@ export default function LoginPage() {
     const username = formData.get('username')
     const password = formData.get('password')
 
-    // Frontend-only logic for demo
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin') {
-        handleAlert("Welcome Admin! Redirecting…", "ok")
-        setTimeout(() => {
-          window.location.href = '/admin'
-        }, 600)
-      } else if (username === 'user' && password === 'user') {
-        handleAlert("Welcome User! Redirecting…", "ok")
-        setTimeout(() => {
-          window.location.href = '/user'
-        }, 600)
-      } else {
-        handleAlert("Invalid username or password", "error")
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        handleAlert(data.error || 'Login failed', 'error')
+        setIsLoading(false)
+        return
       }
+
+      // Store token in localStorage for future requests
+      localStorage.setItem('authToken', data.token)
+
+      // Handle different response scenarios
+      if (!data.user.passwordChanged) {
+        handleAlert('Password change required. Redirecting…', 'info')
+        setTimeout(() => {
+          window.location.href = data.redirectTo
+        }, 10)
+      } else {
+        handleAlert(`Welcome ${data.user.firstName}! Redirecting…`, 'ok')
+        setTimeout(() => {
+          window.location.href = data.redirectTo
+        }, 10)
+      }
+
+    } catch (error) {
+      handleAlert('Network error. Please try again.', 'error')
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const alertStyles = {
@@ -95,6 +115,16 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Demo Credentials */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h4>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div><strong>User:</strong> juan.delacruz / 031590 (needs password change)</div>
+                <div><strong>User:</strong> maria.santos / 120885 (needs password change)</div>
+                <div><strong>Admin:</strong> admin.staff / 010180 (password already changed)</div>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -139,7 +169,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-6 text-center text-xs text-gray-500">
-              Access for registered users and administrators.
+              Access for registered residents and administrators.
             </p>
           </div>
         </section>
