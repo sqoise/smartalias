@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import ToastNotification from '../../components/ToastNotification'
 
 export default function ChangePasswordPage() {
   const router = useRouter()
-  const [showAlert, setShowAlert] = useState(false)
-  const [alertMessage, setAlertMessage] = useState('')
-  const [alertType, setAlertType] = useState('info')
   const [isLoading, setIsLoading] = useState(false)
+  const toastRef = useRef(null)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [token, setToken] = useState('')
@@ -25,7 +24,7 @@ export default function ChangePasswordPage() {
     return {
       length: pwd.length >= 8,
       number: /\d/.test(pwd),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd)
+      special: /[!@#$%^&().?]/.test(pwd)
     }
   }
 
@@ -63,9 +62,9 @@ export default function ChangePasswordPage() {
   }, [router])
 
   const handleAlert = (message, type = 'info') => {
-    setAlertMessage(message)
-    setAlertType(type)
-    setShowAlert(true)
+    if (toastRef.current && toastRef.current.show) {
+      toastRef.current.show(message, type)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -119,7 +118,7 @@ export default function ChangePasswordPage() {
       }
 
       // Success - redirect to appropriate dashboard
-      handleAlert('Password updated successfully! Redirecting…', 'ok')
+      handleAlert('Password updated successfully! Redirecting…', 'success')
       setIsRedirecting(true)
       setTimeout(() => {
         router.push(data.redirectTo || '/')
@@ -132,18 +131,13 @@ export default function ChangePasswordPage() {
     }
   }
 
-  const alertStyles = {
-    info: 'border-blue-200 bg-blue-50 text-blue-700',
-    error: 'border-red-200 bg-red-50 text-red-700',
-    ok: 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  }
-
   // Show loading while validating token
   if (isValidating) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+           <p className="text-lg font-semibold text-gray-700">SMART LIAS</p>
         </div>
       </div>
     )
@@ -151,9 +145,11 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800">
+      <ToastNotification ref={toastRef} />
+
       <main className="min-h-screen grid lg:grid-cols-[70%_30%] relative">
         <section className="relative hidden lg:block z-0">
-          <img src="/images/admin_bg.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+          <img src="/images/bg.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
           <div className="absolute inset-0 bg-green-900/40"></div>
 
           <div className="relative h-full flex flex-col justify-end p-10 text-white">
@@ -172,12 +168,6 @@ export default function ChangePasswordPage() {
               </div>
               
             </div>
-
-            {showAlert && (
-              <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${alertStyles[alertType]}`}>
-                {alertMessage}
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -271,7 +261,7 @@ export default function ChangePasswordPage() {
                   </li>
                   <li className={`flex items-center gap-2 transition-all duration-300 ease-in-out ${passwordValidation.special ? 'text-green-600' : 'text-gray-400'}`}>
                     <i className={`bi transition-all duration-300 ease-in-out ${passwordValidation.special ? 'bi-check-circle-fill' : 'bi-x-circle'}`}></i>
-                    <span>At least 1 symbol (!@#$%^&*)</span>
+                    <span>At least 1 symbol (!@#$%^&().?)</span>
                   </li>
                 </ul>
               </div>
@@ -289,7 +279,7 @@ export default function ChangePasswordPage() {
 
             <div className="mt-6 text-center">
               <Link href="/" className="text-sm text-green-600 hover:text-green-700 cursor-pointer">
-                ← Back to Login
+                ← Back to Homepage
               </Link>
             </div>
 

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import fs from 'fs'
-import path from 'path'
 import { verifyToken, generateToken } from '../../../../lib/auth'
 import { ROLE_TYPES, PASSWORD_STATUS, getRoleName, createErrorPageUrl } from '../../../../lib/constants'
 import logger from '../../../../lib/logger'
@@ -38,7 +37,7 @@ export async function POST(request) {
     username = userPayload.username
 
     // Read users from JSON file
-    const usersPath = path.join(process.cwd(), 'data', 'users.json')
+    const usersPath = `${process.cwd()}/data/users.json`
     const usersData = JSON.parse(fs.readFileSync(usersPath, 'utf8'))
     
     // Find user
@@ -94,7 +93,7 @@ export async function POST(request) {
     }
 
     const newToken = generateToken(newTokenPayload)
-    const redirectTo = user.role_type === ROLE_TYPES.ADMIN ? '/admin' : '/user'
+    const redirectTo = user.role_type === ROLE_TYPES.ADMIN ? '/admin' : '/resident'
 
     return NextResponse.json({
       message: 'Password updated successfully',

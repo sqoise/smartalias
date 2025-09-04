@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export default function UserDashboard() {
+export default function ResidentDashboard() {
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState('')
 
@@ -12,7 +12,7 @@ export default function UserDashboard() {
       <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pending Requests</p>
@@ -22,7 +22,7 @@ export default function UserDashboard() {
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Completed Documents</p>
@@ -32,7 +32,7 @@ export default function UserDashboard() {
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">This Month</p>
@@ -46,7 +46,7 @@ export default function UserDashboard() {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Document Requests */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Request Documents</h3>
               <i className="bi bi-file-earmark-text text-xl text-gray-400"></i>
@@ -124,7 +124,7 @@ export default function UserDashboard() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded">

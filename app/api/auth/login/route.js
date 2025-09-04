@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import fs from 'fs'
-import path from 'path'
-import { ROLE_TYPES, ROLE_NAMES, PASSWORD_STATUS, LOGIN_ATTEMPTS, getRoleName, generateDefaultPassword, isAccountLocked, shouldLockAccount, getLockoutEndTime, shouldResetAttempts, createErrorPageUrl } from '../../../../lib/constants'
+import { ROLE_TYPES, ROLE_NAMES, PASSWORD_STATUS, LOGIN_ATTEMPTS, getRoleName, generateDefaultPassword, isAccountLocked, shouldLockAccount, getLockoutEndTime, shouldResetAttempts, createErrorPageUrl, getManilaTimeString, getManilaTime } from '../../../../lib/constants'
 import logger from '../../../../lib/logger'
 
 const JWT_SECRET = process.env.PASSWORD_SALT || 'demo-secret-key'
@@ -23,7 +22,7 @@ export async function POST(request) {
     }
 
     // Read users from JSON file
-    const usersPath = path.join(process.cwd(), 'data', 'users.json')
+    const usersPath = `${process.cwd()}/data/users.json`
     const usersData = JSON.parse(fs.readFileSync(usersPath, 'utf8'))
     
     // Find user
@@ -43,7 +42,7 @@ export async function POST(request) {
     // Check if account is locked
     if (isAccountLocked(user)) {
       const lockoutEnd = new Date(user.locked_until)
-      const remainingMinutes = Math.ceil((lockoutEnd - new Date()) / (1000 * 60))
+      const remainingMinutes = Math.ceil((lockoutEnd - getManilaTime()) / (1000 * 60))
       
       logger.securityEvent('Login attempt on locked account', { 
         username, 
@@ -53,7 +52,7 @@ export async function POST(request) {
       
       return NextResponse.json(
         { 
-          error: `Account locked. Try again in ${remainingMinutes} minutes.`,
+          error: `Account temporarily locked. Please try again later.`,
           redirectTo: createErrorPageUrl()
         },
         { status: 423 } // 423 Locked
@@ -85,7 +84,7 @@ export async function POST(request) {
       // Update failed attempts
       const userIndex = usersData.users.findIndex(u => u.id === user.id)
       user.failed_attempts = (user.failed_attempts || 0) + 1
-      user.last_attempt = new Date().toISOString()
+      user.last_attempt = getManilaTimeString()
       
       // Lock account if max attempts reached
       if (shouldLockAccount(user)) {
@@ -113,8 +112,8 @@ export async function POST(request) {
       
       const attemptsRemaining = LOGIN_ATTEMPTS.MAX_ATTEMPTS - user.failed_attempts
       const errorMessage = shouldLockAccount(user) 
-        ? `Account locked for ${LOGIN_ATTEMPTS.LOCKOUT_DURATION} minutes due to too many failed attempts.`
-        : `Invalid username or password. ${attemptsRemaining} attempts remaining.`
+        ? `Account temporarily locked due to multiple failed attempts. Please try again later.`
+        : `Invalid username or password. Please try again.`
       
       const redirectUrl = shouldLockAccount(user)
         ? createErrorPageUrl()
@@ -177,7 +176,7 @@ export async function POST(request) {
         }
       })
     } else {
-      const dashboardUrl = user.role_type === ROLE_TYPES.ADMIN ? '/admin' : '/user'
+      const dashboardUrl = user.role_type === ROLE_TYPES.ADMIN ? '/admin' : '/resident'
       return NextResponse.json({
         message: 'Login successful',
         token,

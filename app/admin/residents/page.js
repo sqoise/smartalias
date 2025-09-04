@@ -49,7 +49,7 @@ export default function ResidentsPage() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         {loading ? (
           <p className="text-gray-500">Loading...</p>
         ) : residents.length === 0 ? (

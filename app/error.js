@@ -25,12 +25,12 @@ export default function Error({
         <div className="mt-10 flex items-center justify-center gap-x-6">
           <button
             onClick={reset}
-            className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
             Try again
           </button>
               <Link href="/" className="text-sm text-green-600 hover:text-green-700 cursor-pointer">
-                ← Back to Login
+                ← Back to Homepage
               </Link>
         </div>
       </div>

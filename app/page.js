@@ -1,23 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import ToastNotification from '../components/ToastNotification'
 
 export default function LoginPage() {
-  const [showAlert, setShowAlert] = useState(false)
-  const [alertMessage, setAlertMessage] = useState('')
-  const [alertType, setAlertType] = useState('info')
   const [isLoading, setIsLoading] = useState(false)
+  const toastRef = useRef(null)
 
   const handleAlert = (message, type = 'info') => {
-    setAlertMessage(message)
-    setAlertType(type)
-    setShowAlert(true)
+    if (toastRef.current && toastRef.current.show) {
+      toastRef.current.show(message, type)
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    handleAlert("Checking credentials…", "info")
     
     const formData = new FormData(e.target)
     const username = formData.get('username')
@@ -50,7 +48,7 @@ export default function LoginPage() {
           window.location.href = data.redirectTo
         }, 10)
       } else {
-        handleAlert(`Welcome ${data.user.firstName}! Redirecting…`, 'ok')
+        handleAlert(`Welcome ${data.user.firstName}! Redirecting…`, 'success')
         setTimeout(() => {
           window.location.href = data.redirectTo
         }, 10)
@@ -62,20 +60,16 @@ export default function LoginPage() {
     }
   }
 
-  const alertStyles = {
-    info: "border-blue-200 bg-blue-50 text-blue-700",
-    error: "border-red-200 bg-red-50 text-red-700",
-    ok: "border-emerald-200 bg-emerald-50 text-emerald-700"
-  }
-
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800">
+      <ToastNotification ref={toastRef} />
+      
       {/* Two-column layout matching login.html */}
       <main className="min-h-screen grid lg:grid-cols-[70%_30%] relative">
         {/* LEFT: Hero section with background image */}
         <section className="relative hidden lg:block z-0">
           <img 
-            src="/images/admin_bg.jpg" 
+            src="/images/bg.jpg" 
             className="absolute inset-0 w-full h-full object-cover" 
             alt="Background"
           />
@@ -107,13 +101,6 @@ export default function LoginPage() {
                 <h2 className="text-2xl font-bold text-green-700">Account Login</h2>
               </div>
             </div>
-
-            {/* Alert */}
-            {showAlert && (
-              <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${alertStyles[alertType]}`}>
-                {alertMessage}
-              </div>
-            )}
 
             {/* Demo Credentials */}
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">

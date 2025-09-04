@@ -7,11 +7,11 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
-  const computedTitle = title ?? (role === 'admin' ? 'Admin Dashboard' : 'User Dashboard')
+  const computedTitle = title ?? (role === 'admin' ? 'Admin Dashboard' : 'Resident Dashboard')
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="flex items-center justify-between px-6 py-4">
           <h1 className="text-2xl font-semibold text-gray-800">{computedTitle}</h1>
 
@@ -33,7 +33,7 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200">
                   <a href="#" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 cursor-pointer">
                     <i className="bi bi-person mr-2"></i>Profile
                   </a>
@@ -42,7 +42,7 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
                   </a>
                   <button 
                     onClick={() => { setShowLogoutModal(true); setShowUserMenu(false) }}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 border-t cursor-pointer"
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 border-t border-gray-200 cursor-pointer"
                   >
                     <i className="bi bi-box-arrow-right mr-2"></i>Logout
                   </button>

@@ -1,20 +1,18 @@
 import Link from 'next/link'
 
-export default function NotFound() {
+export default function ForbiddenAccess() {
   return (
     <main className="grid min-h-screen place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8">
       <div className="text-center">
-        <p className="text-xl font-semibold text-green-600">404</p>
+        <p className="text-xl font-semibold text-green-600">403</p>
         <h1 className="mt-4 text-balance text-5xl font-semibold tracking-tight text-gray-900 sm:text-7xl">
-          Page not found
+          Forbidden Access
         </h1>
         <p className="mt-6 text-pretty text-lg font-medium text-gray-500 sm:text-xl/8">
-          Sorry, we couldn't find the page you're looking for.
+          You do not have permission to access this service. If you believe this is a mistake, please contact the barangay office.
         </p>
         <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Link href="/" className="text-sm text-green-600 hover:text-green-700 cursor-pointer">
-                ← Back to Homepage
-              </Link>
+
         </div>
       </div>
     </main>

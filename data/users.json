@@ -10,9 +10,9 @@
       "birthdate": "1990-03-15",
       "role_type": 1,
       "password_changed": 0,
-      "failed_attempts": 0,
-      "locked_until": null,
-      "last_attempt": null
+      "failed_attempts": 5,
+      "locked_until": "2025-09-04T13:53:47.000Z",
+      "last_attempt": "2025-09-04T13:38:47.000Z"
     },
     {
       "id": 2,
@@ -23,16 +23,16 @@
       "last_name": "Santos",
       "birthdate": "1985-12-08",
       "role_type": 1,
-      "password_changed": 1,
+      "password_changed": 0,
       "failed_attempts": 0,
       "locked_until": null,
-      "last_attempt": null
+      "last_attempt": "2025-09-04T13:25:06.000Z"
     },
     {
       "id": 3,
       "username": "admin.staff",
-      "password_hash": "$2b$12$bQZ8yF3eKqF4ZO9WX5yH0OZJdXx9kLmN6tR3vC8pW1qS4dF7hG2I.",
-      "salt": "c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4",
+      "password_hash": "$2b$12$V.ns/T6MHuZ1IG.Fh9f1FunbwPOySprB/aQxYpAlkaqNhVGJk3Rp.",
+      "salt": "$2b$12$V.ns/T6MHuZ1IG.Fh9f1Fu",
       "first_name": "Admin",
       "last_name": "Staff",
       "birthdate": "1980-01-01",
@@ -41,6 +41,48 @@
       "failed_attempts": 0,
       "locked_until": null,
       "last_attempt": null
+    },
+    {
+      "id": 4,
+      "username": "jose.garcia",
+      "password_hash": "$2b$12$samplehash1234567890abcdef",
+      "salt": "$2b$12$samplehash1234567890ab",
+      "first_name": "Jose",
+      "last_name": "Garcia",
+      "birthdate": "1975-06-20",
+      "role_type": 1,
+      "password_changed": 0,
+      "failed_attempts": 0,
+      "locked_until": null,
+      "last_attempt": null
+    },
+    {
+      "id": 5,
+      "username": "ana.reyes",
+      "password_hash": "$2b$12$samplehash2345678901bcdefg",
+      "salt": "$2b$12$samplehash2345678901bc",
+      "first_name": "Ana",
+      "last_name": "Reyes",
+      "birthdate": "1992-11-10",
+      "role_type": 1,
+      "password_changed": 0,
+      "failed_attempts": 0,
+      "locked_until": null,
+      "last_attempt": null
+    },
+    {
+      "id": 6,
+      "username": "maria.santos2",
+      "password_hash": "$2b$12$samplehash3456789012cdefgh",
+      "salt": "$2b$12$samplehash3456789012cd",
+      "first_name": "Maria",
+      "last_name": "Santos",
+      "birthdate": "1993-03-08",
+      "role_type": 1,
+      "password_changed": 0,
+      "failed_attempts": 2,
+      "locked_until": null,
+      "last_attempt": "2025-09-04T13:21:16.000Z"
     }
   ]
 }
