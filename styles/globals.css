@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: theme('borderColor.DEFAULT', currentColor);
+}
+
+/* Ensure font smoothing matches across platforms */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Match CDN's default body styles */
+html {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  line-height: inherit;
+}
+
+/* Light theme variables */
+:root {
+  --foreground-rgb: 51, 65, 85; /* slate-700 */
+  --background-rgb: 255, 255, 255; /* white */
+}
+
+/* Keep light theme always - remove dark mode auto-switching */
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: rgb(var(--background-rgb));
+  margin: 0;
+  padding: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
