@@ -1,16 +1,15 @@
 import React from 'react'
 import { Inter } from 'next/font/google'
-import './globals.css'
+import '../styles/globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-import './globals.css'
 
 export const metadata = {
   title: 'Login — SMARTLIAS',
   description: 'Barangay resident management system',
   icons: {
-    icon: '/images/barangay_logo.png',
+    icon: 'favicon.ico',
   },
 }
 
