@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { auth, ROLE_TYPES } from '../lib/frontend-auth'
+import { auth, ROLE_TYPES } from '../lib/auth'
 
 export default function HomePage() {
   const router = useRouter()

@@ -1,4 +1,5 @@
 {
+  "_comment": "Demo: Mock user data for frontend development - will be replaced with database",
   "users": [
     {
       "id": 1,

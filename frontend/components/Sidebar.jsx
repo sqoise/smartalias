@@ -11,7 +11,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed }) {
   const isCollapsed = collapsed !== undefined ? collapsed : localCollapsed
   const toggleCollapsed = setCollapsed || setLocalCollapsed
 
-  // Load collapsed state from localStorage on component mount
+  // Demo: Load collapsed state from localStorage on component mount
   useEffect(() => {
     if (collapsed === undefined) {
       const savedState = localStorage.getItem('sidebarCollapsed')
@@ -21,7 +21,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed }) {
     }
   }, [collapsed])
 
-  // Save to localStorage when state changes
+  // Demo: Save to localStorage when state changes
   const handleToggle = () => {
     const newState = !isCollapsed
     toggleCollapsed(newState)

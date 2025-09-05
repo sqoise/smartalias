@@ -7,15 +7,15 @@ export default function AdminDashboard() {
 
   return (
     <>
-      {/* Dashboard Content - No sidebar/header since layout.js provides them */}
+      {/* Demo: Dashboard Content - No sidebar/header since layout.js provides them */}
       <div className="space-y-6">
-        {/* Stats Cards */}
+        {/* Demo: Stats Cards with hardcoded data */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Residents</p>
-                <p className="text-2xl font-bold text-gray-900">1,234</p>
+                <p className="text-2xl font-bold text-gray-900">1,234</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-people text-2xl text-gray-400"></i>
             </div>
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pending Applications</p>
-                <p className="text-2xl font-bold text-gray-900">45</p>
+                <p className="text-2xl font-bold text-gray-900">45</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-hourglass-split text-2xl text-gray-400"></i>
             </div>
@@ -35,16 +35,16 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Completed Today</p>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">12</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-check2-square text-2xl text-gray-400"></i>
             </div>
           </div>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Demo: Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Activities */}
+          {/* Demo: Recent Activities with static data */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold mb-4">Recent Activities</h3>
             <div className="space-y-3">
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">New resident registered</p>
-                  <p className="text-xs text-gray-500">John Doe - 2 minutes ago</p>
+                  <p className="text-xs text-gray-500">John Doe - 2 minutes ago</p> {/* Demo: Static data */}
                 </div>
               </div>
               
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Certificate issued</p>
-                  <p className="text-xs text-gray-500">Barangay Clearance - 15 minutes ago</p>
+                  <p className="text-xs text-gray-500">Barangay Clearance - 15 minutes ago</p> {/* Demo: Static data */}
                 </div>
               </div>
               
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Information updated</p>
-                  <p className="text-xs text-gray-500">Maria Santos - 1 hour ago</p>
+                  <p className="text-xs text-gray-500">Maria Santos - 1 hour ago</p> {/* Demo: Static data */}
                 </div>
               </div>
               

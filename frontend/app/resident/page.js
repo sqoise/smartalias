@@ -8,15 +8,15 @@ export default function ResidentDashboard() {
 
   return (
     <>
-      {/* Dashboard Content - No sidebar/header since layout.js provides them */}
+      {/* Demo: Dashboard Content - No sidebar/header since layout.js provides them */}
       <div className="space-y-6">
-        {/* Stats Cards */}
+        {/* Demo: Stats Cards with static data */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pending Requests</p>
-                <p className="text-2xl font-bold text-gray-900">3</p>
+                <p className="text-2xl font-bold text-gray-900">3</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-hourglass-split text-2xl text-gray-400"></i>
             </div>
@@ -26,7 +26,7 @@ export default function ResidentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Completed Documents</p>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">12</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-check2-square text-2xl text-gray-400"></i>
             </div>
@@ -36,7 +36,7 @@ export default function ResidentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">This Month</p>
-                <p className="text-2xl font-bold text-gray-900">5</p>
+                <p className="text-2xl font-bold text-gray-900">5</p> {/* Demo: Static data */}
               </div>
               <i className="bi bi-calendar-month text-2xl text-gray-400"></i>
             </div>

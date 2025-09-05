@@ -1,5 +1,6 @@
 [
   {
+    "_comment": "Demo: Mock residents data for frontend development",
     "id": 1,
     "name": "John Doe",
     "address": "123 Main Street, Building A, Unit 101",

@@ -3,9 +3,10 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import ToastNotification from '../../components/ToastNotification'
-import { auth } from '../../lib/frontend-auth'
+// Demo: Using mock auth service
+import { auth } from '../../lib/auth'
 
-// Password validation function
+// Demo: Password validation function for frontend
 function validatePassword(password) {
   return {
     length: password?.length >= 8,

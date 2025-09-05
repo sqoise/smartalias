@@ -3,27 +3,22 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ToastNotification from '../../components/ToastNotification'
-import { auth } from '../../lib/frontend-auth'
+import LoginLayout from '../../components/LoginLayout'
+import LoginCard from '../../components/LoginCard'
+import { auth } from '../../lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({ username: '', password: '' })
+  const [currentStep, setCurrentStep] = useState('username') // 'username' or 'mpin'
+  const [username, setUsername] = useState('')
+  const [mpin, setMpin] = useState('') // Changed from password to mpin
+  const [userInfo, setUserInfo] = useState(null) // Store user details after username validation
   const [errors, setErrors] = useState({})
   const toastRef = useRef()
 
   const handleAlert = (message, type = 'info') => {
     toastRef.current?.show(message, type)
-  }
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
   }
 
   const sanitizeInput = (input) => {
@@ -35,45 +30,114 @@ export default function LoginPage() {
       .slice(0, 100) // Limit length
   }
 
-  const validateForm = () => {
+  const validateUsername = () => {
+    // Demo: Simplified validation for testing frontend design/UX
+    const EASY_TESTING = true; // Set to false for real validation
+    
+    if (EASY_TESTING) {
+      // Demo: Allow any non-empty username for testing
+      const newErrors = {}
+      const sanitizedUsername = sanitizeInput(username)
+      
+      if (!sanitizedUsername) {
+        newErrors.username = 'Username is required'
+      }
+      
+      setErrors(newErrors)
+      return Object.keys(newErrors).length === 0
+    }
+
     const newErrors = {}
+    const sanitizedUsername = sanitizeInput(username)
 
-    // Sanitize inputs
-    const sanitizedUsername = sanitizeInput(formData.username)
-    const sanitizedPassword = sanitizeInput(formData.password)
-
-    // Username validation
     if (!sanitizedUsername) {
       newErrors.username = 'Username is required'
     } else if (!/^[a-zA-Z0-9._-]+$/.test(sanitizedUsername)) {
       newErrors.username = 'Username can only contain letters, numbers, dots, hyphens, and underscores'
     }
 
-    // Password validation
-    if (!sanitizedPassword) {
-      newErrors.password = 'Password is required'
-    } else if (sanitizedPassword.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const validateMpin = () => {
+    // Demo: Simplified validation for testing frontend design/UX
+    const EASY_TESTING = true; // Set to false for real validation
+    
+    if (EASY_TESTING) {
+      // Demo: Allow any 6-digit MPIN for testing
+      const newErrors = {}
+
+      if (!mpin) {
+        newErrors.mpin = 'MPIN is required'
+      } else if (mpin.length !== 6) {
+        newErrors.mpin = 'MPIN must be 6 digits'
+      } else if (!/^\d{6}$/.test(mpin)) {
+        newErrors.mpin = 'MPIN must contain only numbers'
+      }
+
+      setErrors(newErrors)
+      return Object.keys(newErrors).length === 0
+    }
+
+    const newErrors = {}
+
+    if (!mpin) {
+      newErrors.mpin = 'MPIN is required'
+    } else if (mpin.length !== 6) {
+      newErrors.mpin = 'MPIN must be 6 digits'
+    } else if (!/^\d{6}$/.test(mpin)) {
+      newErrors.mpin = 'MPIN must contain only numbers'
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
+  const handleUsernameSubmit = async (e) => {
     e.preventDefault()
     
-    // Frontend validation
-    if (!validateForm()) {
+    if (!validateUsername()) {
+      return
+    }
+
+    setIsLoading(true)
+    const sanitizedUsername = sanitizeInput(username)
+
+    try {
+      // Check if username exists in the system
+      const userExists = await auth.checkUsername(sanitizedUsername)
+      
+      if (!userExists.success) {
+        handleAlert(userExists.error || 'Username not found', 'error')
+        setIsLoading(false)
+        return
+      }
+
+      // Store user info and move to MPIN step
+      setUserInfo(userExists.user)
+      setCurrentStep('mpin')
+      setErrors({}) // Clear any previous errors
+      
+    } catch (error) {
+      handleAlert('Unable to verify username. Please try again.', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleMpinSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!validateMpin()) {
       return
     }
 
     setIsLoading(true)
     
-    // Sanitize data
     const sanitizedData = {
-      username: sanitizeInput(formData.username),
-      password: sanitizeInput(formData.password)
+      username: sanitizeInput(username),
+      password: mpin // Use MPIN as password for backend compatibility
     }
 
     try {
@@ -103,138 +167,46 @@ export default function LoginPage() {
     }
   }
 
+  const handleBackToUsername = () => {
+    // Demo: Add smooth transition back to username step
+    setCurrentStep('username')
+    setMpin('')
+    setUserInfo(null)
+    setErrors({})
+  }
+
+  // Demo: MPIN keypad number handler
+  const handleKeypadNumber = (number) => {
+    if (mpin.length < 6) {
+      setMpin(prev => prev + number)
+      if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
+    }
+  }
+
+  // Demo: MPIN backspace handler
+  const handleKeypadBackspace = () => {
+    setMpin(prev => prev.slice(0, -1))
+    if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800">
+    <>
       <ToastNotification ref={toastRef} />
-      
-      {/* Two-column layout matching login.html */}
-      <main className="min-h-screen grid lg:grid-cols-[70%_30%] relative">
-        {/* LEFT: Hero section with background image */}
-        <section className="relative hidden lg:block z-0">
-          <img 
-            src="/images/bg.jpg" 
-            className="absolute inset-0 w-full h-full object-cover" 
-            alt="Background"
-          />
-          <div className="absolute inset-0 bg-green-900/40"></div>
-
-          <div className="relative h-full flex flex-col justify-end p-10 text-white">
-            <img 
-              src="/images/barangay_logo.jpg" 
-              alt="Barangay Logo" 
-              className="w-20 h-20 rounded-full mb-4"
-            />
-            <h1 className="text-4xl font-extrabold">Barangay LIAS</h1>
-            <p className="mt-6 max-w-xl text-white/90">
-              Access your account to our Barangay SMART LIAS Portal.
-            </p>
-            <p className="mt-10 text-sm text-white/70">
-              &copy; {new Date().getFullYear()} Smart LIAS
-            </p>
-          </div>
-        </section>
-
-        {/* RIGHT: Login card (overlaps the image) */}
-        <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible">
-          {/* Overlapping card - pull left on large screens */}
-          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8 relative z-10 lg:-ml-80" style={{boxShadow: '0 16px 40px rgba(0,0,0,.12)'}}>
-            <div className="mb-6 text-center">
-              <img 
-                src="/images/barangay_logo.jpg" 
-                alt="Barangay Logo" 
-                className="w-16 h-16 rounded-full mx-auto mb-4 lg:hidden"
-              />
-              <div className="inline-flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-green-700">Sign in to Smart LIAS</h2>
-              </div>
-            </div>
-
-            {/* Welcome Message */}
-            <div className="mb-6 text-center lg:hidden">
-              <p className="text-gray-600 text-sm">Welcome to Barangay LIAS Portal</p>
-            </div>
-
-            {/* Demo Credentials */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h4>
-              <div className="text-xs text-blue-700 space-y-1">
-                <div><strong>User:</strong> juan.delacruz / 031590 (needs password change)</div>
-                <div><strong>User:</strong> maria.santos / 120885 (needs password change)</div>
-                <div><strong>Admin:</strong> admin.staff / 010180 (password already changed)</div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input 
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className={`w-full rounded-md px-3 py-2 border ${
-                    errors.username 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:border-green-600 focus:ring-green-600'
-                  }`}
-                  placeholder="Enter your username"
-                />
-                {errors.username && (
-                  <p className="mt-1 text-sm text-red-600">{errors.username}</p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input 
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`w-full rounded-md px-3 py-2 border ${
-                    errors.password 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:border-green-600 focus:ring-green-600'
-                  }`}
-                  placeholder="••••••••"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                )}
-              </div>
-
-              <button 
-                type="submit"
-                disabled={isLoading}
-                className={`w-full bg-green-600 hover:bg-green-700 text-white rounded-md py-2.5 font-semibold flex items-center justify-center gap-2 cursor-pointer ${isLoading ? 'opacity-60' : ''}`}
-              >
-                <i className="bi bi-fingerprint"></i>
-                <span>Sign In</span>
-                {isLoading && (
-                  <div className="animate-spin border-2 border-white/60 border-t-transparent rounded-full w-4 h-4"></div>
-                )}
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-xs text-gray-500">
-              Access for registered residents and administrators.
-            </p>
-          </div>
-          
-          {/* Copyright for mobile/tablet */}
-          <div className="absolute bottom-6 left-0 right-0 text-center lg:hidden">
-            <p className="text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Smart LIAS
-            </p>
-          </div>
-        </section>
-      </main>
-    </div>
+      <LoginLayout>
+        <LoginCard
+          currentStep={currentStep}
+          username={username}
+          setUsername={setUsername}
+          mpin={mpin}
+          errors={errors}
+          setErrors={setErrors}
+          isLoading={isLoading}
+          onUsernameSubmit={handleUsernameSubmit}
+          onBackToUsername={handleBackToUsername}
+          onKeypadNumber={handleKeypadNumber}
+          onKeypadBackspace={handleKeypadBackspace}
+        />
+      </LoginLayout>
+    </>
   )
 }

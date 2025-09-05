@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { residents } from '../../../lib/frontend-auth'
+// Demo: Using mock residents data from auth.js
+import { residents } from '../../../lib/auth'
 
 export default function ResidentsPage() {
   const [residentsData, setResidentsData] = useState([])
@@ -10,7 +11,7 @@ export default function ResidentsPage() {
   const [name, setName] = useState('')
 
   useEffect(() => {
-    // Load residents data from frontend utility
+    // Demo: Load residents data from mock JSON file
     try {
       const data = residents.getAll()
       setResidentsData(data || [])
@@ -24,7 +25,7 @@ export default function ResidentsPage() {
   async function handleAdd(e) {
     e.preventDefault()
     try {
-      // For demo purposes, add resident to local state
+      // Demo: Add resident to local state only (no backend persistence)
       const newResident = {
         id: Date.now(),
         name: name.trim(),
@@ -97,8 +98,8 @@ export default function ResidentsPage() {
                 <input value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 border rounded">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">Add</button>
+                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 border rounded cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded cursor-pointer">Add</button>
               </div>
             </form>
           </div>

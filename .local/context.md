@@ -3,7 +3,116 @@
 ## Project Overview
 **SMARTLIAS** is a barangay management system built with **separated frontend-backend architecture**. This project demonstrates modern full-stack development practices with clear separation of concerns between the client-side (Next.js) and server-side (Express.js) applications.
 
-## CURRENT ARCHITECTURE (Updated September 2025)
+## COMPACT MOBILE-FIRST DESIGN SYSTEM (Updated September 2025)
+
+### Design Philosophy
+- **Target Users**: 90% mobile phone users
+- **Design Style**: Compact, mobile-first, AWS Console-inspired
+- **Touch Targets**: 36px minimum height for all interactive elements
+- **Font Size**: 14px (text-sm) as standard for readability
+- **Color Scheme**: Blue accents, professional neutral palette
+
+### Component Standards
+
+#### Form Elements
+```jsx
+// Input Fields (36px height)
+className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 
+           focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+           placeholder:text-gray-400 bg-white"
+
+// Error State
+className="w-full rounded-md px-3 py-1.5 text-sm border border-red-300 
+           focus:border-red-500 focus:ring-1 focus:ring-red-500 
+           placeholder:text-gray-400 bg-white"
+
+// Labels
+className="block text-sm font-medium text-gray-700 mb-1"
+
+// Form Groups (Compact spacing)
+className="mb-3"
+
+// Form Container
+className="space-y-3"
+
+// Error Messages
+className="mt-1 text-xs text-red-600"
+```
+
+#### Buttons (36px height)
+```jsx
+// Primary Button
+className="w-full inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium 
+           rounded-md border bg-blue-600 border-blue-600 text-white 
+           hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 focus:outline-none
+           disabled:bg-gray-300 disabled:border-gray-300 disabled:cursor-not-allowed
+           transition-colors duration-200 cursor-pointer"
+
+// Secondary Button  
+className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium 
+           rounded-md border bg-white border-gray-300 text-gray-700
+           hover:bg-gray-50 focus:ring-1 focus:ring-blue-500 focus:outline-none
+           transition-colors duration-200 cursor-pointer"
+
+// Disabled Button
+className="... disabled:cursor-not-allowed"
+```
+
+#### Cursor Guidelines
+```jsx
+// Interactive Elements
+className="cursor-pointer"     // Buttons, clickable cards, tabs, menu items
+className="cursor-text"        // Input fields, text areas, editable content
+className="cursor-grab"        // Draggable items (normal state)
+className="cursor-grabbing"    // Draggable items (while dragging)
+className="cursor-not-allowed" // Disabled buttons, restricted actions
+className="cursor-help"        // Help tooltips, info icons
+className="cursor-wait"        // Loading states, processing actions
+className="cursor-default"     // Non-interactive content (default browser cursor)
+
+// Common Use Cases
+- Buttons: cursor-pointer (enabled), cursor-not-allowed (disabled)
+- Links: cursor-pointer
+- Form inputs: cursor-text (automatically applied to input/textarea)
+- Clickable cards: cursor-pointer
+- Icons with actions: cursor-pointer
+- Loading overlays: cursor-wait
+- Drag handles: cursor-grab/cursor-grabbing
+```
+
+#### Layout Elements
+```jsx
+// Cards (Mobile-responsive)
+className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5 lg:p-6"
+
+// Containers
+className="px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6"
+
+// Typography - Large Headings
+className="text-lg font-bold text-gray-900 mb-2 sm:text-xl sm:mb-3"
+
+// Typography - Body Text
+className="text-sm text-gray-600 leading-relaxed sm:text-base"
+
+// Alerts
+className="p-3 rounded-md border text-sm bg-blue-50 border-blue-200 text-blue-800" // Info
+className="p-3 rounded-md border text-sm bg-red-50 border-red-200 text-red-800"   // Error
+```
+
+### Color Palette
+- **Primary**: blue-600, blue-700 (buttons, focus states)
+- **Success**: green-600, green-50
+- **Warning**: yellow-600, yellow-50  
+- **Error**: red-600, red-50
+- **Neutral**: gray-900, gray-700, gray-600, gray-300, gray-200
+
+### Spacing System
+- **Form spacing**: mb-3, space-y-3 (compact)
+- **Touch targets**: 36px minimum height
+- **Padding**: px-3 py-1.5 (consistent for inputs/buttons)
+- **Responsive**: Scale up on larger screens (sm:, lg:)
+
+## CURRENT ARCHITECTURE
 
 ### Project Structure
 ```
@@ -59,9 +168,11 @@ make clean           # Clean build files and copied env
 
 #### Documentation Standards
 - **NO EMOJIS**: Never use emojis in documentation, comments, or code
+- **NO EMOTICONS**: Never use emoticons or decorative symbols in code changes
 - **Clean Text**: Use clear, professional language without decorative symbols
 - **Consistent Format**: Maintain consistent formatting across all files
 - **Professional Tone**: Keep all documentation business-appropriate
+- **Demo Comments**: All demo/temporary code must be marked with `// Demo:` for easy identification
 
 ### UI/UX Design Standards
 

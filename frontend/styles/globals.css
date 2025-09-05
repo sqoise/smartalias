@@ -38,3 +38,26 @@ body {
   padding: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
+
+/* 
+ * COMPACT MOBILE-FIRST DESIGN SYSTEM
+ * Use these standardized Tailwind class combinations for consistency
+ */
+
+/* GitHub Copilot-style loading animation - pure rotation, no arc distortion */
+@keyframes copilot-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-copilot-spin {
+  animation: copilot-spin 1.2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+  /* Optimize for smooth animation */
+  will-change: transform;
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { auth } from '../lib/frontend-auth'
+import { auth } from '../lib/auth'
 
 export default function Header({ title, role = 'user', userName = 'Juan Dela Cruz' }) {
   const router = useRouter()
