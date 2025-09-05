@@ -4,19 +4,29 @@
 # */package-lock.json
 
 # dependencies
-*/node_modules
+node_modules/
+*/node_modules/
 /.pnp
 .pnp.js
 
 # testing
 /coverage
+*/coverage/
 
-# next.js
-/.next/
-/out/
+# next.js (frontend)
+frontend/.next/
+frontend/out/
+frontend/.vercel/
 
-# production
+# production builds
 /build
+*/build/
+*/dist/
+
+# Express.js specific
+backend/dist/
+backend/build/
+backend/uploads/
 
 # misc
 .DS_Store
@@ -28,18 +38,23 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
-frontend/.env.*
-backend/.env.*
+.env*
+**/.env.local
 
 # logs
 /logs/*.log
+*/logs/
+**/*.log
 
 # vercel
 .vercel
+frontend/.vercel/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+frontend/next-env.d.ts
 
+# IDE
 .vscode
+.idea/
