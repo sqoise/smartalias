@@ -1,0 +1,28 @@
+{
+  "name": "smartlias-frontend",
+  "version": "1.0.0",
+  "description": "SMART LIAS Frontend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev -p ${PORT:-3000}",
+    "dev:turbo": "next dev --turbopack -p ${PORT:-3000}",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "lint": "next lint"
+  },
+  "keywords": [
+    "nextjs",
+    "management-system"
+  ],
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12"
+  },
+  "dependencies": {
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}
