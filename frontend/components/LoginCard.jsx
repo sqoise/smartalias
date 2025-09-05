@@ -16,10 +16,11 @@ export default function LoginCard({
   onBackToUsername,
   onKeypadNumber,
   onKeypadBackspace,
-  showLogo = false
+  showLogo = false,
+  className = ''
 }) {
   return (
-    <div className="w-full max-w-2xl bg-white rounded-lg shadow p-8 m-10 relative z-10">
+    <div className={`w-full max-w-xl lg:max-w-2xl bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 mx-auto lg:m-10 relative z-10 ${className}`}>
       <div className="mb-6 text-center">
         {showLogo && (
           <img 

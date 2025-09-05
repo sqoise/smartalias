@@ -43,10 +43,10 @@ export default function LoginLayout({ children }) {
           </section>
         </div>
 
-        {/* Small screens: Split layout (40% image, 60% white) */}
+        {/* Small screens: 30% image, 70% white with focused card */}
         <div className="lg:hidden min-h-screen relative">
-          {/* Background image section - 40% height */}
-          <section className="relative h-[40vh] z-0">
+          {/* Background image section - 30% height */}
+          <section className="relative h-[30vh] z-0">
             <img 
               src="/images/bg.jpg" 
               className="absolute inset-0 w-full h-full object-cover" 
@@ -55,22 +55,24 @@ export default function LoginLayout({ children }) {
             <div className="absolute inset-0 bg-green-900/40"></div>
           </section>
 
-          {/* White background section - 60% height */}
-          <section className="h-[60vh] bg-white"></section>
+          {/* White background section - 70% height */}
+          <section className="h-[70vh] bg-white"></section>
 
-          {/* Login card - positioned to overlap both sections */}
-          <section className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full flex items-center justify-center p-6 z-10">
-            {/* Overlapping card - centered and floating */}
-            {/* Clone children with showLogo=true for mobile */}
-            {cloneElement(children, { showLogo: true })}
-            
-            {/* Copyright for screens 1024px and below */}
-            <div className="absolute bottom-6 left-0 right-0 text-center xl:hidden">
-              <p className="text-sm text-gray-500">
-                &copy; {new Date().getFullYear()} Smart LIAS
-              </p>
+          {/* Login card - positioned to be more focused */}
+          <section className="absolute top-[18%] left-1/2 transform -translate-x-1/2 w-full flex items-start justify-center p-3 z-10">
+            {/* Focused card - takes more space */}
+            <div className="w-full">
+              {/* Clone children with showLogo=true for mobile */}
+              {cloneElement(children, { showLogo: true, className: "m-0 w-full" })}
             </div>
           </section>
+          
+          {/* Copyright for all non-desktop screens - centered at bottom */}
+          <div className="absolute bottom-4 left-0 right-0 text-center z-20">
+            <p className="text-sm text-gray-500">
+              &copy; {new Date().getFullYear()} Smart LIAS
+            </p>
+          </div>
         </div>
       </main>
     </div>

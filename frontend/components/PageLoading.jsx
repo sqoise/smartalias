@@ -2,7 +2,7 @@
 
 import Spinner from './Spinner'
 
-export default function LoadingSpinner({ 
+export default function PageLoading({ 
   message = '', 
   size = 'md', 
   color = 'blue',

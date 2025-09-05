@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import LoadingSpinner from '../components/LoadingSpinner'
+import PageLoading from '../components/PageLoading'
 import { auth, ROLE_TYPES } from '../lib/auth'
 
 export default function HomePage() {
@@ -26,5 +26,5 @@ export default function HomePage() {
     checkSessionAndRedirect()
   }, [router])
 
-  return <LoadingSpinner/>
+  return <PageLoading/>
 }
