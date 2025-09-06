@@ -1,0 +1,145 @@
+'use client'
+
+import { cloneElement } from 'react'
+
+export default function PublicLayout({ 
+  children,
+  variant = 'login', // 'login', 'change-pin', 'announcement'
+  showCard = true,
+  showLogo = true,
+  title = 'Barangay LIAS',
+  subtitle = 'Access your account to our Barangay SMART LIAS Portal.',
+  mobileImageHeight = 30 // percentage for mobile image section
+}) {
+  // Configure layout based on variant
+  const getLayoutConfig = () => {
+    switch (variant) {
+      case 'announcement':
+        return {
+          desktopCols: 'lg:grid-cols-[60%_40%]',
+          showDesktopCard: false,
+          mobileImageHeight: mobileImageHeight
+        }
+      case 'change-pin':
+      case 'login':
+      default:
+        return {
+          desktopCols: 'lg:grid-cols-[70%_30%]',
+          showDesktopCard: showCard,
+          mobileImageHeight: mobileImageHeight
+        }
+    }
+  }
+
+  const config = getLayoutConfig()
+
+  return (
+    <div className="bg-gray-100 text-gray-800 overflow-hidden" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
+      <main className="h-full relative" style={{ height: '100dvh' }}>
+        {/* Large screens: Dynamic column layout */}
+        <div className={`hidden lg:grid ${config.desktopCols} h-full relative`}>
+          {/* LEFT: Hero section with background image */}
+          <section className="relative z-0">
+            <img 
+              src="/images/bg.jpg" 
+              className="absolute inset-0 w-full h-full object-cover" 
+              alt="Background"
+            />
+            <div className="absolute inset-0 bg-green-900/40"></div>
+
+            <div className="relative h-full flex flex-col justify-end p-10 text-white">
+              {showLogo && (
+                <img 
+                  src="/images/barangay_logo.jpg" 
+                  alt="Barangay Logo" 
+                  className="w-20 h-20 rounded-full mb-4"
+                />
+              )}
+              <h1 className="text-4xl font-extrabold">{title}</h1>
+              <p className="mt-6 max-w-xl text-white/90">
+                {subtitle}
+              </p>
+              <p className="mt-10 text-sm text-white/70">
+                &copy; {new Date().getFullYear()} Smart LIAS
+              </p>
+            </div>
+          </section>
+
+          {/* RIGHT: Content section (card or content) */}
+          {config.showDesktopCard ? (
+            <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible">
+              {/* Overlapping card - pull left on large screens */}
+              <div className="lg:-ml-120">
+                {/* Clone children with showLogo=false for desktop */}
+                {cloneElement(children, { showLogo: false })}
+              </div>
+            </section>
+          ) : (
+            <section className="flex items-center justify-center p-6 lg:p-12 relative">
+              {/* Content without card styling for announcements */}
+              <div className="w-full h-full flex items-center justify-center">
+                {children}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Small screens: 10% image, 90% white card with fixed positioning */}
+        <div className="lg:hidden overflow-hidden relative" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
+          {/* Background image - only top 10% */}
+          <div className="absolute inset-0">
+            <img 
+              src="/images/bg.jpg" 
+              className="absolute inset-0 w-full h-full object-cover" 
+              alt="Background"
+            />
+            <div className="absolute inset-0 bg-green-900/40"></div>
+          </div>
+
+          {/* Layout container */}
+          <div className="relative z-10 flex flex-col" style={{ height: '100dvh' }}>
+            {/* Top image area - exactly 10% */}
+            <div className="flex-shrink-0" style={{ height: '10dvh' }}></div>
+            
+            {/* White card area - exactly 90% with proper rounded shadow */}
+            <div className="flex-1 bg-white rounded-t-2xl sm:rounded-t-3xl relative shadow-2xl" style={{ height: '90dvh', boxShadow: '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)' }}>
+              {/* Additional inner shadow for depth */}
+              <div className="absolute inset-0 rounded-t-2xl sm:rounded-t-3xl" style={{ boxShadow: 'inset 0 10px 20px rgba(0, 0, 0, 0.05)' }}></div>
+              
+              {/* Content container with mobile-optimized padding */}
+              <div className="h-full flex flex-col p-6 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+                {/* Main content area - centered */}
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
+                    {showCard ? (
+                      /* Clone children with proper spacing props */
+                      cloneElement(children, { 
+                        showLogo: true, 
+                        className: "m-0 w-full bg-transparent shadow-none border-0"
+                      })
+                    ) : (
+                      /* Direct content without card wrapper */
+                      <div className="w-full">
+                        {children}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Fixed bottom section - access message and copyright */}
+                <div className="flex-shrink-0 text-center pb-2 space-y-2">
+                  <p className="text-sm sm:text-xs lg:text-xs text-gray-600">
+                    Access for registered residents and administrators.
+                  </p>
+                  <p className="text-sm sm:text-xs lg:text-xs text-gray-500">
+                    &copy; {new Date().getFullYear()} Smart LIAS
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

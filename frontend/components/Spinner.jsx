@@ -1,7 +1,7 @@
 'use client'
 
 export default function Spinner({ 
-  size = 'sm', 
+  size = 'lg', 
   color = 'blue',
   className = '' 
 }) {
@@ -14,13 +14,12 @@ export default function Spinner({
     xl: 'w-12 h-12'
   }
 
-  // Color configurations with Copilot blue as default
   const colorClasses = {
     gray: 'text-gray-400',
     white: 'text-white',
-    green: 'text-green-500',
-    blue: 'text-blue-600', // GitHub Copilot blue
-    red: 'text-red-500'
+    green: 'text-green-600',
+    blue: 'text-blue-600',
+    red: 'text-red-600'
   }
 
   return (

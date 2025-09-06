@@ -4,8 +4,8 @@ import Spinner from './Spinner'
 
 export default function PageLoading({ 
   message = '', 
-  size = 'md', 
-  color = 'blue',
+  size = 'xl', 
+  color = 'green',
   fullScreen = true 
 }) {
   const spinnerContent = (

@@ -17,11 +17,28 @@
 html {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   line-height: 1.5;
+  /* Mobile viewport - use dvh for dynamic viewport */
+  height: 100dvh;
+  overflow: hidden;
+  /* Prevent iOS Safari bounce */
+  position: fixed;
+  width: 100%;
 }
 
 body {
   margin: 0;
+  padding: 0;
   line-height: inherit;
+  /* Mobile viewport optimizations */
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  /* Prevent zoom on input focus in Safari */
+  -webkit-text-size-adjust: 100%;
+  /* Prevent rubber band scrolling on iOS */
+  overscroll-behavior: none;
+  /* Smooth scrolling when needed */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Light theme variables */
@@ -34,8 +51,6 @@ body {
 body {
   color: rgb(var(--foreground-rgb));
   background-color: rgb(var(--background-rgb));
-  margin: 0;
-  padding: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
 
@@ -60,4 +75,66 @@ body {
   will-change: transform;
   transform-origin: 50% 50%;
   backface-visibility: hidden;
+}
+
+/* PWA-ready mobile viewport utilities */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+  
+  .h-screen {
+    height: 100dvh;
+  }
+}
+
+/* Safe area support for PWA */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Prevent overscroll bounce on mobile devices */
+.prevent-overscroll {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent zoom on input focus for mobile devices */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+textarea,
+select {
+  /* Ensure minimum 16px font size to prevent iOS zoom */
+  font-size: max(16px, 1rem);
+  /* Prevent zoom on focus */
+  -webkit-text-size-adjust: 100%;
+  /* Additional iOS Safari zoom prevention */
+  transform: scale(1);
+}
+
+/* For smaller screens, ensure inputs don't zoom */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }

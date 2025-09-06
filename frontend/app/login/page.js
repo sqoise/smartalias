@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ToastNotification from '../../components/ToastNotification'
-import LoginLayout from '../../components/LoginLayout'
+import PublicLayout from '../../components/PublicLayout'
 import LoginCard from '../../components/LoginCard'
 import { auth } from '../../lib/auth'
 
@@ -192,7 +192,7 @@ export default function LoginPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      <LoginLayout>
+      <PublicLayout>
         <LoginCard
           currentStep={currentStep}
           username={username}
@@ -206,7 +206,7 @@ export default function LoginPage() {
           onKeypadNumber={handleKeypadNumber}
           onKeypadBackspace={handleKeypadBackspace}
         />
-      </LoginLayout>
+      </PublicLayout>
     </>
   )
 }
