@@ -9,7 +9,8 @@ export default function PublicLayout({
   showLogo = true,
   title = 'Barangay LIAS',
   subtitle = 'Access your account to our Barangay SMART LIAS Portal.',
-  mobileImageHeight = 30 // percentage for mobile image section
+  mobileImageHeight = 30, // percentage for mobile image section
+  hideBackgroundImage = false // Hide background image when keypad is active
 }) {
   // Configure layout based on variant
   const getLayoutConfig = () => {
@@ -84,9 +85,9 @@ export default function PublicLayout({
           )}
         </div>
 
-        {/* Small screens: 10% image, 90% white card with fixed positioning */}
+        {/* Small screens: Dynamic layout based on keypad state */}
         <div className="lg:hidden overflow-hidden relative" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
-          {/* Background image - only top 10% */}
+          {/* Background image - always visible */}
           <div className="absolute inset-0">
             <img 
               src="/images/bg.jpg" 
@@ -96,15 +97,32 @@ export default function PublicLayout({
             <div className="absolute inset-0 bg-green-900/40"></div>
           </div>
 
-          {/* Layout container */}
-          <div className="relative z-10 flex flex-col" style={{ height: '100dvh' }}>
-            {/* Top image area - exactly 10% */}
-            <div className="flex-shrink-0" style={{ height: '10dvh' }}></div>
+          {/* Layout container with transition */}
+          <div className="relative z-10 flex flex-col transition-all duration-500 ease-out" style={{ height: '100dvh' }}>
+            {/* Top image area - animates out when keypad is active */}
+            <div className={`flex-shrink-0 transition-all duration-500 ease-out ${
+              hideBackgroundImage 
+                ? 'h-0 opacity-0' 
+                : 'opacity-100'
+            }`} style={{ 
+              height: hideBackgroundImage ? '0dvh' : '10dvh'
+            }}></div>
             
-            {/* White card area - exactly 90% with proper rounded shadow */}
-            <div className="flex-1 bg-white rounded-t-2xl sm:rounded-t-3xl relative shadow-2xl" style={{ height: '90dvh', boxShadow: '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)' }}>
-              {/* Additional inner shadow for depth */}
-              <div className="absolute inset-0 rounded-t-2xl sm:rounded-t-3xl" style={{ boxShadow: 'inset 0 10px 20px rgba(0, 0, 0, 0.05)' }}></div>
+            {/* White card area - expands to full height and removes styling when keypad active */}
+            <div className={`flex-1 bg-white relative transition-all duration-500 ease-out ${
+              hideBackgroundImage 
+                ? 'rounded-none shadow-none' 
+                : 'rounded-t-2xl sm:rounded-t-3xl shadow-2xl'
+            }`} style={{ 
+              height: hideBackgroundImage ? '100dvh' : '90dvh',
+              boxShadow: hideBackgroundImage 
+                ? 'none' 
+                : '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)'
+            }}>
+              {/* Additional inner shadow for depth - only when not in keypad mode */}
+              {!hideBackgroundImage && (
+                <div className="absolute inset-0 rounded-t-2xl sm:rounded-t-3xl" style={{ boxShadow: 'inset 0 10px 20px rgba(0, 0, 0, 0.05)' }}></div>
+              )}
               
               {/* Content container with mobile-optimized padding */}
               <div className="h-full flex flex-col p-6 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
@@ -131,6 +149,7 @@ export default function PublicLayout({
                   <p className="text-sm sm:text-xs lg:text-xs text-gray-600">
                     Access for registered residents and administrators.
                   </p>
+                  <br></br>
                   <p className="text-sm sm:text-xs lg:text-xs text-gray-500">
                     &copy; {new Date().getFullYear()} Smart LIAS
                   </p>

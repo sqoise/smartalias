@@ -1,50 +1,86 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MPINKeypad from './MPINKeypad'
 import Spinner from './Spinner'
 
 export default function LoginCard({
-  currentStep,
   username,
   setUsername,
   mpin,
   errors,
   setErrors,
   isLoading,
-  onUsernameSubmit,
-  onBackToUsername,
+  onLogin,
   onKeypadNumber,
   onKeypadBackspace,
   showLogo = false,
-  className = ''
+  className = '',
+  showKeypad,
+  setShowKeypad
 }) {
+
+  const handleMPINLogin = () => {
+    if (!username.trim()) {
+      setErrors(prev => ({ ...prev, username: 'Username is required' }))
+      return
+    }
+    if (mpin.length !== 6) {
+      setErrors(prev => ({ ...prev, mpin: 'Please enter your 6-digit PIN' }))
+      return
+    }
+    onLogin({ username, mpin })
+  }
+
+  // Handle Enter key press
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (event.key === 'Enter') {
+        if (!showKeypad && username.trim()) {
+          // If keypad is not shown and username is entered, show keypad
+          setShowKeypad(true)
+        } else if (showKeypad && mpin.length === 6) {
+          // If keypad is shown and MPIN is complete, trigger login
+          handleMPINLogin()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyPress)
+    return () => document.removeEventListener('keydown', handleKeyPress)
+  }, [showKeypad, username, mpin, handleMPINLogin])
+
   return (
-    <div className={`w-full max-w-md lg:max-w-xl bg-white rounded-lg shadow-lg p-6 sm:p-4 lg:p-8 mx-auto lg:m-10 relative z-10 ${className}`}>
-      <div className="mb-6 sm:mb-4 lg:mb-6 text-center">
-        {showLogo && (
+    <>
+      {/* Header Container - Outside main card */}
+      {showLogo && (
+        <div className="px-6 sm:px-4 lg:px-8 pt-6 sm:pt-4 lg:pt-8 pb-4 sm:pb-3 lg:pb-4 text-center">
           <img 
             src="/images/barangay_logo.jpg" 
             alt="Barangay Logo" 
-            className="w-16 h-16 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full mx-auto mb-4 sm:mb-3 lg:mb-4"
+            className="w-20 h-20 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full mx-auto mb-3 sm:mb-2 lg:mb-3"
           />
-        )}
-        <div className="inline-flex items-center gap-2">
-          <h2 className="text-xl sm:text-lg lg:text-xl font-bold text-black-700">Sign in to Smart LIAS</h2>
+          <h2 className="text-2xl sm:text-lg lg:text-xl font-bold text-gray-800">Sign in to Smart LIAS</h2>
         </div>
-      </div>
+      )}
 
-      {/* Animated Step Container - mobile optimized, desktop compact */}
-      <div className={`relative overflow-hidden transition-all duration-300 ease-out ${
-        currentStep === 'username' ? 'min-h-[120px] sm:min-h-[100px] lg:min-h-[120px]' : 'min-h-[320px] sm:min-h-[280px] lg:min-h-[320px]'
-      }`}>
-        {/* Step 1: Username */}
-        <div className={`transition-all duration-300 ease-out transform ${
-          currentStep === 'username' 
-            ? 'translate-x-0 opacity-100 scale-100' 
-            : '-translate-x-full opacity-0 scale-95 absolute top-0 left-0 w-full'
-        }`}>
-          <form onSubmit={onUsernameSubmit} className="space-y-4 sm:space-y-3 lg:space-y-3">
+      {/* Main Card Container */}
+      <div className={`w-full max-w-sm sm:max-w-lg lg:max-w-lg xl:max-w-xl bg-white rounded-lg shadow-lg mx-auto mt-2 lg:mt-4 lg:mx-8 xl:mx-12 mb-10 relative z-10 transition-all duration-500 ease-out ${
+        showKeypad ? 'min-h-[600px]' : 'min-h-[400px]'
+      } ${className}`}>
+        {/* Main Content Area */}
+        <div className="p-6 sm:p-4 lg:p-8 h-full">
+        {/* Header for when logo is not shown */}
+        {!showLogo && (
+          <div className="mb-6 sm:mb-4 lg:mb-6 text-center">
+            <h2 className="text-xl sm:text-lg lg:text-xl font-bold text-black-700">Sign in to Smart LIAS</h2>
+          </div>
+        )}
+
+        {/* Single Page Login Form */}
+        <div className="h-full flex flex-col">
+          {/* Username Input */}
+          <div className="space-y-4 sm:space-y-3 lg:space-y-3 flex-shrink-0">
             <div>
               <label htmlFor="username" className="block text-base sm:text-sm lg:text-sm font-medium text-gray-700 mb-2 sm:mb-1 lg:mb-1">
                 Username
@@ -58,92 +94,159 @@ export default function LoginCard({
                   setUsername(e.target.value)
                   if (errors.username) setErrors(prev => ({ ...prev, username: '' }))
                 }}
+                onFocus={(e) => {
+                  // Prevent zoom on mobile while allowing keyboard to overlay
+                  e.target.style.fontSize = '16px'
+                  // Scroll to ensure input is visible above keyboard
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'center',
+                      inline: 'nearest'
+                    })
+                  }, 300)
+                }}
+                onBlur={(e) => {
+                  // Reset font size after blur
+                  e.target.style.fontSize = ''
+                }}
                 className={`w-full rounded-lg sm:rounded-md lg:rounded-md px-4 py-3 sm:px-3 sm:py-2 lg:px-3 lg:py-2 text-base sm:text-sm lg:text-sm border ${
                   errors.username 
                     ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
                     : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                } placeholder:text-gray-400 bg-white`}
+                } placeholder:text-gray-400 bg-white focus:scale-100`}
                 placeholder="Enter your username"
                 autoFocus
+                style={{ fontSize: '16px' }}
+                disabled={showKeypad}
               />
               {errors.username && (
                 <p className="mt-2 sm:mt-1 lg:mt-1 text-sm sm:text-xs lg:text-xs text-red-600">{errors.username}</p>
               )}
             </div>
+          </div>
 
-            <div className="flex justify-between items-end pt-3 sm:pt-2 lg:pt-2">
-              <button 
-                type="button"
-                onClick={() => {
-                  // Show modal for forgot username
-                  alert('Forgot Username Modal - This would show a modal dialog for username recovery')
-                }}
-                className="text-sm sm:text-xs lg:text-xs text-gray-600 hover:text-gray-800 underline cursor-pointer"
-              >
-                Forgot username?
-              </button>
-              <button 
-                type="submit"
-                disabled={isLoading}
-                className={`w-[45%] min-w-[120px] inline-flex items-center justify-center px-6 py-3 sm:px-4 sm:py-2.5 lg:px-4 lg:py-2.5 text-base sm:text-sm lg:text-sm font-medium 
-                           rounded-lg sm:rounded-md lg:rounded-md border bg-green-600 border-green-600 text-white 
-                           hover:bg-green-700 focus:ring-1 focus:ring-green-500 focus:outline-none
-                           disabled:bg-gray-300 disabled:border-gray-300 disabled:cursor-not-allowed
-                           transition-colors duration-200 gap-2 cursor-pointer
-                           ${isLoading ? 'opacity-60' : ''}`}
-              >
-                {isLoading ? (
-                  <Spinner size="sm" color="white" />
-                ) : (
-                  <i className="bi bi-arrow-right"></i>
-                )}
-                <span>Continue</span>
-              </button>
+          {/* Enter your 6-digit MPIN Text - Show when keypad is active */}
+          <div className={`text-center transition-all duration-500 ease-out ${
+            showKeypad 
+              ? 'py-4 opacity-100 translate-y-0' 
+              : 'py-0 opacity-0 translate-y-4 h-0 overflow-hidden'
+          }`}>
+            <p className="text-lg text-gray-700 font-medium">
+              Enter your 6-digit MPIN
+            </p>
+          </div>
+
+          {/* MPIN Input Display - Show when keypad is active */}
+          <div className={`transition-all duration-500 ease-out ${
+            showKeypad 
+              ? 'mb-6 opacity-100 translate-y-0' 
+              : 'mb-0 opacity-0 translate-y-4 h-0 overflow-hidden'
+          }`}>
+            <div className="flex justify-center space-x-3 sm:space-x-2 lg:space-x-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="w-8 h-8 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-lg sm:rounded-md lg:rounded-md border border-gray-200 bg-slate-100 flex items-center justify-center transition-all duration-150"
+                >
+                  {mpin[index] && (
+                    <i className="bi bi-asterisk text-slate-800 text-xs sm:text-xs lg:text-xs"></i>
+                  )}
+                </div>
+              ))}
             </div>
-          </form>
-        </div>
 
-        {/* Step 2: MPIN */}
-        <div className={`transition-all duration-300 ease-out transform ${
-          currentStep === 'mpin' 
-            ? 'translate-x-0 opacity-100 scale-100' 
-            : 'translate-x-full opacity-0 scale-95 absolute top-0 left-0 w-full'
-        }`}>
-          <div className="space-y-6 sm:space-y-4 lg:space-y-4">
-            {/* User Info Display - Mobile optimized, desktop compact */}
-            <div className="flex items-center space-x-3 sm:space-x-2 lg:space-x-2 p-2.5 px-4 sm:p-1.5 sm:px-3 lg:p-1.5 lg:px-3 border border-gray-200 rounded-full bg-white min-w-[50%] w-fit mx-auto cursor-pointer hover:bg-gray-50 transition-colors duration-200 group relative"
-              onClick={onBackToUsername}
-              title="Switch Account"
+            {/* Error Message */}
+            {errors.mpin && (
+              <p className="mt-3 sm:mt-2 lg:mt-2 text-sm sm:text-xs lg:text-xs text-red-600 text-center">{errors.mpin}</p>
+            )}
+          </div>
+
+          {/* MPIN Login Button - Positioned above footer - Hide instantly when keypad is active */}
+          <div className={`flex justify-center pt-6 pb-4 transition-all duration-300 ease-out ${
+            showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <button 
+              type="button"
+              onClick={() => {
+                if (!username.trim()) {
+                  setErrors(prev => ({ ...prev, username: 'Username is required' }))
+                  return
+                }
+                setShowKeypad(true)
+              }}
+              disabled={isLoading || !username.trim()}
+              className={`w-24 h-24 sm:w-20 sm:h-20 lg:w-22 lg:h-22 rounded-xl shadow-lg 
+                         bg-green-600 hover:bg-green-700 active:bg-green-800
+                         text-white font-semibold text-sm sm:text-xs lg:text-sm
+                         disabled:bg-gray-300 disabled:cursor-not-allowed
+                         transition-all duration-200 flex items-center justify-center
+                         ${isLoading ? 'opacity-60' : 'hover:scale-105 active:scale-95'}`}
             >
-              <div className="w-7 h-7 sm:w-6 sm:h-6 lg:w-6 lg:h-6 bg-green-50 hover:bg-gray-100 rounded-full flex items-center justify-center">
-                <i className="bi bi-person-fill text-green-500 text-sm sm:text-xs lg:text-xs"></i>
-              </div>
-              <div className="flex-1 whitespace-nowrap">
-                <p className="text-base sm:text-sm lg:text-sm text-gray-900">
-                  {username}
-                </p>
-              </div>
-              <div className="text-green-600 hover:text-green-700 text-base sm:text-sm lg:text-sm">
-                <i className="bi bi-arrow-left-right"></i>
-              </div>
-              
-              {/* Tooltip */}
-              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
-                Switch Account
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-              </div>
-            </div>
+              {isLoading ? (
+                <Spinner size="sm" color="white" />
+              ) : (
+                <div className="text-center">
+                  <i className="bi bi-shield-lock text-xl sm:text-lg lg:text-xl block mb-1"></i>
+                  <span className="text-xs font-medium">MPIN Login</span>
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
 
-            {/* MPIN Container with Shadow Only */}
+      {/* Keypad Overlay - Slides up from bottom of screen */}
+      <div className={`fixed inset-x-0 bottom-0 z-50 transition-transform duration-500 ease-out ${
+        showKeypad ? 'translate-y-0' : 'translate-y-full'
+      }`}>
+        <div className="bg-white rounded-t-3xl shadow-2xl border-t border-gray-200 p-6">
+          {/* Close button */}
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setShowKeypad(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <i className="bi bi-x-lg text-xl"></i>
+            </button>
+          </div>
+
+          {/* MPIN Input Component */}
+          <div className="max-w-xs mx-auto mb-6">
             <MPINKeypad 
               mpin={mpin}
               onNumberPress={onKeypadNumber}
               onBackspace={onKeypadBackspace}
               errors={errors}
+              isLoading={isLoading}
+              showKeypad={true}
             />
+          </div>
+
+          {/* Login Button */}
+          <div className="pt-4">
+            <button 
+              type="button"
+              onClick={handleMPINLogin}
+              disabled={isLoading || mpin.length !== 6}
+              className={`w-full inline-flex items-center justify-center px-6 py-3 text-base font-medium 
+                         rounded-lg border bg-blue-600 border-blue-600 text-white 
+                         hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 focus:outline-none
+                         disabled:bg-gray-300 disabled:border-gray-300 disabled:cursor-not-allowed
+                         transition-colors duration-200 gap-2 cursor-pointer
+                         ${isLoading ? 'opacity-60' : ''}`}
+            >
+              {isLoading ? (
+                <Spinner size="sm" color="white" />
+              ) : (
+                <i className="bi bi-shield-lock"></i>
+              )}
+              <span>MPIN Login</span>
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

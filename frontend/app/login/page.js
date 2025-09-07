@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [mpin, setMpin] = useState('') // Changed from password to mpin
   const [userInfo, setUserInfo] = useState(null) // Store user details after username validation
   const [errors, setErrors] = useState({})
+  const [showKeypad, setShowKeypad] = useState(false) // Track keypad state for PublicLayout
   const toastRef = useRef()
 
   const handleAlert = (message, type = 'info') => {
@@ -126,9 +127,8 @@ export default function LoginPage() {
     }
   }
 
-  const handleMpinSubmit = async (e) => {
-    e.preventDefault()
-    
+  // Demo: Handle final login with username and MPIN
+  const handleLogin = async ({ username, mpin }) => {
     if (!validateMpin()) {
       return
     }
@@ -192,19 +192,19 @@ export default function LoginPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      <PublicLayout>
+      <PublicLayout hideBackgroundImage={showKeypad}>
         <LoginCard
-          currentStep={currentStep}
           username={username}
           setUsername={setUsername}
           mpin={mpin}
           errors={errors}
           setErrors={setErrors}
           isLoading={isLoading}
-          onUsernameSubmit={handleUsernameSubmit}
-          onBackToUsername={handleBackToUsername}
+          onLogin={handleLogin}
           onKeypadNumber={handleKeypadNumber}
           onKeypadBackspace={handleKeypadBackspace}
+          showKeypad={showKeypad}
+          setShowKeypad={setShowKeypad}
         />
       </PublicLayout>
     </>
