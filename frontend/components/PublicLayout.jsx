@@ -130,7 +130,7 @@ export default function PublicLayout({
               {/* Content container with mobile-optimized padding */}
               <div className="h-full flex flex-col p-4 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
                 {/* Main content area - centered */}
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center overflow-hidden" style={{ minHeight: 0 }}>
                   <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
                     {showCard ? (
                       /* Clone children with proper spacing props */
@@ -147,15 +147,24 @@ export default function PublicLayout({
                   </div>
                 </div>
                 
-                {/* Fixed bottom section - access message and copyright */}
-                <div className={`flex-shrink-0 text-center pb-2 space-y-2 transition-all duration-500 ease-out ${
-                  hideBackgroundImage 
-                    ? 'opacity-0 h-0 overflow-hidden' 
-                    : 'opacity-100'
-                }`}>
+                {/* Comprehensive fixed footer - forgot credentials, access message and copyright */}
+                <div className="flex-shrink-0 text-center pt-4 pb-2 space-y-3 transition-all duration-500 ease-out" style={{ minHeight: '120px' }}>
+                  {/* Forgot credentials message */}
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
+                      <i className="bi bi-question-circle text-gray-500 text-sm"></i>
+                      <p className="text-xs text-gray-600 font-medium">
+                        Forgot username or mpin? Please contact Barangay LIAS
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Access message */}
                   <p className="text-sm sm:text-xs lg:text-xs text-gray-600">
                     Access for registered residents and administrators.
                   </p>
+                  
+                  {/* Copyright */}
                   <p className="text-xs sm:text-xs lg:text-xs text-gray-500">
                     &copy; {new Date().getFullYear()} Smart LIAS
                   </p>

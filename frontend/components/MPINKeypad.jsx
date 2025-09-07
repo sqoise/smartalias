@@ -65,10 +65,10 @@ export default function MPINKeypad({
       {/* Main Container - Keypad only */}
       <div className="w-full relative">
         {/* Unified Keypad - Both Mobile and Desktop */}
-        <div className={`p-1 w-full max-w-full sm:max-w-md lg:max-w-lg mx-auto transition-all duration-500 ease-out ${
+        <div className={`px-0 py-4 w-full mx-auto transition-all duration-500 ease-out ${
           showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         }`}>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-3">
             {/* Row 1: 1, 2, 3 */}
             {[1, 2, 3].map(number => (
               <button
@@ -76,10 +76,10 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-16 sm:h-14 lg:h-16 rounded-xl sm:rounded-lg lg:rounded-xl bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300
-                         text-2xl sm:text-xl lg:text-2xl font-bold text-gray-800 hover:text-blue-600
-                         transition-all duration-200 cursor-pointer transform hover:scale-105 active:scale-95
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
+                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                         transition-all duration-200 cursor-pointer
+                         focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
@@ -93,10 +93,10 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-16 sm:h-14 lg:h-16 rounded-xl sm:rounded-lg lg:rounded-xl bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300
-                         text-2xl sm:text-xl lg:text-2xl font-bold text-gray-800 hover:text-blue-600
-                         transition-all duration-200 cursor-pointer transform hover:scale-105 active:scale-95
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
+                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                         transition-all duration-200 cursor-pointer
+                         focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
@@ -110,10 +110,10 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-16 sm:h-14 lg:h-16 rounded-xl sm:rounded-lg lg:rounded-xl bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300
-                         text-2xl sm:text-xl lg:text-2xl font-bold text-gray-800 hover:text-blue-600
-                         transition-all duration-200 cursor-pointer transform hover:scale-105 active:scale-95
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
+                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                         transition-all duration-200 cursor-pointer
+                         focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
@@ -128,10 +128,10 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={() => onNumberPress('0')}
-              className={`w-full h-16 sm:h-14 lg:h-16 rounded-xl sm:rounded-lg lg:rounded-xl bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300
-                       text-2xl sm:text-xl lg:text-2xl font-bold text-gray-800 hover:text-blue-600
-                       transition-all duration-200 cursor-pointer transform hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-blue-500
+              className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                       text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                       transition-all duration-200 cursor-pointer
+                       focus:outline-none shadow-sm
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               0
@@ -142,10 +142,10 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={onBackspace}
-              className={`w-full h-16 sm:h-14 lg:h-16 rounded-xl sm:rounded-lg lg:rounded-xl bg-red-50 border-2 border-red-200 hover:bg-red-100 hover:border-red-300
-                       text-red-600 hover:text-red-700
-                       transition-all duration-200 cursor-pointer transform hover:scale-105 active:scale-95
-                       focus:outline-none focus:ring-2 focus:ring-red-500
+              className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-gray-50 hover:bg-gray-100 active:bg-red-500
+                       text-red-500 hover:text-red-600 active:text-white
+                       transition-all duration-200 cursor-pointer
+                       focus:outline-none
                        flex items-center justify-center
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >

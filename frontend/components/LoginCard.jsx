@@ -236,7 +236,7 @@ export default function LoginCard({
         }}
       >
         <div 
-          className={`absolute inset-x-0 bottom-0 bg-white border-t border-gray-300 shadow-2xl p-6 transition-transform duration-300 ease-out ${
+          className={`absolute inset-x-0 bottom-0 bg-gray-50 border-t border-gray-300 shadow-2xl p-6 transition-transform duration-300 ease-out ${
             showKeypad ? 'translate-y-0' : 'translate-y-full'
           }`}
           style={{ boxShadow: '0 -10px 25px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)' }}
@@ -247,7 +247,7 @@ export default function LoginCard({
           </div>
 
           {/* MPIN Input Component */}
-          <div className="max-w-xs mx-auto mb-6">
+          <div className="mb-6">
             <MPINKeypad 
               mpin={mpin}
               onNumberPress={onKeypadNumber}
