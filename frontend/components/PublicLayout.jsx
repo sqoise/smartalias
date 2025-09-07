@@ -89,11 +89,14 @@ export default function PublicLayout({
         <div className="lg:hidden overflow-hidden relative" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
           {/* Background image - always visible */}
           <div className="absolute inset-0">
-            <img 
-              src="/images/bg.jpg" 
-              className="absolute inset-0 w-full h-full object-cover" 
-              alt="Background"
-            />
+            <div 
+              className="absolute inset-0 w-full h-full bg-cover bg-left-top bg-no-repeat"
+              style={{ 
+                backgroundImage: 'url(/images/bg.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'left top'
+              }}
+            ></div>
             <div className="absolute inset-0 bg-green-900/40"></div>
           </div>
 
@@ -105,7 +108,7 @@ export default function PublicLayout({
                 ? 'h-0 opacity-0' 
                 : 'opacity-100'
             }`} style={{ 
-              height: hideBackgroundImage ? '0dvh' : '10dvh'
+              height: hideBackgroundImage ? '0dvh' : '20dvh'
             }}></div>
             
             {/* White card area - expands to full height and removes styling when keypad active */}
@@ -114,7 +117,7 @@ export default function PublicLayout({
                 ? 'rounded-none shadow-none' 
                 : 'rounded-t-2xl sm:rounded-t-3xl shadow-2xl'
             }`} style={{ 
-              height: hideBackgroundImage ? '100dvh' : '90dvh',
+              height: hideBackgroundImage ? '100dvh' : '80dvh',
               boxShadow: hideBackgroundImage 
                 ? 'none' 
                 : '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)'
@@ -125,7 +128,7 @@ export default function PublicLayout({
               )}
               
               {/* Content container with mobile-optimized padding */}
-              <div className="h-full flex flex-col p-6 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+              <div className="h-full flex flex-col p-4 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
                 {/* Main content area - centered */}
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
@@ -145,12 +148,15 @@ export default function PublicLayout({
                 </div>
                 
                 {/* Fixed bottom section - access message and copyright */}
-                <div className="flex-shrink-0 text-center pb-2 space-y-2">
+                <div className={`flex-shrink-0 text-center pb-2 space-y-2 transition-all duration-500 ease-out ${
+                  hideBackgroundImage 
+                    ? 'opacity-0 h-0 overflow-hidden' 
+                    : 'opacity-100'
+                }`}>
                   <p className="text-sm sm:text-xs lg:text-xs text-gray-600">
                     Access for registered residents and administrators.
                   </p>
-                  <br></br>
-                  <p className="text-sm sm:text-xs lg:text-xs text-gray-500">
+                  <p className="text-xs sm:text-xs lg:text-xs text-gray-500">
                     &copy; {new Date().getFullYear()} Smart LIAS
                   </p>
                 </div>

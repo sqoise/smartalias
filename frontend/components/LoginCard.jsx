@@ -32,22 +32,26 @@ export default function LoginCard({
     onLogin({ username, mpin })
   }
 
-  // Handle Enter key press
+  // Handle Enter and Escape key press - Optimized
   useEffect(() => {
     const handleKeyPress = (event) => {
+      if (event.key === 'Escape' && showKeypad) {
+        event.preventDefault()
+        setShowKeypad(false)
+        return
+      }
+      
       if (event.key === 'Enter') {
         if (!showKeypad && username.trim()) {
-          // If keypad is not shown and username is entered, show keypad
           setShowKeypad(true)
         } else if (showKeypad && mpin.length === 6) {
-          // If keypad is shown and MPIN is complete, trigger login
           handleMPINLogin()
         }
       }
     }
 
-    document.addEventListener('keydown', handleKeyPress)
-    return () => document.removeEventListener('keydown', handleKeyPress)
+    document.addEventListener('keydown', handleKeyPress, true)
+    return () => document.removeEventListener('keydown', handleKeyPress, true)
   }, [showKeypad, username, mpin, handleMPINLogin])
 
   return (
@@ -64,8 +68,8 @@ export default function LoginCard({
         </div>
       )}
 
-      {/* Main Card Container */}
-      <div className={`w-full max-w-sm sm:max-w-lg lg:max-w-lg xl:max-w-xl bg-white rounded-lg shadow-lg mx-auto mt-2 lg:mt-4 lg:mx-8 xl:mx-12 mb-10 relative z-10 transition-all duration-500 ease-out ${
+      {/* Main Card Container - Optimized transitions */}
+      <div className={`w-full max-w-sm sm:max-w-lg lg:max-w-lg xl:max-w-xl bg-white rounded-lg shadow-lg mx-auto mt-2 lg:mt-4 lg:mx-8 xl:mx-12 mb-10 relative z-10 transition-all duration-200 ease-out ${
         showKeypad ? 'min-h-[600px]' : 'min-h-[400px]'
       } ${className}`}>
         {/* Main Content Area */}
@@ -126,22 +130,22 @@ export default function LoginCard({
             </div>
           </div>
 
-          {/* Enter your 6-digit MPIN Text - Show when keypad is active */}
-          <div className={`text-center transition-all duration-500 ease-out ${
+          {/* Enter your 6-digit MPIN Text - Optimized */}
+          <div className={`text-center transition-all duration-150 ease-out ${
             showKeypad 
-              ? 'py-4 opacity-100 translate-y-0' 
-              : 'py-0 opacity-0 translate-y-4 h-0 overflow-hidden'
+              ? 'py-4 opacity-100' 
+              : 'py-0 opacity-0 h-0 overflow-hidden'
           }`}>
             <p className="text-lg text-gray-700 font-medium">
               Enter your 6-digit MPIN
             </p>
           </div>
 
-          {/* MPIN Input Display - Show when keypad is active */}
-          <div className={`transition-all duration-500 ease-out ${
+          {/* MPIN Input Display - Optimized */}
+          <div className={`transition-all duration-150 ease-out ${
             showKeypad 
-              ? 'mb-6 opacity-100 translate-y-0' 
-              : 'mb-0 opacity-0 translate-y-4 h-0 overflow-hidden'
+              ? 'mb-6 opacity-100' 
+              : 'mb-0 opacity-0 h-0 overflow-hidden'
           }`}>
             <div className="flex justify-center space-x-3 sm:space-x-2 lg:space-x-3">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -162,8 +166,8 @@ export default function LoginCard({
             )}
           </div>
 
-          {/* MPIN Login Button - Positioned above footer - Hide instantly when keypad is active */}
-          <div className={`flex justify-center pt-6 pb-4 transition-all duration-300 ease-out ${
+          {/* MPIN Login Button - Optimized instant hide */}
+          <div className={`flex justify-center pt-6 pb-4 transition-opacity duration-100 ease-out ${
             showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             <button 
@@ -197,8 +201,8 @@ export default function LoginCard({
         </div>
       </div>
 
-      {/* Keypad Overlay - Slides up from bottom of screen */}
-      <div className={`fixed inset-x-0 bottom-0 z-50 transition-transform duration-500 ease-out ${
+      {/* Keypad Overlay - Optimized slide-up */}
+      <div className={`fixed inset-x-0 bottom-0 z-50 transition-transform duration-150 ease-out ${
         showKeypad ? 'translate-y-0' : 'translate-y-full'
       }`}>
         <div className="bg-white rounded-t-3xl shadow-2xl border-t border-gray-200 p-6">
