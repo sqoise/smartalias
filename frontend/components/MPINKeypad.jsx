@@ -76,8 +76,8 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
-                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -93,8 +93,8 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
-                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -110,8 +110,8 @@ export default function MPINKeypad({
                 type="button"
                 disabled={isLoading}
                 onClick={() => onNumberPress(number.toString())}
-                className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
-                         text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+                className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                         text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -128,8 +128,8 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={() => onNumberPress('0')}
-              className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
-                       text-2xl sm:text-xl lg:text-2xl font-semibold text-gray-800
+              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
+                       text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                        transition-all duration-200 cursor-pointer
                        focus:outline-none shadow-sm
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -142,14 +142,14 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={onBackspace}
-              className={`w-full h-12 sm:h-12 lg:h-14 rounded-lg bg-gray-50 hover:bg-gray-100 active:bg-red-500
+              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-gray-100 hover:bg-gray-200 active:bg-red-500
                        text-red-500 hover:text-red-600 active:text-white
                        transition-all duration-200 cursor-pointer
                        focus:outline-none
                        flex items-center justify-center
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <i className="bi bi-backspace text-2xl sm:text-xl lg:text-2xl"></i>
+              <i className="bi bi-backspace text-3xl sm:text-2xl lg:text-3xl"></i>
             </button>
           </div>
         </div>

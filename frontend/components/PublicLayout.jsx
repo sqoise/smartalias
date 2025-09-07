@@ -74,8 +74,11 @@ export default function PublicLayout({
             <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible">
               {/* Overlapping card - pull left on large screens */}
               <div className="lg:-ml-120">
-                {/* Clone children with showLogo=false for desktop */}
-                {cloneElement(children, { showLogo: false })}
+                {/* Clone children with showLogo=false for desktop and restore card styling */}
+                {cloneElement(children, { 
+                  showLogo: false,
+                  className: "max-w-sm sm:max-w-lg lg:max-w-lg xl:max-w-xl bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
+                })}
               </div>
             </section>
           ) : (
@@ -112,8 +115,21 @@ export default function PublicLayout({
                 ? 'h-0 opacity-0' 
                 : 'opacity-100'
             }`} style={{ 
-              height: hideBackgroundImage ? '0dvh' : '30dvh'
+              height: hideBackgroundImage ? '0dvh' : '20dvh'
             }}></div>
+            
+            {/* Logo positioned between image and white card - only when not in keypad mode */}
+            {!hideBackgroundImage && (
+              <div className="absolute z-20 left-1/2 transform -translate-x-1/2" style={{ top: 'calc(20dvh - 40px)' }}>
+                <div className="bg-white rounded-full p-3">
+                  <img 
+                    src="/images/barangay_logo.jpg" 
+                    alt="Barangay Logo" 
+                    className="w-20 h-20 rounded-full"
+                  />
+                </div>
+              </div>
+            )}
             
             {/* White card area - expands to full height and removes styling when keypad active */}
             <div className={`flex-1 bg-white relative transition-all duration-500 ease-out ${
@@ -121,7 +137,7 @@ export default function PublicLayout({
                 ? 'rounded-none shadow-none' 
                 : 'rounded-t-2xl sm:rounded-t-3xl shadow-2xl'
             }`} style={{ 
-              height: hideBackgroundImage ? '100dvh' : '70dvh',
+              height: hideBackgroundImage ? '100dvh' : '80dvh',
               boxShadow: hideBackgroundImage 
                 ? 'none' 
                 : '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)'
@@ -132,18 +148,18 @@ export default function PublicLayout({
               )}
               
               {/* Content container with mobile-optimized padding */}
-              <div className={`h-full flex flex-col sm:p-4 lg:p-6 ${
-                hideBackgroundImage ? 'px-6 py-8' : ''
+              <div className={`h-full flex flex-col relative z-30 ${
+                hideBackgroundImage ? 'px-6 py-8' : 'px-6 py-6'
               }`}>
-                {/* Main content area - centered */}
-                <div className={`flex-1 flex items-start justify-center overflow-hidden ${
-                  hideBackgroundImage ? 'pt-8' : 'pt-4'
+                {/* Main content area - centered with extra top padding for logo overlap */}
+                <div className={`flex-1 flex items-center justify-center ${
+                  hideBackgroundImage ? 'pt-4' : 'pt-10'
                 } `} style={{ minHeight: 0 }}>
                   <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
                     {showCard ? (
-                      /* Clone children with proper spacing props */
+                      /* Clone children with proper spacing props and hide logo since it's in the middle */
                       cloneElement(children, { 
-                        showLogo: true, 
+                        showLogo: hideBackgroundImage, // Only show logo in LoginCard when keypad is active
                         className: "m-0 w-full bg-transparent shadow-none border-0"
                       })
                     ) : (
@@ -156,17 +172,17 @@ export default function PublicLayout({
                 </div>
                 
                 {/* Comprehensive fixed footer - forgot credentials, access message and copyright */}
-                <div className={`flex-shrink-0 text-center pt-4 space-y-3 transition-all duration-500 ease-out ${
-                  hideBackgroundImage ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`} style={{ minHeight: '120px' }}>
+                <div className={`flex-shrink-0 text-center transition-all duration-500 ease-out ${
+                  hideBackgroundImage ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 pt-4 space-y-2'
+                }`} style={{ minHeight: hideBackgroundImage ? '0px' : '80px' }}>
                   
                   {/* Access message */}
-                  <p className="text-xs sm:text-xs lg:text-xs text-gray-600">
+                  <p className="text-xs text-gray-600">
                     Access for registered residents and administrators.
                   </p>
                   
                   {/* Copyright */}
-                  <p className="text-xs sm:text-xs lg:text-xs text-gray-500">
+                  <p className="text-xs text-gray-500">
                     &copy; 2025 Smart LIAS
                   </p>
                 </div>
