@@ -80,22 +80,7 @@ export default function LoginCard({
       )}
 
       {/* Main Card Container */}
-      <div className={`relative w-full bg-transparent transition-all duration-500 ease-out ${
-        showKeypad ? 'min-h-[600px]' : 'min-h-[400px]'
-      } ${className}`}>
-        
-        {/* Toggle Icon - Only show when keypad is OFF */}
-        {!showKeypad && (
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setShowKeypad(true)}
-              className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
-              disabled={!username.trim()}
-            >
-              <i className="bi bi-grid-3x3-gap text-gray-600 text-lg"></i>
-            </button>
-          </div>
-        )}
+      <div className={`relative w-full bg-transparent transition-all duration-500 ease-out min-h-[400px] ${className}`}>
         
         {/* Main Content Area */}
         <div className="h-full">
@@ -119,6 +104,10 @@ export default function LoginCard({
                   Username
                 </label>
                 <div className="relative">
+                  {/* Username icon */}
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
+                    <i className="bi bi-person text-gray-500 text-lg sm:text-sm md:text-lg lg:text-lg"></i>
+                  </div>
                   <input 
                     id="username"
                     name="username"
@@ -148,7 +137,7 @@ export default function LoginCard({
                       errors.username 
                         ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
                         : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    } placeholder:text-gray-400 focus:scale-100 bg-white px-4 py-3 sm:px-3 sm:py-2 lg:px-3 lg:py-2 text-base sm:text-sm lg:text-sm`}
+                    } placeholder:text-gray-400 focus:scale-100 bg-white pl-10 pr-4 py-3 sm:pl-9 sm:pr-3 sm:py-2 lg:pl-10 lg:pr-3 lg:py-2 text-base sm:text-sm lg:text-sm`}
                     placeholder="Enter your username"
                     autoFocus
                     style={{ fontSize: '16px' }}
@@ -224,7 +213,7 @@ export default function LoginCard({
                 <Spinner size="sm" color="white" />
               ) : (
                 <div className="text-center">
-                  <i className="bi bi-shield-lock text-2xl sm:text-xl lg:text-2xl block mb-1"></i>
+                  <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
                   <span className="text-xs sm:text-xs lg:text-xs font-medium">MPIN Login</span>
                 </div>
               )}
