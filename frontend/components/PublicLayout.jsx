@@ -77,7 +77,7 @@ export default function PublicLayout({
                 {/* Clone children with showLogo=false for desktop and restore card styling */}
                 {cloneElement(children, { 
                   showLogo: false,
-                  className: "max-w-sm sm:max-w-lg lg:max-w-lg xl:max-w-xl bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
+                  className: "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
                 })}
               </div>
             </section>
