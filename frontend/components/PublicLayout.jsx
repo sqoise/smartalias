@@ -8,7 +8,7 @@ export default function PublicLayout({
   showCard = true,
   showLogo = true,
   title = 'Barangay LIAS',
-  subtitle = 'Access your account to our Barangay SMART LIAS Portal.',
+  subtitle = 'Secure access to your Barangay LIAS digital services and portal.',
   mobileImageHeight = 30, // percentage for mobile image section
   hideBackgroundImage = false // Hide background image when keypad is active
 }) {
@@ -60,8 +60,11 @@ export default function PublicLayout({
               <p className="mt-6 max-w-xl text-white/90">
                 {subtitle}
               </p>
+              <p className="mt-6 text-sm text-white/70">
+                Access for registered residents and administrators.
+              </p>
               <p className="mt-10 text-sm text-white/70">
-                &copy; {new Date().getFullYear()} Smart LIAS
+                &copy; 2025 Smart LIAS
               </p>
             </div>
           </section>
@@ -90,11 +93,12 @@ export default function PublicLayout({
           {/* Background image - always visible */}
           <div className="absolute inset-0">
             <div 
-              className="absolute inset-0 w-full h-full bg-cover bg-left-top bg-no-repeat"
+              className="absolute inset-0 w-full h-full bg-no-repeat"
               style={{ 
                 backgroundImage: 'url(/images/bg.jpg)',
                 backgroundSize: 'cover',
-                backgroundPosition: 'left top'
+                backgroundPosition: 'left center',
+                imageRendering: 'crisp-edges'
               }}
             ></div>
             <div className="absolute inset-0 bg-green-900/40"></div>
@@ -108,7 +112,7 @@ export default function PublicLayout({
                 ? 'h-0 opacity-0' 
                 : 'opacity-100'
             }`} style={{ 
-              height: hideBackgroundImage ? '0dvh' : '20dvh'
+              height: hideBackgroundImage ? '0dvh' : '30dvh'
             }}></div>
             
             {/* White card area - expands to full height and removes styling when keypad active */}
@@ -117,7 +121,7 @@ export default function PublicLayout({
                 ? 'rounded-none shadow-none' 
                 : 'rounded-t-2xl sm:rounded-t-3xl shadow-2xl'
             }`} style={{ 
-              height: hideBackgroundImage ? '100dvh' : '80dvh',
+              height: hideBackgroundImage ? '100dvh' : '70dvh',
               boxShadow: hideBackgroundImage 
                 ? 'none' 
                 : '0 -20px 40px rgba(0, 0, 0, 0.3), 0 -10px 20px rgba(0, 0, 0, 0.2), 0 -5px 10px rgba(0, 0, 0, 0.15)'
@@ -128,9 +132,13 @@ export default function PublicLayout({
               )}
               
               {/* Content container with mobile-optimized padding */}
-              <div className="h-full flex flex-col p-4 sm:p-4 lg:p-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+              <div className={`h-full flex flex-col sm:p-4 lg:p-6 ${
+                hideBackgroundImage ? 'px-6 py-8' : ''
+              }`}>
                 {/* Main content area - centered */}
-                <div className="flex-1 flex items-center justify-center overflow-hidden" style={{ minHeight: 0 }}>
+                <div className={`flex-1 flex items-start justify-center overflow-hidden ${
+                  hideBackgroundImage ? 'pt-8' : 'pt-4'
+                } `} style={{ minHeight: 0 }}>
                   <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
                     {showCard ? (
                       /* Clone children with proper spacing props */
@@ -148,25 +156,18 @@ export default function PublicLayout({
                 </div>
                 
                 {/* Comprehensive fixed footer - forgot credentials, access message and copyright */}
-                <div className="flex-shrink-0 text-center pt-4 pb-2 space-y-3 transition-all duration-500 ease-out" style={{ minHeight: '120px' }}>
-                  {/* Forgot credentials message */}
-                  <div className="flex justify-center">
-                    <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
-                      <i className="bi bi-question-circle text-gray-500 text-sm"></i>
-                      <p className="text-xs text-gray-600 font-medium">
-                        Forgot username or mpin? Please contact Barangay LIAS
-                      </p>
-                    </div>
-                  </div>
+                <div className={`flex-shrink-0 text-center pt-4 space-y-3 transition-all duration-500 ease-out ${
+                  hideBackgroundImage ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`} style={{ minHeight: '120px' }}>
                   
                   {/* Access message */}
-                  <p className="text-sm sm:text-xs lg:text-xs text-gray-600">
+                  <p className="text-xs sm:text-xs lg:text-xs text-gray-600">
                     Access for registered residents and administrators.
                   </p>
                   
                   {/* Copyright */}
                   <p className="text-xs sm:text-xs lg:text-xs text-gray-500">
-                    &copy; {new Date().getFullYear()} Smart LIAS
+                    &copy; 2025 Smart LIAS
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { auth } from '../lib/auth'
+import Modal from './Modal'
 
 export default function Header({ title, role = 'user', userName = 'Juan Dela Cruz' }) {
   const router = useRouter()
@@ -61,28 +62,21 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
         </div>
       </header>
 
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Confirm Logout</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to logout?</p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowLogoutModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="flex-1 px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700 cursor-pointer"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Logout Confirmation Modal */}
+      <Modal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Confirm Logout"
+        type="confirm"
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        confirmButtonClass="text-white bg-red-600 hover:bg-red-700"
+      >
+        <p className="text-gray-600">
+          Are you sure you want to logout?
+        </p>
+      </Modal>
     </>
   )
 }

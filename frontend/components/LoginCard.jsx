@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import MPINKeypad from './MPINKeypad'
 import Spinner from './Spinner'
+import Modal from './Modal'
 
 export default function LoginCard({
   username,
@@ -19,6 +20,7 @@ export default function LoginCard({
   showKeypad,
   setShowKeypad
 }) {
+  const [showForgotModal, setShowForgotModal] = useState(false)
 
   const handleMPINLogin = () => {
     if (!username.trim()) {
@@ -154,7 +156,7 @@ export default function LoginCard({
           {/* Enter your 6-digit MPIN Text - Show when keypad is active */}
           <div className={`text-center transition-all duration-300 ease-out ${
             showKeypad 
-              ? 'pt-8 pb-4 opacity-100 translate-y-0' 
+              ? 'mt-24 pt-8 pb-4 opacity-100 translate-y-0' 
               : 'py-0 opacity-0 translate-y-4 h-0 overflow-hidden'
           }`}>
             <p className="text-xl text-gray-700 font-semibold">
@@ -188,7 +190,7 @@ export default function LoginCard({
           </div>
 
           {/* MPIN Login Button - Positioned above footer - Hide instantly when keypad is active */}
-          <div className={`flex justify-center pt-6 pb-4 transition-all duration-200 ease-out ${
+          <div className={`flex justify-center pt-6 pb-1 transition-all duration-200 ease-out ${
             showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             <button 
@@ -218,6 +220,23 @@ export default function LoginCard({
                 </div>
               )}
             </button>
+          </div>
+
+          {/* Forgot Username/MPIN Link */}
+          <div className={`text-center pt-4 transition-all duration-200 ease-out ${
+            showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <a 
+              href="#" 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowForgotModal(true)
+              }}
+              className="text-xs text-gray-500 hover:text-green-600 active:text-green-700 cursor-pointer transition-colors"
+            >
+              Forgot Username or MPIN?
+            </a>
           </div>
         </div>
         </div>
@@ -281,6 +300,19 @@ export default function LoginCard({
           </div>
         </div>
       </div>
+
+      {/* Forgot MPIN Modal */}
+      <Modal
+        isOpen={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+        title="Account Recovery"
+        type="alert"
+      >
+        <p className="text-gray-600">
+          Please visit Barangay LIAS office directly for assistance with account recovery.
+          Bring a valid ID for verification.
+        </p>
+      </Modal>
     </>
   )
 }
