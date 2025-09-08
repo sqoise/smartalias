@@ -1,6 +1,7 @@
 'use client'
 
 import { cloneElement } from 'react'
+import Link from 'next/link'
 
 export default function PublicLayout({ 
   children,
@@ -63,6 +64,7 @@ export default function PublicLayout({
               <p className="mt-6 text-sm text-white/70">
                 Access for registered residents and administrators.
               </p>
+              
               <p className="mt-10 text-sm text-white/70">
                 &copy; 2025 Smart LIAS
               </p>
@@ -176,15 +178,33 @@ export default function PublicLayout({
                   hideBackgroundImage ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 pt-4 space-y-2'
                 }`} style={{ minHeight: hideBackgroundImage ? '0px' : '80px' }}>
                   
-                  {/* Access message */}
-                  <p className="text-xs text-gray-600">
-                    Access for registered residents and administrators.
-                  </p>
+                  {/* Back to Login link - only for change-pin variant - Mobile only */}
+                  {variant === 'change-pin' && (
+                    <div className="mb-2 lg:hidden">
+                      <Link href="/login" className="text-xs text-gray-500 hover:text-green-600 active:text-green-700 cursor-pointer transition-colors">
+                        ← Back to Login
+                      </Link>
+                      <p className="mx-4 my-4 text-center text-xs text-gray-500">
+                        You have 24 hours before this link expires. After setting your PIN, you'll be redirected to the login page.
+                      </p>
+                    </div>
+                  )}
+
+
                   
-                  {/* Copyright */}
-                  <p className="text-xs text-gray-500">
-                    &copy; 2025 Smart LIAS
-                  </p>
+                  {/* Access message - hide for change-pin variant */}
+                  {variant !== 'change-pin' && (
+                    <p className="text-xs text-gray-600">
+                      Access for registered residents and administrators.
+                    </p>
+                  )}
+                  
+                  {/* Copyright - hide for change-pin variant */}
+                  {variant !== 'change-pin' && (
+                    <p className="text-xs text-gray-500">
+                      &copy; 2025 Smart LIAS
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

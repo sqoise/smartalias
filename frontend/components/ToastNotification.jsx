@@ -13,7 +13,11 @@ useImperativeHandle(ref, () => ({
       type,
       show: true
     }
-    setToasts(prev => [...prev, newToast])
+    setToasts(prev => {
+      const updatedToasts = [...prev, newToast]
+      // Limit to maximum of 5 toasts - remove oldest if exceeding limit
+      return updatedToasts.length > 5 ? updatedToasts.slice(-5) : updatedToasts
+    })
     
     // Auto hide after 5 seconds
     setTimeout(() => {
@@ -70,11 +74,11 @@ useImperativeHandle(ref, () => ({
   }
 
   return (
-    <div className="fixed top-6 right-6 z-50 space-y-2 max-w-[calc(100vw-3rem)]">
+    <div className="fixed top-6 left-3 right-3 lg:left-auto lg:right-6 lg:w-auto z-50 space-y-2">
       {toasts.map((toast, index) => (
         <div 
           key={toast.id}
-          className={`flex items-center w-80 lg:w-80 p-3 rounded-lg ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in`} 
+          className={`flex items-center w-full lg:w-80 p-3 rounded-lg ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in`} 
           role="alert"
           style={{ animationDelay: `${index * 100}ms` }}
         >

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import MPINKeypad from './MPINKeypad'
 import Spinner from './Spinner'
 import Modal from './Modal'
+import ToastNotification from './ToastNotification'
 
 export default function LoginCard({
   username,
@@ -21,6 +22,25 @@ export default function LoginCard({
   setShowKeypad
 }) {
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const toastRef = useRef()
+
+  // Valid usernames for testing
+  const validUsernames = ['admin.staff', 'juan.delacruz', 'maria.santos']
+
+  // Clear MPIN when keypad is toggled off
+  useEffect(() => {
+    if (!showKeypad && mpin.length > 0) {
+      // Clear all MPIN digits when keypad is closed
+      const currentLength = mpin.length
+      for (let i = 0; i < currentLength; i++) {
+        setTimeout(() => onKeypadBackspace(), i * 10) // Small staggered delay
+      }
+    }
+  }, [showKeypad])
+
+  const validateUsername = (username) => {
+    return validUsernames.includes(username.toLowerCase())
+  }
 
   const handleMPINLogin = () => {
     if (!username.trim()) {
@@ -49,8 +69,18 @@ export default function LoginCard({
       
       if (event.key === 'Enter') {
         if (!showKeypad && username.trim()) {
-          // If keypad is not shown and username is entered, show keypad
+          // If keypad is not shown and username is entered, validate and show keypad
           event.preventDefault()
+          
+          // Validate username
+          if (!validateUsername(username.trim())) {
+            setErrors(prev => ({ ...prev, username: 'Invalid username' }))
+            toastRef.current?.show(`Username "${username}" is not valid. Try: admin.staff`, 'error')
+            return
+          }
+          
+          // Clear any previous errors
+          setErrors(prev => ({ ...prev, username: '' }))
           setShowKeypad(true)
         } else if (showKeypad && mpin.length === 6) {
           // If keypad is shown and MPIN is complete, trigger login
@@ -146,7 +176,9 @@ export default function LoginCard({
                 <div className="relative">
                   {/* Username icon */}
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
-                    <i className="bi bi-person text-gray-500 text-lg sm:text-sm md:text-lg lg:text-lg"></i>
+                    <i className={`bi bi-person text-lg sm:text-sm md:text-lg lg:text-lg transition-colors duration-300 ${
+                      errors.username ? 'text-red-500' : 'text-gray-500'
+                    }`}></i>
                   </div>
                   <input 
                     id="username"
@@ -173,18 +205,15 @@ export default function LoginCard({
                       // Reset font size after blur
                       e.target.style.fontSize = ''
                     }}
-                    className={`w-full rounded-lg sm:rounded-md lg:rounded-md border transition-all duration-300 ${
+                    className={`w-full rounded-lg sm:rounded-md lg:rounded-md transition-all duration-300 ${
                       errors.username 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        ? 'border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500 focus:ring-opacity-50' 
+                        : 'border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                     } placeholder:text-gray-400 focus:scale-100 bg-white pl-10 pr-4 py-3 sm:pl-9 sm:pr-3 sm:py-2 lg:pl-10 lg:pr-3 lg:py-2 text-base sm:text-sm lg:text-sm`}
                     placeholder="Enter your username"
                     style={{ fontSize: '16px' }}
                   />
                 </div>
-                {errors.username && (
-                  <p className="mt-2 sm:mt-1 lg:mt-1 text-sm sm:text-xs lg:text-xs text-red-600">{errors.username}</p>
-                )}
               </div>
             </div>
           )}
@@ -199,8 +228,20 @@ export default function LoginCard({
                 onClick={() => {
                   if (!username.trim()) {
                     setErrors(prev => ({ ...prev, username: 'Username is required' }))
+                    toastRef.current?.show('Please enter your username', 'error')
                     return
                   }
+                  
+                  // Validate username
+                  if (!validateUsername(username.trim())) {
+                    setErrors(prev => ({ ...prev, username: 'Invalid username' }))
+                    toastRef.current?.show(`Username "${username}" is not valid. Try: admin.staff`, 'error')
+                    return
+                  }
+                  
+                  // Clear any previous errors
+                  setErrors(prev => ({ ...prev, username: '' }))
+                  
                   // Remove focus from username field
                   document.getElementById('username')?.blur()
                   setShowKeypad(true)
@@ -228,42 +269,24 @@ export default function LoginCard({
 
           {/* MPIN Input - Show on both mobile and desktop when keypad is active */}
           {showKeypad && (
-            <div className="transition-all duration-300 ease-out">
+            <div>
               <div className="text-center pt-4">
-                <label 
-                  className={`block text-lg font-medium text-gray-700 mb-3 transition-all duration-200 ${
-                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-                  }`}
-                >
+                <label className="block text-lg font-medium text-gray-700 mb-3">
                   Enter your 6-digit MPIN
                 </label>
                 <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
-                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
+                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner ${
                         mpin[index] 
                           ? 'bg-green-700' 
                           : 'bg-slate-200'
-                      } ${
-                        showKeypad 
-                          ? 'opacity-100 translate-y-0' 
-                          : 'opacity-0 translate-y-2'
                       }`}
-                      style={{
-                        transitionDelay: showKeypad ? `${index * 50}ms` : `${(5 - index) * 50}ms`
-                      }}
                     >
                     </div>
                   ))}
                 </div>
-                {errors.mpin && (
-                  <p className={`mt-1 text-xs text-red-600 text-center transition-all duration-200 ${
-                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                  }`} style={{ transitionDelay: showKeypad ? '300ms' : '0ms' }}>
-                    {errors.mpin}
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -389,6 +412,9 @@ export default function LoginCard({
           Bring a valid ID for verification.
         </p>
       </Modal>
+
+      {/* Toast Notification */}
+      <ToastNotification ref={toastRef} />
     </>
   )
 }

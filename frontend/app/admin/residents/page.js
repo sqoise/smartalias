@@ -12,14 +12,18 @@ export default function ResidentsPage() {
 
   useEffect(() => {
     // Demo: Load residents data from mock JSON file
-    try {
-      const data = residents.getAll()
-      setResidentsData(data || [])
-    } catch (e) {
-      console.error('Error loading residents:', e)
-    } finally {
-      setLoading(false)
+    const loadResidents = async () => {
+      try {
+        const data = await residents.getAll()
+        setResidentsData(data || [])
+      } catch (e) {
+        console.error('Error loading residents:', e)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadResidents()
   }, [])
 
   async function handleAdd(e) {
