@@ -97,7 +97,17 @@ export default function LoginCard({
       <div className={`relative w-full lg:max-w-4xl xl:max-w-5xl 2xl:max-w-5xl bg-transparent mx-auto lg:mx-4 xl:mx-6 2xl:mx-8 ${className} h-[400px] lg:h-[600px] xl:h-[555px] 2xl:h-[555px]`}>
         
         {/* Main Content Area */}
-        <div className="h-full">
+        <div 
+          className="h-full"
+          onClick={(e) => {
+            // Close keypad on desktop when clicking the main content area
+            if (showKeypad && window.innerWidth >= 1024) {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowKeypad(false)
+            }
+          }}
+        >
             
         {/* Header for when logo is not shown */}
         {!showLogo && (
@@ -219,18 +229,18 @@ export default function LoginCard({
           {/* MPIN Input - Show on both mobile and desktop when keypad is active */}
           {showKeypad && (
             <div className="transition-all duration-300 ease-out">
-              <div className="text-center pt-2">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="text-center pt-4">
+                <label className="block text-lg font-medium text-gray-700 mb-3">
                   Enter your 6-digit MPIN
                 </label>
                 <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
-                      className={`w-4 h-4 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
+                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner ${
                         mpin[index] 
-                          ? 'bg-green-700 scale-110' 
-                          : 'bg-slate-200 scale-100'
+                          ? 'bg-green-700' 
+                          : 'bg-slate-200'
                       }`}
                     >
                     </div>
@@ -263,9 +273,13 @@ export default function LoginCard({
         </div>
         
         {/* Desktop Keypad Overlay - Slides up from bottom within card container */}
-        <div className={`hidden lg:block absolute inset-x-0 bottom-0 transition-all duration-300 ease-out overflow-hidden ${
-          showKeypad ? 'h-1/2' : 'h-0'
-        }`} style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}>
+        <div 
+          className={`hidden lg:block absolute inset-x-0 bottom-0 transition-all duration-300 ease-out overflow-hidden ${
+            showKeypad ? 'h-1/2' : 'h-0'
+          }`} 
+          style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="h-full w-full bg-gray-100 backdrop-blur-sm rounded-b-lg flex flex-col">
             {/* Top handle indicator */}
             <div className="flex justify-center pt-2 cursor-pointer" onClick={() => setShowKeypad(false)}>

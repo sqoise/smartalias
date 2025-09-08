@@ -165,7 +165,7 @@ export default function MPINKeypad({
                        flex items-center justify-center
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <i className="bi bi-backspace text-3xl sm:text-2xl lg:text-3xl"></i>
+              <i className="bi bi-backspace text-2xl sm:text-xl lg:text-2xl"></i>
             </button>
           </div>
         </div>
