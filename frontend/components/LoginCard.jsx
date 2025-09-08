@@ -94,16 +94,20 @@ export default function LoginCard({
       )}
 
       {/* Main Card Container */}
-      <div className={`relative w-full lg:max-w-2xl xl:max-w-3xl bg-transparent transition-all duration-500 ease-out min-h-[400px] lg:min-h-[350px] xl:min-h-[380px] mx-auto lg:mx-8 xl:mx-12 ${className}`}>
+      <div className={`relative w-full lg:max-w-4xl xl:max-w-5xl 2xl:max-w-5xl bg-transparent mx-auto lg:mx-4 xl:mx-6 2xl:mx-8 ${className} h-[400px] lg:h-[600px] xl:h-[555px] 2xl:h-[555px]`}>
         
         {/* Main Content Area */}
         <div className="h-full">
+            
         {/* Header for when logo is not shown */}
-        {!showLogo && !showKeypad && (
+        {!showLogo && (
           <div className="mb-6 sm:mb-4 lg:mb-6 text-center">
-            <h2 className="font-bold text-black-700 text-3xl sm:text-2xl lg:text-3xl">Sign in to Smart LIAS</h2>
+            <h2 className="font-bold text-black-700 text-3xl sm:text-2xl lg:text-3xl">
+              Sign in to Smart LIAS
+            </h2>
           </div>
         )}
+        
 
         {/* Single Page Login Form */}
         <div className="h-full flex flex-col">
@@ -175,18 +179,55 @@ export default function LoginCard({
             </div>
           )}
 
-          {/* MPIN Input Section - Show when keypad is active */}
+
+          
+          {/* MPIN Login Button */}
+          {!showKeypad && (
+            <div className="flex justify-center pt-6 pb-1">
+              <button 
+                type="button"
+                onClick={() => {
+                  if (!username.trim()) {
+                    setErrors(prev => ({ ...prev, username: 'Username is required' }))
+                    return
+                  }
+                  // Remove focus from username field
+                  document.getElementById('username')?.blur()
+                  setShowKeypad(true)
+                }}
+                disabled={isLoading || !username.trim()}
+                className={`w-24 h-24 sm:w-20 sm:h-20 lg:w-22 lg:h-22 rounded-xl shadow-lg 
+                           bg-green-600 hover:bg-green-700 active:bg-green-800
+                           text-white font-semibold text-sm sm:text-xs lg:text-sm
+                           disabled:bg-gray-300 disabled:cursor-not-allowed
+                           transition-all duration-200 flex items-center justify-center
+                           cursor-pointer
+                           ${isLoading ? 'opacity-60' : 'hover:scale-105 active:scale-95'}`}
+              >
+                {isLoading ? (
+                  <Spinner size="sm" color="white" />
+                ) : (
+                  <div className="text-center">
+                    <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
+                    <span className="text-xs sm:text-xs lg:text-xs font-medium">MPIN Login</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* MPIN Input - Show on both mobile and desktop when keypad is active */}
           {showKeypad && (
-            <div className="space-y-4 sm:space-y-3 lg:space-y-3 flex-shrink-0">
-              <div>
-                <label className="block text-base sm:text-sm lg:text-sm font-medium text-gray-700 mb-2 sm:mb-1 lg:mb-1">
+            <div className="transition-all duration-300 ease-out">
+              <div className="text-center pt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
                   Enter your 6-digit MPIN
                 </label>
-                <div className="flex justify-center space-x-5 sm:space-x-4 lg:space-x-5 py-3">
+                <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
-                      className={`w-4 h-4 sm:w-3 sm:h-3 lg:w-4 lg:h-4 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
+                      className={`w-4 h-4 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
                         mpin[index] 
                           ? 'bg-green-700 scale-110' 
                           : 'bg-slate-200 scale-100'
@@ -196,83 +237,11 @@ export default function LoginCard({
                   ))}
                 </div>
                 {errors.mpin && (
-                  <p className="mt-2 sm:mt-1 lg:mt-1 text-sm sm:text-xs lg:text-xs text-red-600 text-center">{errors.mpin}</p>
+                  <p className="mt-1 text-xs text-red-600 text-center">{errors.mpin}</p>
                 )}
               </div>
             </div>
           )}
-          
-          {/* Enter your 6-digit MPIN Text - Show when keypad is active */}
-          <div className={`text-center transition-all duration-300 ease-out ${
-            showKeypad 
-              ? 'opacity-0 h-0 overflow-hidden' 
-              : 'py-0 opacity-0 translate-y-4 h-0 overflow-hidden'
-          }`}>
-            <p className="text-xl text-gray-700 font-semibold">
-              Enter your 6-digit MPIN
-            </p>
-          </div>
-
-          {/* MPIN Input Display - Show when keypad is active */}
-          <div className={`transition-all duration-300 ease-out ${
-            showKeypad 
-              ? 'opacity-0 h-0 overflow-hidden' 
-              : 'mb-0 opacity-0 translate-y-4 h-0 overflow-hidden'
-          }`}>
-            <div className="flex justify-center space-x-5 sm:space-x-4 lg:space-x-5">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-4 h-4 sm:w-3 sm:h-3 lg:w-4 lg:h-4 rounded-full flex items-center justify-center shadow-inner ${
-                    mpin[index] 
-                      ? 'bg-green-700' 
-                      : 'bg-slate-200'
-                  }`}
-                >
-                </div>
-              ))}
-            </div>
-
-            {/* Error Message */}
-            {errors.mpin && (
-              <p className="mt-3 sm:mt-2 lg:mt-2 text-sm sm:text-xs lg:text-xs text-red-600 text-center">{errors.mpin}</p>
-            )}
-          </div>
-
-          {/* MPIN Login Button - Positioned above footer - Hide instantly when keypad is active */}
-          <div className={`flex justify-center pt-6 pb-1 ${
-            showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}>
-            <button 
-              type="button"
-              onClick={() => {
-                if (!username.trim()) {
-                  setErrors(prev => ({ ...prev, username: 'Username is required' }))
-                  return
-                }
-                // Remove focus from username field
-                document.getElementById('username')?.blur()
-                setShowKeypad(true)
-              }}
-              disabled={isLoading || !username.trim()}
-              className={`w-24 h-24 sm:w-20 sm:h-20 lg:w-22 lg:h-22 rounded-xl shadow-lg 
-                         bg-green-600 hover:bg-green-700 active:bg-green-800
-                         text-white font-semibold text-sm sm:text-xs lg:text-sm
-                         disabled:bg-gray-300 disabled:cursor-not-allowed
-                         transition-all duration-200 flex items-center justify-center
-                         cursor-pointer
-                         ${isLoading ? 'opacity-60' : 'hover:scale-105 active:scale-95'}`}
-            >
-              {isLoading ? (
-                <Spinner size="sm" color="white" />
-              ) : (
-                <div className="text-center">
-                  <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
-                  <span className="text-xs sm:text-xs lg:text-xs font-medium">MPIN Login</span>
-                </div>
-              )}
-            </button>
-          </div>
 
           {/* Forgot Username/MPIN Link */}
           <div className={`text-center pt-4 ${
@@ -292,13 +261,39 @@ export default function LoginCard({
           </div>
         </div>
         </div>
+        
+        {/* Desktop Keypad Overlay - Slides up from bottom within card container */}
+        <div className={`hidden lg:block absolute inset-x-0 bottom-0 transition-all duration-300 ease-out overflow-hidden ${
+          showKeypad ? 'h-1/2' : 'h-0'
+        }`} style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}>
+          <div className="h-full w-full bg-gray-100 backdrop-blur-sm rounded-b-lg flex flex-col">
+            {/* Top handle indicator */}
+            <div className="flex justify-center pt-2 cursor-pointer" onClick={() => setShowKeypad(false)}>
+              <div className="w-10 h-1 bg-gray-400 rounded-full hover:bg-gray-400 active:bg-gray-400 transition-colors duration-200"></div>
+            </div>
+            {/* Keypad content */}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-full p-2">
+                  <MPINKeypad 
+                    mpin={mpin}
+                    onNumberPress={onKeypadNumber}
+                    onBackspace={onKeypadBackspace}
+                    onBack={() => setShowKeypad(false)}
+                    errors={errors}
+                    isLoading={isLoading}
+                    showKeypad={true}
+                  />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Keypad Overlay - Slides up from bottom of screen */}
       <div 
-        className={`fixed inset-0 z-50 transition-all duration-300 ease-out ${
+        className={`lg:hidden transition-all duration-300 ease-out ${
           showKeypad ? 'pointer-events-auto' : 'pointer-events-none'
-        }`}
+        } fixed inset-0 z-50`}
         onClick={(e) => {
           // Close keypad if clicking outside the keypad content
           if (e.target === e.currentTarget) {
@@ -306,6 +301,7 @@ export default function LoginCard({
           }
         }}
       >
+        {/* Mobile keypad - slides up from bottom */}
         <div 
           className={`absolute inset-x-0 bottom-0 bg-gray-100 border-t border-gray-300 shadow-2xl pt-6 p-2 transition-transform duration-300 ease-out ${
             showKeypad ? 'translate-y-0' : 'translate-y-full'
@@ -326,6 +322,7 @@ export default function LoginCard({
               mpin={mpin}
               onNumberPress={onKeypadNumber}
               onBackspace={onKeypadBackspace}
+              onBack={() => setShowKeypad(false)}
               errors={errors}
               isLoading={isLoading}
               showKeypad={true}
