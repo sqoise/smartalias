@@ -230,31 +230,46 @@ export default function LoginCard({
           {showKeypad && (
             <div className="transition-all duration-300 ease-out">
               <div className="text-center pt-4">
-                <label className="block text-lg font-medium text-gray-700 mb-3">
+                <label 
+                  className={`block text-lg font-medium text-gray-700 mb-3 transition-all duration-200 ${
+                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+                  }`}
+                >
                   Enter your 6-digit MPIN
                 </label>
                 <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
-                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner ${
+                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
                         mpin[index] 
                           ? 'bg-green-700' 
                           : 'bg-slate-200'
+                      } ${
+                        showKeypad 
+                          ? 'opacity-100 translate-y-0' 
+                          : 'opacity-0 translate-y-2'
                       }`}
+                      style={{
+                        transitionDelay: showKeypad ? `${index * 50}ms` : `${(5 - index) * 50}ms`
+                      }}
                     >
                     </div>
                   ))}
                 </div>
                 {errors.mpin && (
-                  <p className="mt-1 text-xs text-red-600 text-center">{errors.mpin}</p>
+                  <p className={`mt-1 text-xs text-red-600 text-center transition-all duration-200 ${
+                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                  }`} style={{ transitionDelay: showKeypad ? '300ms' : '0ms' }}>
+                    {errors.mpin}
+                  </p>
                 )}
               </div>
             </div>
           )}
 
-          {/* Forgot Username/MPIN Link */}
-          <div className={`text-center pt-4 ${
+          {/* Forgot Username/MPIN Link - Mobile positioning */}
+          <div className={`lg:hidden text-center pt-4 ${
             showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             <a 
@@ -269,6 +284,23 @@ export default function LoginCard({
               Forgot Username or MPIN?
             </a>
           </div>
+        </div>
+        
+        {/* Forgot Username/MPIN Link - Desktop fixed footer */}
+        <div className={`hidden lg:block absolute bottom-4 left-0 right-0 text-center transition-opacity duration-300 ${
+          showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowForgotModal(true)
+            }}
+            className="text-xs text-gray-500 hover:text-green-600 active:text-green-700 cursor-pointer transition-colors"
+          >
+            Forgot Username or MPIN?
+          </a>
         </div>
         </div>
         
