@@ -49,7 +49,7 @@ dev:
 	@echo "Starting SmartLias development servers..."
 	@echo "Frontend: http://localhost:3000"
 	@echo "Backend:  http://localhost:9000"
-	@echo "Health:   http://localhost:9000/health"
+	@echo "Health:   http://localhost:9000/api/health"
 	@echo ""
 	@echo "Press Ctrl+C to stop both servers"
 	@echo ""
@@ -66,7 +66,7 @@ dev-frontend:
 dev-backend:
 	@echo "Starting backend development server..."
 	@echo "API available at: http://localhost:9000"
-	@echo "Health check: http://localhost:9000/health"
+	@echo "Health check: http://localhost:9000/api/health"
 	@cd backend && npm run dev
 
 build:
