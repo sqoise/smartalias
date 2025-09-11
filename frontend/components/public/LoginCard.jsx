@@ -51,6 +51,11 @@ export default function LoginCard({
   // Handle Enter and Escape key press
   useEffect(() => {
     const handleKeyPress = (event) => {
+      // NEVER interfere with system shortcuts (Command, Ctrl, Alt key combinations)
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return // Let system shortcuts pass through completely
+      }
+      
       // Handle Escape key first (highest priority)
       if (event.key === 'Escape') {
         if (showKeypad) {
@@ -141,9 +146,9 @@ export default function LoginCard({
             <div className="mb-4 p-3 bg-blue-50 border-dashed border border-blue-200 rounded-md">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h4>
               <div className="text-xs text-blue-700 space-y-1">
-                <div><strong>User:</strong> juan.delacruz / 031590</div>
-                <div><strong>User:</strong> maria.santos / 120885</div>
-                <div><strong>Admin:</strong> admin.staff / 010180</div>
+                <div><strong>User:</strong> juan.delacruz / 654321</div>
+                <div><strong>User:</strong> maria.santos / 654321</div>
+                <div><strong>Admin:</strong> admin.staff / 123456</div>
               </div>
             </div>
           )}
@@ -160,8 +165,12 @@ export default function LoginCard({
                   Username
                 </label>
                 <div className="relative">
-                  {/* Username icon */}
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
+                  {/* Username icon with error state styling */}
+                  <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300 ${
+                    errors.username 
+                      ? 'bg-red-50' 
+                      : 'bg-transparent'
+                  }`}>
                     <i className={`bi bi-person text-lg sm:text-sm md:text-lg lg:text-lg transition-colors duration-300 ${
                       errors.username ? 'text-red-500' : 'text-gray-500'
                     }`}></i>

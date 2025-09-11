@@ -1,89 +1,41 @@
-{
-  "_comment": "Demo: Mock user data for frontend development - will be replaced with database",
-  "users": [
-    {
-      "id": 1,
-      "username": "juan.delacruz",
-      "password_hash": "$2b$12$XyxGtsQ8368m9SqmA3A5Ie/X0t0Cptg/MPFIvdtpkw/GFTAsMyy32",
-      "salt": "$2b$12$XyxGtsQ8368m9SqmA3A5Ie",
-      "first_name": "Juan",
-      "last_name": "Dela Cruz",
-      "birthdate": "1990-03-15",
-      "role_type": 1,
-      "password_changed": 0,
-      "failed_attempts": 2,
-      "locked_until": "2025-09-04T18:12:06.000Z",
-      "last_attempt": "2025-09-04T18:29:58.000Z"
-    },
-    {
-      "id": 2,
-      "username": "maria.santos",
-      "password_hash": "$2b$12$KQPUfuuGHGb4X2uhfAlIKOQVKIys2laotmFRvWVY.8w8MIk83dYuy",
-      "salt": "$2b$12$KQPUfuuGHGb4X2uhfAlIKO",
-      "first_name": "Maria",
-      "last_name": "Santos",
-      "birthdate": "1985-12-08",
-      "role_type": 1,
-      "password_changed": 0,
-      "failed_attempts": 3,
-      "locked_until": null,
-      "last_attempt": "2025-09-05T08:10:40.000Z"
-    },
-    {
-      "id": 3,
-      "username": "admin.staff",
-      "password_hash": "$2b$12$V.ns/T6MHuZ1IG.Fh9f1FunbwPOySprB/aQxYpAlkaqNhVGJk3Rp.",
-      "salt": "$2b$12$V.ns/T6MHuZ1IG.Fh9f1Fu",
-      "first_name": "Admin",
-      "last_name": "Staff",
-      "birthdate": "1980-01-01",
-      "role_type": 2,
-      "password_changed": 0,
-      "failed_attempts": 1,
-      "locked_until": null,
-      "last_attempt": "2025-09-05T07:19:27.000Z"
-    },
-    {
-      "id": 4,
-      "username": "jose.garcia",
-      "password_hash": "$2b$12$samplehash1234567890abcdef",
-      "salt": "$2b$12$samplehash1234567890ab",
-      "first_name": "Jose",
-      "last_name": "Garcia",
-      "birthdate": "1975-06-20",
-      "role_type": 1,
-      "password_changed": 0,
-      "failed_attempts": 0,
-      "locked_until": null,
-      "last_attempt": null
-    },
-    {
-      "id": 5,
-      "username": "ana.reyes",
-      "password_hash": "$2b$12$samplehash2345678901bcdefg",
-      "salt": "$2b$12$samplehash2345678901bc",
-      "first_name": "Ana",
-      "last_name": "Reyes",
-      "birthdate": "1992-11-10",
-      "role_type": 1,
-      "password_changed": 0,
-      "failed_attempts": 0,
-      "locked_until": null,
-      "last_attempt": null
-    },
-    {
-      "id": 6,
-      "username": "maria.santos2",
-      "password_hash": "$2b$12$samplehash3456789012cdefgh",
-      "salt": "$2b$12$samplehash3456789012cd",
-      "first_name": "Maria",
-      "last_name": "Santos",
-      "birthdate": "1993-03-08",
-      "role_type": 1,
-      "password_changed": 0,
-      "failed_attempts": 2,
-      "locked_until": null,
-      "last_attempt": "2025-09-05T08:08:35.000Z"
-    }
-  ]
-}
+[
+  {
+    "id": 1,
+    "username": "juan.delacruz",
+    "passwordHash": "$2a$12$34w/Abzke8G9QMDz.qmn6ej77Fdq34W4c9l3AhY8no5akSOdapqmi",
+    "firstName": "Juan",
+    "lastName": "Dela Cruz",
+    "role": "resident",
+    "passwordChanged": false,
+    "failedLoginAttempts": 0,
+    "lockedUntil": null,
+    "lastLogin": "2025-09-11T13:36:33.737Z",
+    "createdAt": "2025-09-01T00:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "username": "maria.santos",
+    "passwordHash": "$2a$12$34w/Abzke8G9QMDz.qmn6ej77Fdq34W4c9l3AhY8no5akSOdapqmi",
+    "firstName": "Maria",
+    "lastName": "Santos",
+    "role": "resident",
+    "passwordChanged": false,
+    "failedLoginAttempts": 0,
+    "lockedUntil": null,
+    "lastLogin": "2025-09-11T14:57:17.625Z",
+    "createdAt": "2025-09-01T00:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "username": "admin.staff",
+    "passwordHash": "$2a$12$fOm80sCsX28DpzzX8Ax0O.wt9snSIcLyPHI9HlOOaWBpY6Pbt4y0G",
+    "firstName": "Admin",
+    "lastName": "Staff",
+    "role": "admin",
+    "passwordChanged": false,
+    "failedLoginAttempts": 0,
+    "lockedUntil": null,
+    "lastLogin": "2025-09-11T14:56:58.971Z",
+    "createdAt": "2025-09-01T00:00:00.000Z"
+  }
+]

@@ -13,6 +13,8 @@ const path = require('path')
 const config = require('./config/config')
 const logger = require('./config/logger')
 const { generalLimiter } = require('./config/rateLimit')
+const DateTime = require('./utils/datetime')
+const ApiResponse = require('./utils/apiResponse')
 
 // Import centralized router
 const apiRouter = require('./router')
@@ -29,9 +31,22 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }))
 
-// CORS configuration
+// CORS configuration - allow multiple origins for development
+const allowedOrigins = config.ALLOWED_ORIGINS
+
 app.use(cors({
-  origin: config.FRONTEND_URL,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.warn('CORS blocked origin:', origin)
+      console.warn('Allowed origins:', allowedOrigins)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -52,8 +67,11 @@ const accessLogStream = fs.createWriteStream(
   { flags: 'a' }
 )
 
-// Morgan HTTP request logger
-app.use(morgan('combined', { 
+// Custom Morgan token for Manila timezone with 24-hour format
+morgan.token('manila-date', () => DateTime.now())
+
+// Morgan HTTP request logger with Manila timezone
+app.use(morgan(':remote-addr - :remote-user [:manila-date] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"', { 
   stream: accessLogStream,
   skip: (req, res) => res.statusCode < 400 // Only log errors in file
 }))
@@ -70,14 +88,20 @@ app.use('/api', generalLimiter)
 // HEALTH CHECK ENDPOINT
 // ==========================================================================
 
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'SMARTLIAS Backend is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    environment: config.NODE_ENV
-  })
+app.get('/api/health', (req, res) => {
+  try {
+    // Check if essential services are working
+    const isHealthy = !!(config && logger && DateTime.now())
+    
+    return ApiResponse.health(res, isHealthy, {
+      environment: config.NODE_ENV
+    })
+  } catch (error) {
+    return ApiResponse.health(res, false, {
+      environment: config.NODE_ENV,
+      error: error.message
+    })
+  }
 })
 
 // ==========================================================================
@@ -94,9 +118,7 @@ app.use('/api', apiRouter)
 // 404 handler
 app.use('*', (req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`)
-  res.status(404).json({
-    success: false,
-    error: 'Route not found',
+  return ApiResponse.error(res, 'Route not found', 404, {
     path: req.originalUrl,
     method: req.method
   })
@@ -106,11 +128,15 @@ app.use('*', (req, res) => {
 app.use((error, req, res, next) => {
   logger.error('Unhandled error', error)
   
-  res.status(error.status || 500).json({
-    success: false,
-    error: config.isDevelopment ? error.message : 'Internal server error',
-    ...(config.isDevelopment && { stack: error.stack })
-  })
+  const errorDetails = config.isDevelopment ? {
+    message: error.message,
+    ...(error.stack && { stack: error.stack })
+  } : null
+  
+  return ApiResponse.serverError(res, 
+    config.isDevelopment ? error.message : 'Internal server error',
+    errorDetails
+  )
 })
 
 // Handle uncaught exceptions

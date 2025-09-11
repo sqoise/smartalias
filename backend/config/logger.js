@@ -5,6 +5,7 @@
 
 const winston = require('winston')
 const path = require('path')
+const DateTime = require('../utils/datetime')
 
 // Create logs directory if it doesn't exist
 const fs = require('fs')
@@ -17,7 +18,9 @@ if (!fs.existsSync(logsDir)) {
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.timestamp({ 
+      format: () => DateTime.forLogs()
+    }),
     winston.format.errors({ stack: true }),
     winston.format.printf(({ timestamp, level, message, stack }) => {
       return `[${timestamp}] ${level.toUpperCase()}: ${stack || message}`

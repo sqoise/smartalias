@@ -21,7 +21,7 @@ const generalLimiter = rateLimit({
 // Strict rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
+  max: 50, // 500 attempts per window
   message: {
     success: false,
     error: 'Too many authentication attempts. Please try again later.',
@@ -33,7 +33,7 @@ const authLimiter = rateLimit({
 // Very strict rate limiting for password changes
 const passwordChangeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 attempts per hour
+  max: 100, // 100 attempts per hour
   message: {
     success: false,
     error: 'Too many password change attempts. Please try again later.',

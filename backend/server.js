@@ -3,6 +3,13 @@
  * Server startup and initialization
  */
 
+// ==========================================================================
+// TIMEZONE CONFIGURATION (MUST BE FIRST)
+// ==========================================================================
+
+// Set timezone to Manila/Philippines BEFORE any other imports
+process.env.TZ = 'Asia/Manila'
+
 const app = require('./app')
 const config = require('./config/config')
 const logger = require('./config/logger')
@@ -16,17 +23,13 @@ async function startServer() {
   try {
     // Initialize database connection (if available)
     await database.connect()
-    await database.connect()
     
     // Start the server
     const server = app.listen(config.PORT, () => {
-      logger.info(`SMARTLIAS Backend Server started`)
+      logger.info(`SMARTLIAS API Server started`)
       logger.info(`Environment: ${config.NODE_ENV}`)
       logger.info(`Port: ${config.PORT}`)
       logger.info(`Frontend URL: ${config.FRONTEND_URL}`)
-      logger.info(`Data Source: ${config.USE_MOCK_DATA ? 'JSON Files' : 'Database'}`)
-      logger.info(`Health Check: http://localhost:${config.PORT}/health`)
-      logger.info(`Logs Directory: ${logger.logDir}`)
     })
 
     // Graceful shutdown
