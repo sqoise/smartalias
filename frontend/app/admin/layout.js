@@ -1,13 +1,13 @@
 'use client'
 
-import BaseLayout from '../../components/BaseLayout.jsx'
-import Header from '../../components/Header.jsx'
-import Sidebar from '../../components/Sidebar.jsx'
+import DashboardLayout from '../../components/authenticated/DashboardLayout.jsx'
+import Header from '../../components/authenticated/Header.jsx'
+import Sidebar from '../../components/authenticated/Sidebar.jsx'
 
 export default function AdminLayout({ children }) {
   return (
-    <BaseLayout header={<Header role="admin" userName="Admin" />} sidebar={<Sidebar role="admin" />}>
+    <DashboardLayout header={<Header role="admin" userName="Admin" />} sidebar={<Sidebar role="admin" />}>
       {children}
-    </BaseLayout>
+    </DashboardLayout>
   )
 }

@@ -4,7 +4,7 @@ export default function ForbiddenAccess() {
   return (
     <main className="grid min-h-screen place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8">
       <div className="text-center">
-        <p className="text-xl font-semibold text-green-600">403</p>
+        <h2 className="text-3xl font-bold text-green-600">403</h2>
         <h1 className="mt-4 text-balance text-5xl font-semibold tracking-tight text-gray-900 sm:text-7xl">
           Forbidden Access
         </h1>

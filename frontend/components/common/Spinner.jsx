@@ -5,13 +5,21 @@ export default function Spinner({
   color = 'blue',
   className = '' 
 }) {
+  // Add fade-in keyframe animation
+  const fadeInStyle = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  `
+
   // Size configurations
   const sizeClasses = {
     xs: 'w-3 h-3',
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
     lg: 'w-8 h-8',
-    xl: 'w-12 h-12'
+    xl: 'w-10 h-10'
   }
 
   const colorClasses = {
@@ -24,11 +32,16 @@ export default function Spinner({
 
   return (
     <div role="status" className={`inline-block ${className}`}>
+      <style>{fadeInStyle}</style>
       <svg 
         stroke="currentColor" 
         viewBox="0 0 24 24" 
         xmlns="http://www.w3.org/2000/svg"
         className={`${sizeClasses[size]} ${colorClasses[color]}`}
+        style={{ 
+          opacity: 0,
+          animation: 'fadeIn 0.1s ease-in-out 0.2s forwards'
+        }}
         aria-hidden="true"
       >
         <g>
@@ -37,12 +50,12 @@ export default function Spinner({
             cy="12" 
             r="9.5" 
             fill="none" 
-            strokeWidth="3" 
+            strokeWidth="3"
             strokeLinecap="round"
           >
             <animate 
               attributeName="stroke-dasharray" 
-              dur="1.5s" 
+              dur="1.4s" 
               calcMode="spline" 
               values="0 150;42 150;42 150;42 150" 
               keyTimes="0;0.475;0.95;1" 
@@ -51,7 +64,7 @@ export default function Spinner({
             />
             <animate 
               attributeName="stroke-dashoffset" 
-              dur="1.5s" 
+              dur="1.4s" 
               calcMode="spline" 
               values="0;-16;-59;-59" 
               keyTimes="0;0.475;0.95;1" 
@@ -62,7 +75,7 @@ export default function Spinner({
           <animateTransform 
             attributeName="transform" 
             type="rotate" 
-            dur="2s" 
+            dur="1.6s" 
             values="0 12 12;360 12 12" 
             repeatCount="indefinite"
           />

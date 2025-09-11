@@ -20,7 +20,7 @@ export default function PageLoading({
   // Full screen loading
   if (fullScreen) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         {spinnerContent}
       </div>
     )
@@ -28,7 +28,7 @@ export default function PageLoading({
 
   // Inline loading
   return (
-    <div className="flex items-center justify-center py-8">
+    <div className="flex items-center justify-center py-8 bg-white">
       {spinnerContent}
     </div>
   )

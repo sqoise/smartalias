@@ -1,13 +1,25 @@
-// Role constants for database storage
+// Role constants - Using numeric IDs for faster comparison
 export const ROLE_TYPES = {
-  USER: 1,
+  RESIDENT: 1,
   ADMIN: 2
 }
 
-// Role names for display and logic
+// Role names for display and database mapping
 export const ROLE_NAMES = {
-  [ROLE_TYPES.USER]: 'User',
+  [ROLE_TYPES.RESIDENT]: 'Resident',
   [ROLE_TYPES.ADMIN]: 'Admin'
+}
+
+// Role mapping for backend compatibility (if needed)
+export const ROLE_STRINGS = {
+  [ROLE_TYPES.RESIDENT]: 'resident',
+  [ROLE_TYPES.ADMIN]: 'admin'
+}
+
+// Reverse mapping from string to numeric ID
+export const STRING_TO_ROLE = {
+  'resident': ROLE_TYPES.RESIDENT,
+  'admin': ROLE_TYPES.ADMIN
 }
 
 // Password change status constants

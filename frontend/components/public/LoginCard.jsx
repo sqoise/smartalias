@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import MPINKeypad from './MPINKeypad'
-import Spinner from './Spinner'
-import Modal from './Modal'
-import ToastNotification from './ToastNotification'
+import MPINKeypad from '../common/MPINKeypad'
+import Spinner from '../common/Spinner'
+import Modal from '../common/Modal'
+import ToastNotification from '../common/ToastNotification'
 
 export default function LoginCard({
   username,
@@ -16,6 +16,7 @@ export default function LoginCard({
   onLogin,
   onKeypadNumber,
   onKeypadBackspace,
+  onUsernameSubmit, // Add this prop for username validation
   showLogo = false,
   className = '',
   showKeypad,
@@ -23,9 +24,6 @@ export default function LoginCard({
 }) {
   const [showForgotModal, setShowForgotModal] = useState(false)
   const toastRef = useRef()
-
-  // Valid usernames for testing
-  const validUsernames = ['admin.staff', 'juan.delacruz', 'maria.santos']
 
   // Clear MPIN when keypad is toggled off
   useEffect(() => {
@@ -37,10 +35,6 @@ export default function LoginCard({
       }
     }
   }, [showKeypad])
-
-  const validateUsername = (username) => {
-    return validUsernames.includes(username.toLowerCase())
-  }
 
   const handleMPINLogin = () => {
     if (!username.trim()) {
@@ -72,21 +66,12 @@ export default function LoginCard({
           // If keypad is not shown and username is entered, validate and show keypad
           event.preventDefault()
           
-          // Validate username
-          if (!validateUsername(username.trim())) {
-            setErrors(prev => ({ ...prev, username: 'Invalid username' }))
-            toastRef.current?.show(`Username "${username}" is not valid. Try: admin.staff`, 'error')
-            return
+          // Use parent validation instead of local validation
+          if (onUsernameSubmit) {
+            onUsernameSubmit(username.trim())
           }
-          
-          // Clear any previous errors
-          setErrors(prev => ({ ...prev, username: '' }))
-          setShowKeypad(true)
-        } else if (showKeypad && mpin.length === 6) {
-          // If keypad is shown and MPIN is complete, trigger login
-          event.preventDefault()
-          handleMPINLogin()
         }
+        // Removed MPIN Enter handling - login now happens automatically on 6th digit
       }
     }
 
@@ -151,7 +136,7 @@ export default function LoginCard({
 
         {/* Single Page Login Form */}
         <div className="h-full flex flex-col">
-          {/* DEMO: Demo Credentials - Show when keypad is not active */}
+          {/* DEMO: Demo Credentials - TODO: Remove this entire section for production release */}
           {!showKeypad && (
             <div className="mb-4 p-3 bg-blue-50 border-dashed border border-blue-200 rounded-md">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h4>
@@ -162,6 +147,7 @@ export default function LoginCard({
               </div>
             </div>
           )}
+          {/* DEMO: End of demo section */}
           
           {/* Username Input - Hide when keypad is active */}
           {!showKeypad && (
@@ -226,25 +212,10 @@ export default function LoginCard({
               <button 
                 type="button"
                 onClick={() => {
-                  if (!username.trim()) {
-                    setErrors(prev => ({ ...prev, username: 'Username is required' }))
-                    toastRef.current?.show('Please enter your username', 'error')
-                    return
+                  // Use parent validation instead of local validation
+                  if (onUsernameSubmit) {
+                    onUsernameSubmit(username.trim())
                   }
-                  
-                  // Validate username
-                  if (!validateUsername(username.trim())) {
-                    setErrors(prev => ({ ...prev, username: 'Invalid username' }))
-                    toastRef.current?.show(`Username "${username}" is not valid. Try: admin.staff`, 'error')
-                    return
-                  }
-                  
-                  // Clear any previous errors
-                  setErrors(prev => ({ ...prev, username: '' }))
-                  
-                  // Remove focus from username field
-                  document.getElementById('username')?.blur()
-                  setShowKeypad(true)
                 }}
                 disabled={isLoading || !username.trim()}
                 className={`w-24 h-24 sm:w-20 sm:h-20 lg:w-22 lg:h-22 rounded-xl shadow-lg 
@@ -256,7 +227,7 @@ export default function LoginCard({
                            ${isLoading ? 'opacity-60' : 'hover:scale-105 active:scale-95'}`}
               >
                 {isLoading ? (
-                  <Spinner size="sm" color="white" />
+                  <Spinner size="xl" color="white" />
                 ) : (
                   <div className="text-center">
                     <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
@@ -297,7 +268,7 @@ export default function LoginCard({
           }`}>
             <a 
               href="#" 
-              onClick={(e) => {
+              onClick={(e) => { 
                 e.preventDefault()
                 e.stopPropagation()
                 setShowForgotModal(true)
@@ -335,7 +306,7 @@ export default function LoginCard({
           style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="h-full w-full bg-gray-100 backdrop-blur-sm rounded-b-lg flex flex-col">
+          <div className="h-full w-full bg-gray-200 backdrop-blur-sm rounded-b-lg flex flex-col">
             {/* Top handle indicator */}
             <div className="flex justify-center pt-2 cursor-pointer" onClick={() => setShowKeypad(false)}>
               <div className="w-10 h-1 bg-gray-400 rounded-full hover:bg-gray-400 active:bg-gray-400 transition-colors duration-200"></div>
@@ -372,7 +343,7 @@ export default function LoginCard({
       >
         {/* Mobile keypad - slides up from bottom */}
         <div 
-          className={`absolute inset-x-0 bottom-0 bg-gray-100 border-t border-gray-300 shadow-2xl pt-6 p-2 transition-transform duration-300 ease-out ${
+          className={`absolute inset-x-0 bottom-0 bg-gray-200 border-t border-gray-300 shadow-2xl pt-6 p-2 transition-transform duration-300 ease-out ${
             showKeypad ? 'translate-y-0' : 'translate-y-full'
           }`}
           style={{ boxShadow: '0 -10px 25px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)' }}
@@ -408,8 +379,7 @@ export default function LoginCard({
         type="alert"
       >
         <p className="text-gray-600">
-          Please visit Barangay LIAS office directly for assistance with account recovery.
-          Bring a valid ID for verification.
+          Please visit Barangay LIAS office for assistance. Bring a valid ID for verification.
         </p>
       </Modal>
 

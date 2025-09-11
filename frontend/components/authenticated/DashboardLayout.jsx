@@ -1,4 +1,4 @@
-// Base Layout Component - Generic layout for all dashboard pages (JSX)
+// Dashboard Layout Component - Layout for authenticated dashboard pages (JSX)
 import React, { useState, createContext, useContext } from 'react'
 
 // Create a context for sidebar state
@@ -12,7 +12,7 @@ export const useSidebar = () => {
   return context
 }
 
-export default function BaseLayout({ 
+export default function DashboardLayout({ 
   children, 
   header, 
   sidebar, 
