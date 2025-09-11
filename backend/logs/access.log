@@ -82,4 +82,4 @@
 ::1 - - [2025-09-11 22:48:56] "POST /api/auth/logout HTTP/1.1" 401 49 "http://192.168.1.7:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 ::1 - - [2025-09-11 22:57:10] "POST /api/auth/logout HTTP/1.1" 401 49 "http://192.168.1.7:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 ::1 - - [2025-09-11 22:58:07] "POST /api/auth/logout HTTP/1.1" 401 49 "http://192.168.1.7:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
-::1 - - [2025-09-11 23:02:03] "POST /api/auth/logout HTTP/1.1" 401 49 "http://192.168.1.7:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+
