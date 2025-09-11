@@ -15,37 +15,62 @@ smartlias/
 │   │   ├── admin/         # Admin dashboard pages
 │   │   ├── login/         # Login page
 │   │   ├── resident/      # Resident dashboard pages
+│   │   ├── change-pin/    # PIN change functionality
 │   │   ├── layout.js      # Root layout component
 │   │   └── page.js        # Homepage
 │   ├── components/        # Reusable UI components (Dumb Children)
 │   │   ├── authenticated/ # Protected components
 │   │   ├── common/        # Shared components (ToastNotification, etc.)
 │   │   └── public/        # Public components (LoginCard, etc.)
-│   ├── lib/               # Frontend utilities & auth
-│   ├── data/              # Sample JSON data (demo)
+│   ├── lib/               # Frontend utilities & API client
+│   │   ├── apiClient.js   # Centralized API connector
+│   │   └── constants.js   # Frontend constants
 │   ├── styles/            # CSS and styling
 │   └── package.json       # Frontend dependencies
 │
-├── backend/               # Express.js API Server (Port 5000)
-│   ├── routes/            # API route definitions
-│   ├── middleware/        # Auth, logging, error handlers
-│   ├── server.js          # Application entry point
+├── backend/               # Express.js API Server (Port 9000)
+│   ├── config/            # Configuration files
+│   │   ├── config.js      # Environment variables & settings
+│   │   ├── logger.js      # Winston logging configuration
+│   │   ├── db.js          # Database connection (future)
+│   │   └── rateLimit.js   # Rate limiting configuration
+│   ├── middleware/        # Express middleware
+│   │   └── authMiddleware.js # JWT authentication & authorization
+│   ├── utils/             # Utility functions
+│   │   └── validator.js   # Input validation & sanitization
+│   ├── models/            # Data access layer
+│   │   └── residentModel.js # Resident data operations
+│   ├── controllers/       # HTTP request handlers
+│   │   └── residentController.js # Resident business logic
+│   ├── data/              # JSON data files (temporary)
+│   │   ├── users.json     # User accounts
+│   │   └── residents.json # Resident records
+│   ├── logs/              # Application logs (git ignored)
+│   │   ├── application.log # All application logs
+│   │   ├── error.log      # Error logs only
+│   │   └── access.log     # HTTP request logs
+│   ├── router.js          # Centralized API routes
+│   ├── app.js             # Express app configuration
+│   ├── server.js          # Server startup
 │   └── package.json       # Backend dependencies
 │
 ├── Makefile               # Development commands
-├── README.md              # Project documentation
+└── README.md              # Project documentation
+```
 
 ### **Technology Stack**
 - **Frontend**: Next.js 15+ with React 19+, Tailwind CSS 4+
 - **Backend**: Express.js 4+ with Node.js
-- **Database**: Supabase (PostgreSQL) - planned
-- **Authentication**: JWT tokens with session management
+- **Database**: JSON files (development) → Supabase PostgreSQL (planned)
+- **Authentication**: JWT tokens with bcryptjs hashing
+- **Logging**: Winston + Morgan (server-side only)
 - **Development**: Separated frontend-backend with API communication
 
 ### **Current Development Phase**
 - ✅ **Phase 1**: Frontend-only development (COMPLETED)
-- 🔄 **Phase 2**: Backend API development (IN PROGRESS)
-- 📋 **Phase 3**: Full-stack integration (PLANNED)
+- ✅ **Phase 2**: Backend API development (COMPLETED)
+- � **Phase 3**: Full-stack integration (IN PROGRESS)
+- 📋 **Phase 4**: Database migration (PLANNED)
 
 ### **Core Features**
 - User authentication and role-based access control
@@ -53,6 +78,7 @@ smartlias/
 - Service request handling and tracking
 - Administrative dashboard and reporting
 - Mobile-first responsive design
+- Comprehensive logging system
 
 ---
 
@@ -318,36 +344,54 @@ className="p-3 rounded-md border text-sm bg-red-50 border-red-200 text-red-800" 
 
 ## ⚙️ BACKEND GUIDELINES
 
-### **🔧 Simple Backend Architecture**
+### **🔧 Centralized Backend Architecture**
 
-#### **File Structure (Keep It Simple)**
+#### **File Structure (Simplified & Organized)**
 ```
 backend/
-├── server.js              # Main server file - handles Express setup and server start
-├── routes/                 # Organized API routes by feature
-│   ├── auth.js             # Authentication endpoints (login, logout, etc.)
-│   └── residents.js        # Residents CRUD operations
-├── data/                   # JSON data files (temporary, before SQL)
-│   ├── users.json          # User accounts for authentication
-│   └── residents.json      # Resident records
-├── .env                    # Environment variables
-└── package.json           # Dependencies
+├── server.js              # Server startup and initialization
+├── app.js                 # Express app configuration and middleware
+├── router.js              # Centralized API routes (all endpoints)
+├── config/                # Configuration files
+│   ├── config.js          # Environment variables and settings
+│   ├── logger.js          # Winston logging configuration
+│   ├── db.js              # Database connection setup
+│   └── rateLimit.js       # Rate limiting configuration
+├── middleware/            # Express middleware
+│   └── authMiddleware.js  # JWT authentication and authorization
+├── utils/                 # Utility functions
+│   └── validator.js       # Input validation and sanitization
+├── models/                # Data access layer (future database integration)
+│   └── residentModel.js   # Resident data operations
+├── controllers/           # Business logic (future expansion)
+│   └── residentController.js # HTTP request handlers
+├── data/                  # JSON data files (temporary)
+│   ├── users.json         # User accounts and authentication
+│   └── residents.json     # Resident records
+├── logs/                  # Application logs (auto-generated, git ignored)
+│   ├── application.log    # All application logs
+│   ├── error.log          # Error logs only
+│   └── access.log         # HTTP request logs
+└── package.json           # Dependencies and scripts
 ```
 
-#### **Simple Organized Approach**
-- **server.js**: Express setup, middleware, CORS, error handling, server startup
-- **routes/auth.js**: All authentication endpoints and logic
-- **routes/residents.js**: All residents management endpoints
-- Each route file is focused on one specific feature
+#### **Centralized Router Approach**
+- **router.js**: All API endpoints in one file for simplicity
+- **Authentication routes**: `/api/auth/*` (login, logout, check-user, etc.)
+- **Residents routes**: `/api/residents/*` (CRUD operations)
+- **Admin routes**: `/api/admin/*` (future expansion)
+- Easy to understand and maintain for learning purposes
 
 #### **Benefits of This Structure**
-- Easy to understand - each file has one clear purpose
-- Feature-based organization - auth logic separate from residents logic
-- Student-friendly - can learn one feature at a time
-- Scalable - easy to add new features as separate route files
+- Simple and organized - each file has one clear purpose
+- Centralized routes - all endpoints visible in one file
+- Professional logging - Winston + Morgan for comprehensive logs
+- Security-focused - JWT authentication, input validation, rate limiting
+- Scalable - easy to add new features without restructuring
 
 #### **RESTful API Design**
 - **Base URL**: `http://localhost:9000/api` (development)
+- **Port**: 9000 (backend), 3000 (frontend)
 - **Format**: JSON for all request/response payloads
 - **HTTP Methods**: GET (read), POST (create), PUT (update), DELETE (remove)
 - **Status Codes**: 200 (success), 201 (created), 400 (bad request), 401 (unauthorized), 404 (not found), 500 (server error)
@@ -355,77 +399,86 @@ backend/
 #### **API Endpoints Structure**
 ```
 Authentication:
-POST   /api/auth/login          # User authentication
-POST   /api/auth/logout         # Session termination
-GET    /api/auth/me            # Get current user info
-POST   /api/auth/change-password # Password update
+POST   /api/auth/login              # User authentication
+POST   /api/auth/logout             # Session termination
+GET    /api/auth/me                # Get current user info
+POST   /api/auth/change-password    # Password update
+POST   /api/auth/check-user         # Username verification
 
 Residents Management:
-GET    /api/residents          # List all residents
-POST   /api/residents          # Create new resident
-GET    /api/residents/:id      # Get resident details
-PUT    /api/residents/:id      # Update resident
-DELETE /api/residents/:id      # Delete resident
-
-Service Requests:
-GET    /api/requests           # List service requests
-POST   /api/requests           # Create new request
-GET    /api/requests/:id       # Get request details
-PUT    /api/requests/:id       # Update request status
+GET    /api/residents              # List all residents (with search/pagination)
+POST   /api/residents              # Create new resident (admin only)
+GET    /api/residents/:id          # Get resident details
+PUT    /api/residents/:id          # Update resident (admin only)
+DELETE /api/residents/:id          # Delete resident (admin only)
+GET    /api/residents/stats        # Get resident statistics (admin only)
 
 Admin Operations:
-GET    /api/admin/dashboard    # Admin dashboard data
-GET    /api/admin/users        # User management
+GET    /api/admin/dashboard        # Admin dashboard data
+POST   /api/admin/unlock-account   # Unlock user account
+GET    /api/admin/account-status   # Get account security status
+
+Health Check:
+GET    /health                     # Server health status
 ```
 
-#### **Data Source Management (MANDATORY)**
+#### **Logging System (Server-Side Only)**
+
+**Professional Logging with Winston + Morgan:**
+```javascript
+// Application Logs (Winston)
+logger.info('User login successful', { username, role })
+logger.warn('Failed login attempt', { username, ip })
+logger.error('Database connection failed', error)
+
+// HTTP Request Logs (Morgan)
+// Automatically logs all HTTP requests to access.log
+// Console logging in development mode
+```
+
+**Log Files:**
+- `logs/application.log` - All application events, warnings, errors
+- `logs/error.log` - Error logs only (automatic filtering)
+- `logs/access.log` - HTTP request logs (Morgan)
+
+**Viewing Logs:**
+```bash
+# View latest logs (live tail)
+tail -f backend/logs/application.log
+tail -f backend/logs/error.log
+tail -f backend/logs/access.log
+
+# View last 50 lines
+tail -n 50 backend/logs/application.log
+
+# Search logs
+grep "login" backend/logs/application.log
+grep "ERROR" backend/logs/application.log
+```
+
+#### **Data Source Management**
 
 **Environment-Controlled Data Sources:**
-
-All data access MUST be controlled through environment variables to enable seamless switching between development (JSON files) and production (database) without code changes.
-
-**Frontend Implementation (`lib/auth.js`):**
 ```javascript
-const API_CONFIG = {
-  // Environment-controlled data source
-  USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || false,
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-}
+// Backend Configuration (config.js)
+USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true' || false
 
-class ApiClient {
-  static async request(endpoint, options = {}) {
-    if (API_CONFIG.USE_MOCK_DATA) {
-      // Use JSON files (development)
-      return MockApiService.handleRequest(endpoint, options)
-    }
-    
-    // Use real backend API (production)
-    const url = `${API_CONFIG.BASE_URL}${endpoint}`
-    // ... real API implementation
-  }
-}
-```
+// Development: Uses JSON files
+USE_MOCK_DATA=true
 
-**Environment Configuration:**
-```env
-# Development
-NEXT_PUBLIC_USE_MOCK_DATA=true
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-
-# Production
-NEXT_PUBLIC_USE_MOCK_DATA=false
-NEXT_PUBLIC_API_URL=https://api.yourcompany.com
+// Production: Uses database
+USE_MOCK_DATA=false
 ```
 
 **Benefits:**
-- ✅ **Zero Code Changes**: Switch environments via configuration only
-- ✅ **Development Speed**: Work with JSON files while backend is being built
-- ✅ **Testing Flexibility**: Test with known data sets or live API
+- ✅ **Zero Code Changes**: Switch data sources via environment variables
+- ✅ **Development Speed**: Work with JSON files while database is being set up
+- ✅ **Testing Flexibility**: Test with known data sets or live database
 - ✅ **Deployment Safety**: Production flag prevents accidental mock data usage
 
 #### **Security Implementation**
 ```javascript
-// Input Sanitization (Backend)
+// Input Sanitization (All endpoints)
 const sanitizeInput = (input) => {
   return input?.trim()?.replace(/[<>'"&]/g, '')?.slice(0, 100) || ''
 }
@@ -433,65 +486,33 @@ const sanitizeInput = (input) => {
 // Validation Template
 const validateInputs = (data) => {
   const errors = []
-  // Mirror frontend validation rules
-  return errors
+  // Comprehensive validation rules
+  return { isValid: errors.length === 0, errors }
 }
 
 // Authentication Middleware
-const authenticateJWT = (req, res, next) => {
+const authenticateToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1]
-  // Verify JWT token
+  // JWT verification with role-based access
 }
+
+// Rate Limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5 // limit each IP to 5 requests per windowMs
+})
 ```
-
-#### **Database Integration**
-- **Database**: Supabase (PostgreSQL)
-- **ORM**: Direct SQL queries or Prisma (planned)
-- **Environment**: Database connection via environment variables
-- **Security**: Parameterized queries to prevent SQL injection
-
-#### **Error Handling**
-```javascript
-// Standardized Error Response
-const sendError = (res, status, message, details = null) => {
-  res.status(status).json({
-    success: false,
-    error: {
-      message,
-      details,
-      timestamp: new Date().toISOString()
-    }
-  })
-}
-
-// Success Response
-const sendSuccess = (res, data, message = 'Success') => {
-  res.status(200).json({
-    success: true,
-    message,
-    data,
-    timestamp: new Date().toISOString()
-  })
-}
-```
-
-#### **Middleware Stack**
-- **Authentication**: JWT token validation
-- **Authorization**: Role-based access control (RBAC)
-- **Rate Limiting**: Express-rate-limit for API protection
-- **CORS**: Configured for frontend-backend communication
-- **Helmet**: Security headers
-- **Logging**: Request/response logging for debugging
 
 #### **Environment Configuration**
 ```env
-# Backend Environment Variables
-PORT=5000
+# Backend Environment Variables (.env)
+PORT=9000
 NODE_ENV=development
-DATABASE_URL=your-supabase-connection-string
-JWT_SECRET=your-jwt-secret-key
-JWT_EXPIRES_IN=24h
-CORS_ORIGIN=http://localhost:3000
+USE_MOCK_DATA=true
+JWT_SECRET=your-secure-jwt-secret
+FRONTEND_URL=http://localhost:3000
+LOG_LEVEL=info
+DATABASE_URL=your-database-connection-string
 ```
 
 ### **📊 Database Schema Design**
@@ -794,12 +815,12 @@ ORDER BY last_event DESC;
 ## 📚 DEVELOPMENT CHECKLIST
 
 ### **Before Starting New Features**
-- [ ] Read this context.md file completely
+- [ ] Read this smartlias.instructions.md file completely
 - [ ] Follow "Smart Parent, Dumb Child" pattern
 - [ ] Reference existing login page for validation patterns
 - [ ] Use mobile-first design system classes
 - [ ] Implement proper input sanitization
-- [ ] Use environment variables for data source control
+- [ ] Use environment variables for configuration
 
 ### **For Frontend Development**
 - [ ] Create Smart Parent component in `app/`
@@ -808,15 +829,15 @@ ORDER BY last_event DESC;
 - [ ] Use consistent color schemes and styling
 - [ ] Add loading states for all async operations
 - [ ] Test mobile responsiveness
-- [ ] Configure environment variables for API endpoints
+- [ ] Use `ApiClient` for all backend communication
 
 ### **For Backend Development**
-- [ ] Create RESTful API endpoints following naming convention
+- [ ] Add endpoints to centralized `router.js` file
 - [ ] Implement input sanitization and validation
-- [ ] Add JWT authentication middleware
+- [ ] Add JWT authentication middleware where needed
 - [ ] Use standardized error/success response format
-- [ ] Add request/response logging
-- [ ] Test with Postman or similar API client
+- [ ] Add proper logging with winston logger
+- [ ] Test endpoints independently with Postman/curl
 
 ### **Quality Assurance**
 - [ ] Test validation on both frontend and backend
@@ -824,83 +845,121 @@ ORDER BY last_event DESC;
 - [ ] Check mobile responsiveness across devices
 - [ ] Ensure consistent error messaging
 - [ ] Validate accessibility with screen readers
-- [ ] Test API endpoints independently
+- [ ] Check logs for proper error tracking
 
 ### **Key Reference Files**
 - **Frontend Patterns**: `app/login/page.js`
 - **Component Structure**: `components/public/LoginCard.jsx`
-- **Data Source Management**: `lib/auth.js`
-- **Environment Configuration**: `.env.local`
+- **API Communication**: `lib/apiClient.js`
+- **Environment Configuration**: `.env.local` (frontend), `.env` (backend)
 - **Design System**: This smartlias.instructions.md file
-- **API Patterns**: Backend route files (when created)
-- **Production Release Guide**: `.github/instructions/production-release-guide.md`
+- **Backend API**: `backend/router.js`
+- **Logging**: `backend/logs/` directory
 
 ---
 
 ## 🚀 PRODUCTION DEPLOYMENT
 
-### **Production Release Preparation**
+### **Production Environment Configuration**
 
-When preparing SMARTLIAS for production deployment, several demo-specific features and test code must be removed or configured. Follow the comprehensive guide located at:
+#### **Backend Environment Variables (Production)**
+```env
+# Server Configuration
+PORT=9000
+NODE_ENV=production
 
-**📋 Complete Guide**: [Production Release Guide](./production-release-guide.md)
+# Database Configuration
+USE_MOCK_DATA=false
+DATABASE_URL=your-production-database-url
 
-### **Key Production Changes**
+# Security Configuration
+JWT_SECRET=your-secure-jwt-secret-for-production
+FRONTEND_URL=https://your-frontend-domain.com
 
-#### **Demo Mode Configuration**
-```javascript
-// Current: Environment-controlled data source
-USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true'
-
-// Production: Set environment variable to switch to backend API
-// NEXT_PUBLIC_USE_MOCK_DATA=false (uses backend API)
-// NEXT_PUBLIC_USE_MOCK_DATA=true (uses JSON files)
+# Logging Configuration
+LOG_LEVEL=warn
 ```
 
-#### **Critical Files to Review**
-- **`components/public/LoginCard.jsx`**: Demo user interface elements
-- **`lib/auth.js`**: Data source configuration (mock vs. live API)
-- **`.env.local`**: Environment variables for data source control
-- **`data/users.json`**: Demo user accounts and test data
-
-#### **Production Deployment Checklist**
-- [ ] Set `NODE_ENV=production` in deployment environment
-- [ ] Configure real database connection (replace JSON files)
-- [ ] Update authentication endpoints to real backend API
-- [ ] Remove or secure demo user accounts
-- [ ] Test login flow with production credentials
-- [ ] Verify demo features are properly hidden
-- [ ] Configure proper CORS settings for production domain
-- [ ] Set up proper error logging and monitoring
-
-#### **Environment Variables (Production)**
+#### **Frontend Environment Variables (Production)**
 ```env
-NODE_ENV=production
+# API Configuration
+NEXT_PUBLIC_API_URL=https://your-backend-api-domain.com/api
 NEXT_PUBLIC_USE_MOCK_DATA=false
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
-DATABASE_URL=your-production-database-url
-JWT_SECRET=your-secure-jwt-secret
+
+# Application Configuration
+NEXT_PUBLIC_APP_NAME=SmartLias
+NODE_ENV=production
+```
+
+### **Critical Production Changes**
+
+#### **Data Source Configuration**
+```javascript
+// Backend: Switch to real database
+USE_MOCK_DATA=false  // Uses database instead of JSON files
+
+// Frontend: Use production API
+NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
 ```
 
 #### **Security Considerations**
-- Remove all demo credentials and test accounts
+- Replace all demo credentials and test accounts
 - Implement proper password policies and validation
 - Configure rate limiting for authentication endpoints
 - Set up proper session management and token expiration
 - Enable HTTPS for all production traffic
 - Configure proper CORS policies
 
-### **Deployment Verification**
-After deployment, verify:
-1. Login page shows no demo credentials
-2. Authentication works with real user accounts
-3. All demo features are hidden from production users
-4. Error handling works properly in production
-5. Security headers and HTTPS are properly configured
+#### **Logging Configuration**
+- Set `LOG_LEVEL=warn` or `LOG_LEVEL=error` for production
+- Configure log rotation to prevent disk space issues
+- Set up log monitoring and alerting
+- Ensure logs don't contain sensitive information
+
+### **Deployment Checklist**
+- [ ] Set `NODE_ENV=production` in deployment environment
+- [ ] Configure real database connection (replace JSON files)
+- [ ] Update authentication endpoints to production API
+- [ ] Remove or secure demo user accounts
+- [ ] Test login flow with production credentials
+- [ ] Configure proper CORS settings for production domain
+- [ ] Set up proper error logging and monitoring
+- [ ] Test all API endpoints in production environment
+- [ ] Verify logging system works properly
+- [ ] Configure HTTPS and security headers
+
+### **Environment Variables Summary**
+
+#### **Development**
+```env
+# Backend
+PORT=9000
+USE_MOCK_DATA=true
+JWT_SECRET=dev-secret
+FRONTEND_URL=http://localhost:3000
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:9000/api
+NEXT_PUBLIC_USE_MOCK_DATA=false
+```
+
+#### **Production**
+```env
+# Backend
+PORT=9000
+USE_MOCK_DATA=false
+JWT_SECRET=secure-production-secret
+FRONTEND_URL=https://your-domain.com
+DATABASE_URL=your-production-db-url
+
+# Frontend
+NEXT_PUBLIC_API_URL=https://api.your-domain.com/api
+NEXT_PUBLIC_USE_MOCK_DATA=false
+```
 
 ---
 
-**Last Updated**: September 10, 2025  
-**Current Phase**: Backend API Development & Integration  
-**Architecture**: Separated Frontend (Next.js) + Backend (Express.js)  
-**Development Status**: COMPLETED: Frontend architecture, IN PROGRESS: Backend API development
+**Last Updated**: September 11, 2025  
+**Current Phase**: Full-stack Integration & Testing  
+**Architecture**: Separated Frontend (Next.js) + Backend (Express.js) with Centralized Router  
+**Development Status**: COMPLETED: Frontend & Backend architecture, IN PROGRESS: Integration testing and production preparation

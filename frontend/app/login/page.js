@@ -42,18 +42,22 @@ export default function LoginPage() {
   // VALIDATION FUNCTIONS
   // ============================================
   
-  const validatePin = () => {
+  const validatePin = (pinToValidate = pin) => {
     const newErrors = {}
 
-    if (!pin) {
+    if (!pinToValidate) {
       newErrors.pin = 'PIN is required'
-    } else if (pin.length !== 6) {
+    } else if (pinToValidate.length !== 6) {
       newErrors.pin = 'PIN must be 6 digits'
-    } else if (!/^\d{6}$/.test(pin)) {
+    } else if (!/^\d{6}$/.test(pinToValidate)) {
       newErrors.pin = 'PIN must contain only numbers'
     }
 
-    setErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      handleAlert(newErrors.pin, 'error')
+    }
+
     return Object.keys(newErrors).length === 0
   }
 
@@ -76,27 +80,46 @@ export default function LoginPage() {
     
     try {
       const userExists = await ApiClient.checkUser(sanitizedUsername)
-
-      console.log(userExists);
       
       if (!userExists.success) {
-        handleAlert(userExists.error, 'error')
+        // Better error handling for different scenarios
+        let errorMessage = userExists.error || 'Unknown error occurred'
+        
+        if (userExists.status === 404) {
+          errorMessage = 'Username not found'
+          // Set username field error for visual feedback
+          setErrors({ username: 'Username not found' })
+        } else if (userExists.status === 400) {
+          errorMessage = 'Invalid username format'
+          setErrors({ username: 'Invalid username format' })
+        } else if (errorMessage.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please check your connection.'
+          setErrors({ username: 'Connection error' })
+        } else {
+          setErrors({ username: 'Username validation failed' })
+        }
+        
+        handleAlert(errorMessage, 'error')
         setIsLoading(false)
         return
       }
 
-      setUserInfo(userExists.user)
+      // Clear any previous errors on successful validation
+      setErrors({})
+      setUserInfo(userExists.data?.user || userExists.user)
       setShowKeypad(true)
       
     } catch (error) {
-      handleAlert(error, 'error')
+      handleAlert('Unable to validate username. Please try again.', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleLogin = async ({ username, pin }) => {
-    if (!validatePin()) return
+    if (!validatePin(pin)) {
+      return
+    }
 
     setIsLoading(true)
     
@@ -110,15 +133,18 @@ export default function LoginPage() {
       }
 
       // Handle successful login
-      const message = !result.user.passwordChanged 
-        ? 'Password change required. Redirecting…'
-        : `Welcome ${result.user.firstName}! Redirecting…`
+      const user = result.data?.user || result.user
+      const redirectTo = result.data?.redirectTo || result.redirectTo
       
-      handleAlert(message, !result.user.passwordChanged ? 'info' : 'success')
+      const message = !user.passwordChanged 
+        ? 'Password change required. Redirecting…'
+        : `Welcome ${user.firstName}! Redirecting…`
+      
+      handleAlert(message, !user.passwordChanged ? 'info' : 'success')
 
       setTimeout(() => {
-        router.push(result.redirectTo)
-      }, 10)
+        router.push(redirectTo)
+      }, 1500) // Increased delay to see the toast message
 
     } catch (error) {
       handleAlert('Login failed. Please try again.', 'error')

@@ -13,6 +13,7 @@ const jwt = require('jsonwebtoken')
 const config = require('./config/config')
 const logger = require('./config/logger')
 const Validator = require('./utils/validator')
+const ApiResponse = require('./utils/apiResponse')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
@@ -57,29 +58,22 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     // Validate input
     if (!username || !pin) {
-      return res.status(400).json({
-        success: false,
-        error: 'Username and PIN are required'
-      })
+      return ApiResponse.error(res, 'Username and PIN are required', 400)
     }
 
     const usernameValidation = Validator.validateUsername(username)
     const pinValidation = Validator.validatePin(pin)
 
     if (!usernameValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid username format',
-        details: usernameValidation.errors
-      })
+      return ApiResponse.validationError(res, {
+        username: usernameValidation.errors
+      }, 'Invalid username format')
     }
 
     if (!pinValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid PIN format',
-        details: pinValidation.errors
-      })
+      return ApiResponse.validationError(res, {
+        pin: pinValidation.errors
+      }, 'Invalid PIN format')
     }
 
     // Load users
@@ -88,19 +82,13 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     if (!user) {
       logger.warn('Login attempt with non-existent username', { username, ip: req.ip })
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      })
+      return ApiResponse.unauthorized(res, 'Invalid credentials')
     }
 
     // Check if account is locked
     if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
       logger.warn('Login attempt on locked account', { username, ip: req.ip })
-      return res.status(423).json({
-        success: false,
-        error: 'Account temporarily locked. Please try again later.'
-      })
+      return ApiResponse.error(res, 'Account temporarily locked. Please try again later.', 423)
     }
 
     // Verify PIN
@@ -120,10 +108,7 @@ router.post('/auth/login', authLimiter, async (req, res) => {
       await saveJsonData('users.json', users)
 
       logger.warn('Failed login attempt', { username, ip: req.ip, attempts: user.failedLoginAttempts })
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      })
+      return ApiResponse.unauthorized(res, 'Invalid credentials')
     }
 
     // Successful login - reset failed attempts
@@ -150,8 +135,7 @@ router.post('/auth/login', authLimiter, async (req, res) => {
     // Determine redirect URL
     const redirectTo = user.role === 'admin' ? '/admin' : '/resident'
 
-    res.json({
-      success: true,
+    return ApiResponse.success(res, {
       token,
       user: {
         id: user.id,
@@ -161,16 +145,12 @@ router.post('/auth/login', authLimiter, async (req, res) => {
         lastName: user.lastName,
         passwordChanged: user.passwordChanged !== false
       },
-      redirectTo,
-      message: `Welcome ${user.firstName}!`
-    })
+      redirectTo
+    }, `Welcome ${user.firstName}!`)
 
   } catch (error) {
     logger.error('Login error', error)
-    res.status(500).json({
-      success: false,
-      error: 'Login failed. Please try again.'
-    })
+    return ApiResponse.serverError(res, 'Login failed. Please try again.', error)
   }
 })
 
@@ -180,47 +160,34 @@ router.post('/auth/check-user', authLimiter, async (req, res) => {
     const { username } = req.body
 
     if (!username) {
-      return res.status(400).json({
-        success: false,
-        error: 'Username is required'
-      })
+      return ApiResponse.error(res, 'Username is required', 400)
     }
 
     const usernameValidation = Validator.validateUsername(username)
     if (!usernameValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid username format',
-        details: usernameValidation.errors
-      })
+      return ApiResponse.validationError(res, {
+        username: usernameValidation.errors
+      }, 'Invalid username format')
     }
 
     const users = await loadJsonData('users.json')
     const user = users.find(u => u.username === username)
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      })
+      return ApiResponse.notFound(res, 'User not found')
     }
 
-    res.json({
-      success: true,
+    return ApiResponse.success(res, {
       user: {
         username: user.username,
         firstName: user.firstName,
         role: user.role
-      },
-      message: 'User found'
-    })
+      }
+    }, 'User found')
 
   } catch (error) {
     logger.error('Check user error', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to check user'
-    })
+    return ApiResponse.serverError(res, 'Failed to check user', error)
   }
 })
 

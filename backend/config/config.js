@@ -13,8 +13,17 @@ const config = {
   // Frontend Configuration
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   
+  // CORS Configuration - Multiple allowed origins
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://192.168.1.7:3000'  // Default network IP for development
+      ],
+  
   // Authentication Configuration
-  JWT_SECRET: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+  JWT_SECRET: process.env.JWT_SECRET || null,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
   
   // Security Configuration

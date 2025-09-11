@@ -26,6 +26,11 @@ export default function PINKeypad({
   // Add keyboard event listener for standard screens - only when PIN step is active
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // NEVER interfere with system shortcuts (Command, Ctrl, Alt key combinations)
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return // Let system shortcuts pass through completely
+      }
+      
       // Only handle keyboard input if not loading
       if (isLoading) return
       
