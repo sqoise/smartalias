@@ -41,10 +41,9 @@ yarn-error.log*
 .env*
 **/.env.local
 
-# logs
-/logs/*.log
-*/logs/
-**/*.log
+# logs - ignore all files inside logs/ but keep the folder
+logs/*
+!logs/.gitkeep
 
 # vercel
 .vercel

@@ -48,8 +48,8 @@ install-all:
 dev:
 	@echo "Starting SmartLias development servers..."
 	@echo "Frontend: http://localhost:3000"
-	@echo "Backend:  http://localhost:5000"
-	@echo "Health:   http://localhost:5000/health"
+	@echo "Backend:  http://localhost:9000"
+	@echo "Health:   http://localhost:9000/health"
 	@echo ""
 	@echo "Press Ctrl+C to stop both servers"
 	@echo ""
@@ -65,8 +65,8 @@ dev-frontend:
 
 dev-backend:
 	@echo "Starting backend development server..."
-	@echo "API available at: http://localhost:5000"
-	@echo "Health check: http://localhost:5000/health"
+	@echo "API available at: http://localhost:9000"
+	@echo "Health check: http://localhost:9000/health"
 	@cd backend && npm run dev
 
 build:
@@ -91,7 +91,7 @@ start:
 	@echo "Copying environment variables..."
 	@cp .env frontend/.env.local
 	@echo "Frontend: http://localhost:3000"
-	@echo "Backend:  http://localhost:5000"
+	@echo "Backend:  http://localhost:9000"
 	@echo ""
 	@trap 'echo "Stopping servers..."; kill %1 %2 2>/dev/null; exit' INT; \
 	cd backend && npm start & \

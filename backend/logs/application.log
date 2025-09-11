@@ -1,0 +1,52 @@
+[2025-09-11 14:34:51] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:34:51] INFO: Environment: development
+[2025-09-11 14:34:51] INFO: Port: 9000
+[2025-09-11 14:34:51] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:34:51] INFO: Data Source: JSON Files
+[2025-09-11 14:34:51] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:34:51] INFO: Logs Directory: undefined
+[2025-09-11 14:35:27] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:35:27] INFO: Environment: development
+[2025-09-11 14:35:27] INFO: Port: 9000
+[2025-09-11 14:35:27] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:35:27] INFO: Data Source: JSON Files
+[2025-09-11 14:35:27] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:35:27] INFO: Logs Directory: undefined
+[2025-09-11 14:35:43] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:44] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:45] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:46] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:46] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:46] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:46] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:47] WARN: 404 - Route not found: GET /
+[2025-09-11 14:35:49] WARN: 404 - Route not found: GET /api
+[2025-09-11 14:35:58] WARN: 404 - Route not found: GET /api/
+[2025-09-11 14:37:23] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:37:23] INFO: Environment: development
+[2025-09-11 14:37:23] INFO: Port: 9000
+[2025-09-11 14:37:23] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:37:23] INFO: Data Source: JSON Files
+[2025-09-11 14:37:23] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:37:23] INFO: Logs Directory: undefined
+[2025-09-11 14:37:24] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:37:24] INFO: Environment: development
+[2025-09-11 14:37:24] INFO: Port: 9000
+[2025-09-11 14:37:24] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:37:24] INFO: Data Source: JSON Files
+[2025-09-11 14:37:24] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:37:24] INFO: Logs Directory: undefined
+[2025-09-11 14:37:26] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:37:26] INFO: Environment: development
+[2025-09-11 14:37:26] INFO: Port: 9000
+[2025-09-11 14:37:26] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:37:26] INFO: Data Source: JSON Files
+[2025-09-11 14:37:26] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:37:26] INFO: Logs Directory: undefined
+[2025-09-11 14:37:29] INFO: SMARTLIAS Backend Server started
+[2025-09-11 14:37:29] INFO: Environment: development
+[2025-09-11 14:37:29] INFO: Port: 9000
+[2025-09-11 14:37:29] INFO: Frontend URL: http://localhost:3000
+[2025-09-11 14:37:29] INFO: Data Source: JSON Files
+[2025-09-11 14:37:29] INFO: Health Check: http://localhost:9000/health
+[2025-09-11 14:37:29] INFO: Logs Directory: undefined

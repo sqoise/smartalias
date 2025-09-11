@@ -115,7 +115,7 @@ useImperativeHandle(ref, () => ({
         return (
           <div 
             key={toast.id}
-            className={`flex items-center w-full lg:w-90 p-2 px-2 rounded-xl ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in relative overflow-hidden`} 
+            className={`flex items-center w-full lg:w-90 p-3 px-2 rounded-xl ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in relative overflow-hidden`} 
             role="alert"
             style={{ 
               animationDelay: `${index * 100}ms`,

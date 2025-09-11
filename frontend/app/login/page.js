@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import LoginCard from '../../components/public/LoginCard'
-import ApiClient from '../../lib/api'
+import ApiClient from '../../lib/apiClient'
 
 export default function LoginPage() {
 
@@ -17,7 +17,7 @@ export default function LoginPage() {
   
   const [isLoading, setIsLoading] = useState(false)
   const [username, setUsername] = useState('')
-  const [mpin, setMpin] = useState('')
+  const [pin, setPin] = useState('')
   const [userInfo, setUserInfo] = useState(null) // Store user details after username validation
   const [errors, setErrors] = useState({})
   const [showKeypad, setShowKeypad] = useState(false) // Track keypad state for PublicLayout
@@ -42,15 +42,15 @@ export default function LoginPage() {
   // VALIDATION FUNCTIONS
   // ============================================
   
-  const validateMpin = () => {
+  const validatePin = () => {
     const newErrors = {}
 
-    if (!mpin) {
-      newErrors.mpin = 'MPIN is required'
-    } else if (mpin.length !== 6) {
-      newErrors.mpin = 'MPIN must be 6 digits'
-    } else if (!/^\d{6}$/.test(mpin)) {
-      newErrors.mpin = 'MPIN must contain only numbers'
+    if (!pin) {
+      newErrors.pin = 'PIN is required'
+    } else if (pin.length !== 6) {
+      newErrors.pin = 'PIN must be 6 digits'
+    } else if (!/^\d{6}$/.test(pin)) {
+      newErrors.pin = 'PIN must contain only numbers'
     }
 
     setErrors(newErrors)
@@ -75,7 +75,7 @@ export default function LoginPage() {
     setErrors({})
     
     try {
-      const userExists = await ApiClient.checkUsername(sanitizedUsername)
+      const userExists = await ApiClient.checkUser(sanitizedUsername)
 
       console.log(userExists);
       
@@ -89,19 +89,19 @@ export default function LoginPage() {
       setShowKeypad(true)
       
     } catch (error) {
-      handleAlert('Unable to verify username. Please try again.', 'error')
+      handleAlert(error, 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleLogin = async ({ username, mpin }) => {
-    if (!validateMpin()) return
+  const handleLogin = async ({ username, pin }) => {
+    if (!validatePin()) return
 
     setIsLoading(true)
     
     try {
-      const result = await ApiClient.login(sanitizeInput(username), mpin)
+      const result = await ApiClient.login(sanitizeInput(username), pin)
 
       if (!result.success) {
         handleAlert(result.error, 'error')
@@ -127,26 +127,26 @@ export default function LoginPage() {
   }
 
   // ============================================
-  // MPIN KEYPAD HANDLERS
+  // PIN KEYPAD HANDLERS
   // ============================================
   const handleKeypadNumber = (number) => {
-    if (mpin.length < 6) {
-      const newMpin = mpin + number
-      setMpin(newMpin)
-      if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
+    if (pin.length < 6) {
+      const newPin = pin + number
+      setPin(newPin)
+      if (errors.pin) setErrors(prev => ({ ...prev, pin: '' }))
       
       // Auto-execute login when 6 digits are completed
-      if (newMpin.length === 6) {
+      if (newPin.length === 6) {
         setTimeout(() => {
-          handleLogin({ username, mpin: newMpin })
+          handleLogin({ username, pin: newPin })
         }, 100) // Small delay for better UX
       }
     }
   }
 
   const handleKeypadBackspace = () => {
-    setMpin(prev => prev.slice(0, -1))
-    if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
+    setPin(prev => prev.slice(0, -1))
+    if (errors.pin) setErrors(prev => ({ ...prev, pin: '' }))
   }
 
   // ============================================
@@ -160,7 +160,7 @@ export default function LoginPage() {
           username={username}
           setUsername={setUsername}
           onUsernameSubmit={handleUsernameSubmit}
-          mpin={mpin}
+          pin={pin}
           errors={errors}
           setErrors={setErrors}
           isLoading={isLoading}

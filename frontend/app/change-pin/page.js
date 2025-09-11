@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
-import ChangeMPINCard from '../../components/public/ChangeMPINCard'
+import ChangePINCard from '../../components/public/ChangePINCard'
 import PageLoading from '../../components/common/PageLoading'
-import ApiClient from '../../lib/api'
+import ApiClient from '../../lib/apiClient'
 
 export default function ChangePINPage() {
   const router = useRouter()
@@ -86,25 +86,25 @@ export default function ChangePINPage() {
   }, [isValidToken, showKeypad])
 
   // ==================== VALIDATION LOGIC ====================
-  const validateMPIN = (mpin) => {
+  const validatePIN = (pin) => {
     return {
-      length: mpin?.length === 6,
-      numeric: /^\d+$/.test(mpin)
+      length: pin?.length === 6,
+      numeric: /^\d+$/.test(pin)
     }
   }
 
-  const isValidMPIN = (mpin) => {
-    const validation = validateMPIN(mpin)
+  const isValidPIN = (pin) => {
+    const validation = validatePIN(pin)
     return validation.length && validation.numeric
   }
 
   // ==================== API READY FUNCTIONS ====================
-  const submitNewMPIN = async (pin) => {
+  const submitNewPIN = async (pin) => {
     try {
       const token = searchParams.get('token')
       
       // Call the API to change password
-      const result = await ApiClient.changePassword(token, pin)
+      const result = await ApiClient.changePin(token, pin)
       
       if (result.success) {
         return { success: true, message: result.message || 'Password changed successfully' }
@@ -127,12 +127,12 @@ export default function ChangePINPage() {
   }
 
   const getPinValidation = () => {
-    return validateMPIN(newPin)
+    return validatePIN(newPin)
   }
 
   // ==================== STEP HANDLERS ====================
   const handleNewPinSubmit = () => {
-    if (!isValidMPIN(newPin)) {
+    if (!isValidPIN(newPin)) {
       showAlert('PIN must be exactly 6 digits', 'error')
       return
     }
@@ -150,7 +150,7 @@ export default function ChangePINPage() {
     setIsLoading(true)
 
     try {
-      const result = await submitNewMPIN(newPin)
+      const result = await submitNewPIN(newPin)
       
       if (result.success) {
         showAlert('PIN changed successfully! Redirecting to login...', 'success')
@@ -180,7 +180,7 @@ export default function ChangePINPage() {
         setNewPin(newValue)
         
         // Demo: Auto-advance when PIN is complete - KEEP OR REMOVE AS NEEDED
-        if (newValue.length === 6 && isValidMPIN(newValue)) {
+        if (newValue.length === 6 && isValidPIN(newValue)) {
           setTimeout(() => {
             setCurrentStep('confirm-pin')
             setErrors({})
@@ -220,7 +220,7 @@ export default function ChangePINPage() {
         variant="change-pin" 
         hideBackgroundImage={showKeypad}
       >
-        <ChangeMPINCard
+        <ChangePINCard
           currentStep={currentStep}
           newPin={newPin}
           confirmPin={confirmPin}

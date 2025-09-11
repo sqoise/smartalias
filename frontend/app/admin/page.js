@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import ApiClient from '../../lib/api'
+import ApiClient from '../../lib/apiClient'
 
 export default function AdminDashboard() {
   const [showResidentModal, setShowResidentModal] = useState(false)

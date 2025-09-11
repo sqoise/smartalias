@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import MPINKeypad from '../common/MPINKeypad'
+import PINKeypad from '../common/PINKeypad'
 import Spinner from '../common/Spinner'
 import Modal from '../common/Modal'
 import ToastNotification from '../common/ToastNotification'
@@ -9,7 +9,7 @@ import ToastNotification from '../common/ToastNotification'
 export default function LoginCard({
   username,
   setUsername,
-  mpin,
+  pin,
   errors,
   setErrors,
   isLoading,
@@ -25,27 +25,27 @@ export default function LoginCard({
   const [showForgotModal, setShowForgotModal] = useState(false)
   const toastRef = useRef()
 
-  // Clear MPIN when keypad is toggled off
+  // Clear PIN when keypad is toggled off
   useEffect(() => {
-    if (!showKeypad && mpin.length > 0) {
-      // Clear all MPIN digits when keypad is closed
-      const currentLength = mpin.length
+    if (!showKeypad && pin.length > 0) {
+      // Clear all PIN digits when keypad is closed
+      const currentLength = pin.length
       for (let i = 0; i < currentLength; i++) {
         setTimeout(() => onKeypadBackspace(), i * 10) // Small staggered delay
       }
     }
   }, [showKeypad])
 
-  const handleMPINLogin = () => {
+  const handlePINLogin = () => {
     if (!username.trim()) {
       setErrors(prev => ({ ...prev, username: 'Username is required' }))
       return
     }
-    if (mpin.length !== 6) {
-      setErrors(prev => ({ ...prev, mpin: 'Please enter your 6-digit PIN' }))
+    if (pin.length !== 6) {
+      setErrors(prev => ({ ...prev, pin: 'Please enter your 6-digit PIN' }))
       return
     }
-    onLogin({ username, mpin })
+    onLogin({ username, pin })
   }
 
   // Handle Enter and Escape key press
@@ -71,14 +71,14 @@ export default function LoginCard({
             onUsernameSubmit(username.trim())
           }
         }
-        // Removed MPIN Enter handling - login now happens automatically on 6th digit
+        // Removed PIN Enter handling - login now happens automatically on 6th digit
       }
     }
 
     // Use capture phase to handle events before other components
     document.addEventListener('keydown', handleKeyPress, true)
     return () => document.removeEventListener('keydown', handleKeyPress, true)
-  }, [showKeypad, username, mpin, handleMPINLogin])
+  }, [showKeypad, username, pin, handlePINLogin])
 
   // Handle focus behavior when keypad toggles
   useEffect(() => {
@@ -206,7 +206,7 @@ export default function LoginCard({
 
 
           
-          {/* MPIN Login Button */}
+          {/* PIN Login Button */}
           {!showKeypad && (
             <div className="flex justify-center pt-6 pb-1">
               <button 
@@ -231,26 +231,26 @@ export default function LoginCard({
                 ) : (
                   <div className="text-center">
                     <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
-                    <span className="text-xs sm:text-xs lg:text-xs font-medium">MPIN Login</span>
+                    <span className="text-xs sm:text-xs lg:text-xs font-medium">PIN Login</span>
                   </div>
                 )}
               </button>
             </div>
           )}
 
-          {/* MPIN Input - Show on both mobile and desktop when keypad is active */}
+          {/* PIN Input - Show on both mobile and desktop when keypad is active */}
           {showKeypad && (
             <div>
               <div className="text-center pt-4">
                 <label className="block text-lg font-medium text-gray-700 mb-3">
-                  Enter your 6-digit MPIN
+                  Enter your 6-digit PIN
                 </label>
                 <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
                       className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner ${
-                        mpin[index] 
+                        pin[index] 
                           ? 'bg-green-700' 
                           : 'bg-slate-200'
                       }`}
@@ -262,7 +262,7 @@ export default function LoginCard({
             </div>
           )}
 
-          {/* Forgot Username/MPIN Link - Mobile positioning */}
+          {/* Forgot Username/PIN Link - Mobile positioning */}
           <div className={`lg:hidden text-center pt-4 ${
             showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
@@ -275,12 +275,12 @@ export default function LoginCard({
               }}
               className="text-xs text-gray-500 hover:text-green-600 active:text-green-700 cursor-pointer transition-colors"
             >
-              Forgot Username or MPIN?
+              Forgot Username or PIN?
             </a>
           </div>
         </div>
         
-        {/* Forgot Username/MPIN Link - Desktop fixed footer */}
+        {/* Forgot Username/PIN Link - Desktop fixed footer */}
         <div className={`hidden lg:block absolute bottom-4 left-0 right-0 text-center transition-opacity duration-300 ${
           showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}>
@@ -293,7 +293,7 @@ export default function LoginCard({
             }}
             className="text-xs text-gray-500 hover:text-green-600 active:text-green-700 cursor-pointer transition-colors"
           >
-            Forgot Username or MPIN?
+            Forgot Username or PIN?
           </a>
         </div>
         </div>
@@ -314,8 +314,8 @@ export default function LoginCard({
             {/* Keypad content */}
             <div className="flex-1 flex items-center justify-center">
               <div className="w-full p-2">
-                  <MPINKeypad 
-                    mpin={mpin}
+                  <PINKeypad 
+                    pin={pin}
                     onNumberPress={onKeypadNumber}
                     onBackspace={onKeypadBackspace}
                     onBack={() => setShowKeypad(false)}
@@ -356,10 +356,10 @@ export default function LoginCard({
             <div className="w-15 h-1 bg-gray-400 rounded-full hover:bg-gray-500 transition-colors duration-200"></div>
           </div>
 
-          {/* MPIN Input Component */}
+          {/* PIN Input Component */}
           <div className="mb-6">
-            <MPINKeypad 
-              mpin={mpin}
+            <PINKeypad 
+              pin={pin}
               onNumberPress={onKeypadNumber}
               onBackspace={onKeypadBackspace}
               onBack={() => setShowKeypad(false)}
@@ -371,7 +371,7 @@ export default function LoginCard({
         </div>
       </div>
 
-      {/* Forgot MPIN Modal */}
+      {/* Forgot PIN Modal */}
       <Modal
         isOpen={showForgotModal}
         onClose={() => setShowForgotModal(false)}

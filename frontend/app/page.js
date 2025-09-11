@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLoading from '../components/common/PageLoading'
-import ApiClient from '../lib/api'
+import ApiClient from '../lib/apiClient'
 import { ROLE_TYPES } from '../lib/constants'
 
 export default function HomePage() {

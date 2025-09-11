@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import MPINKeypad from '../common/MPINKeypad'
+import PINKeypad from '../common/PINKeypad'
 import ToastNotification from '../common/ToastNotification'
 import Link from 'next/link'
 
-export default function ChangeMPINCard({
+export default function ChangePINCard({
   currentStep,
   newPin,
   confirmPin,
@@ -56,7 +56,7 @@ export default function ChangeMPINCard({
           
           {/* Step content container */}
           <div className="relative flex z-10">
-            {/* Step 1: New MPIN */}
+            {/* Step 1: New PIN */}
             <div 
               className={`w-1/2 px-2 py-2 sm:px-3 sm:py-2 rounded-md transition-all duration-500 flex-shrink-0 relative z-20 ${
                 currentStep === 'confirm-pin' ? 'cursor-pointer hover:bg-green-200/50' : ''
@@ -85,7 +85,7 @@ export default function ChangeMPINCard({
               </div>
             </div>
 
-            {/* Step 2: Confirm MPIN */}
+            {/* Step 2: Confirm PIN */}
             <div className="w-1/2 px-2 py-2 sm:px-3 sm:py-2 rounded-md transition-all duration-500 flex-shrink-0 relative z-20">
               <div className="flex items-center justify-center space-x-1">
                 <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
@@ -114,13 +114,13 @@ export default function ChangeMPINCard({
         {/* Main Content Area */}
         <div className="h-full lg:pt-8 pt-12">
 
-          {/* MPIN Input - Fixed position container to prevent movement */}
+          {/* PIN Input - Fixed position container to prevent movement */}
           <div className="mb-6 lg:mt-4 text-center">
             <div className={showKeypad ? "pt-4" : "cursor-pointer"} onClick={!showKeypad ? toggleKeypad : undefined}>
               <label className="block text-lg font-medium text-gray-700 mb-3">
                 {currentStep === 'new-pin' 
-                  ? 'Create your new 6-digit MPIN'
-                  : 'Confirm your new MPIN'
+                  ? 'Create your new 6-digit PIN'
+                  : 'Confirm your new PIN'
                 }
               </label>
               <div className="flex justify-center space-x-3 py-2">
@@ -176,8 +176,8 @@ export default function ChangeMPINCard({
             {/* Keypad content */}
             <div className="flex-1 flex items-center justify-center">
               <div className="w-full p-2">
-                <MPINKeypad 
-                  mpin={getCurrentPin()}
+                <PINKeypad 
+                  pin={getCurrentPin()}
                   onNumberPress={onKeypadNumber}
                   onBackspace={onKeypadBackspace}
                   onClose={closeKeypad}
@@ -210,7 +210,7 @@ export default function ChangeMPINCard({
             <div className="w-10 h-1 bg-gray-400 rounded-full hover:bg-gray-500 active:bg-gray-600 transition-colors duration-200"></div>
           </div>
           
-          <MPINKeypad 
+          <PINKeypad 
             mpin={getCurrentPin()}
             onNumberPress={onKeypadNumber}
             onBackspace={onKeypadBackspace}

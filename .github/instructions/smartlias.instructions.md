@@ -164,10 +164,11 @@ export default function LoginCard({
 ### **🎯 Development Standards**
 
 #### **Code Quality Rules**
-- **NO EMOJIS** in code, comments, or commit messages
-- **NO EMOTICONS** or decorative symbols in production code
-- **Clean Text**: Professional language without decorative symbols
+- **NO EMOJIS** in code, comments, commit messages, or any output text
+- **NO EMOTICONS** or decorative symbols in production code or console output
+- **Clean Text**: Professional language without decorative symbols in all output
 - **Demo Comments**: Mark temporary code with `// Demo:` for easy identification
+- **Simple Output**: All server messages, console logs, and responses use plain text only
 
 #### **Validation Pattern (MANDATORY)**
 ```javascript
@@ -317,10 +318,36 @@ className="p-3 rounded-md border text-sm bg-red-50 border-red-200 text-red-800" 
 
 ## ⚙️ BACKEND GUIDELINES
 
-### **🔧 API Development Standards**
+### **🔧 Simple Backend Architecture**
+
+#### **File Structure (Keep It Simple)**
+```
+backend/
+├── server.js              # Main server file - handles Express setup and server start
+├── routes/                 # Organized API routes by feature
+│   ├── auth.js             # Authentication endpoints (login, logout, etc.)
+│   └── residents.js        # Residents CRUD operations
+├── data/                   # JSON data files (temporary, before SQL)
+│   ├── users.json          # User accounts for authentication
+│   └── residents.json      # Resident records
+├── .env                    # Environment variables
+└── package.json           # Dependencies
+```
+
+#### **Simple Organized Approach**
+- **server.js**: Express setup, middleware, CORS, error handling, server startup
+- **routes/auth.js**: All authentication endpoints and logic
+- **routes/residents.js**: All residents management endpoints
+- Each route file is focused on one specific feature
+
+#### **Benefits of This Structure**
+- Easy to understand - each file has one clear purpose
+- Feature-based organization - auth logic separate from residents logic
+- Student-friendly - can learn one feature at a time
+- Scalable - easy to add new features as separate route files
 
 #### **RESTful API Design**
-- **Base URL**: `http://localhost:5000/api` (development)
+- **Base URL**: `http://localhost:9000/api` (development)
 - **Format**: JSON for all request/response payloads
 - **HTTP Methods**: GET (read), POST (create), PUT (update), DELETE (remove)
 - **Status Codes**: 200 (success), 201 (created), 400 (bad request), 401 (unauthorized), 404 (not found), 500 (server error)

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Spinner from './Spinner'
 
-export default function MPINKeypad({ 
-  mpin, 
+export default function PINKeypad({ 
+  pin, 
   onNumberPress, 
   onBackspace, 
   errors = {},
@@ -23,13 +23,13 @@ export default function MPINKeypad({
     setMounted(true)
   }, [])
   
-  // Add keyboard event listener for standard screens - only when MPIN step is active
+  // Add keyboard event listener for standard screens - only when PIN step is active
   useEffect(() => {
     const handleKeyDown = (event) => {
       // Only handle keyboard input if not loading
       if (isLoading) return
       
-      // Only handle keyboard input if we're focused on the MPIN area or no input is focused
+      // Only handle keyboard input if we're focused on the PIN area or no input is focused
       const activeElement = document.activeElement
       const isInputFocused = activeElement && (
         activeElement.tagName === 'INPUT' || 
@@ -59,7 +59,7 @@ export default function MPINKeypad({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [mpin, onNumberPress, onBackspace, isLoading])
+  }, [pin, onNumberPress, onBackspace, isLoading])
 
   return (
     <>
