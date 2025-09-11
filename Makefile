@@ -124,5 +124,4 @@ clean:
 	@echo "Removing lock files..."
 	@rm -f frontend/package-lock.json backend/package-lock.json
 	@echo "Removing copied environment files..."
-	@rm -f frontend/.env.local
 	@echo "Clean complete!"
