@@ -1,13 +1,13 @@
 'use client'
 
-import BaseLayout from '../../components/BaseLayout.jsx'
-import Header from '../../components/Header.jsx'
-import Sidebar from '../../components/Sidebar.jsx'
+import DashboardLayout from '../../components/authenticated/DashboardLayout.jsx'
+import Header from '../../components/authenticated/Header.jsx'
+import Sidebar from '../../components/authenticated/Sidebar.jsx'
 
 export default function ResidentLayout({ children }) {
   return (
-    <BaseLayout header={<Header role="resident" userName="Juan Dela Cruz" />} sidebar={<Sidebar role="resident" />}>
+    <DashboardLayout header={<Header role="resident" userName="Juan Dela Cruz" />} sidebar={<Sidebar role="resident" />}>
       {children}
-    </BaseLayout>
+    </DashboardLayout>
   )
 }

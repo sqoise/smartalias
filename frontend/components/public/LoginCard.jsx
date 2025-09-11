@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import MPINKeypad from './MPINKeypad'
-import Spinner from './Spinner'
-import Modal from './Modal'
+import { useState, useEffect, useRef } from 'react'
+import MPINKeypad from '../common/MPINKeypad'
+import Spinner from '../common/Spinner'
+import Modal from '../common/Modal'
+import ToastNotification from '../common/ToastNotification'
 
 export default function LoginCard({
   username,
@@ -15,12 +16,25 @@ export default function LoginCard({
   onLogin,
   onKeypadNumber,
   onKeypadBackspace,
+  onUsernameSubmit, // Add this prop for username validation
   showLogo = false,
   className = '',
   showKeypad,
   setShowKeypad
 }) {
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const toastRef = useRef()
+
+  // Clear MPIN when keypad is toggled off
+  useEffect(() => {
+    if (!showKeypad && mpin.length > 0) {
+      // Clear all MPIN digits when keypad is closed
+      const currentLength = mpin.length
+      for (let i = 0; i < currentLength; i++) {
+        setTimeout(() => onKeypadBackspace(), i * 10) // Small staggered delay
+      }
+    }
+  }, [showKeypad])
 
   const handleMPINLogin = () => {
     if (!username.trim()) {
@@ -49,14 +63,15 @@ export default function LoginCard({
       
       if (event.key === 'Enter') {
         if (!showKeypad && username.trim()) {
-          // If keypad is not shown and username is entered, show keypad
+          // If keypad is not shown and username is entered, validate and show keypad
           event.preventDefault()
-          setShowKeypad(true)
-        } else if (showKeypad && mpin.length === 6) {
-          // If keypad is shown and MPIN is complete, trigger login
-          event.preventDefault()
-          handleMPINLogin()
+          
+          // Use parent validation instead of local validation
+          if (onUsernameSubmit) {
+            onUsernameSubmit(username.trim())
+          }
         }
+        // Removed MPIN Enter handling - login now happens automatically on 6th digit
       }
     }
 
@@ -121,7 +136,7 @@ export default function LoginCard({
 
         {/* Single Page Login Form */}
         <div className="h-full flex flex-col">
-          {/* DEMO: Demo Credentials - Show when keypad is not active */}
+          {/* DEMO: Demo Credentials - TODO: Remove this entire section for production release */}
           {!showKeypad && (
             <div className="mb-4 p-3 bg-blue-50 border-dashed border border-blue-200 rounded-md">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h4>
@@ -132,6 +147,7 @@ export default function LoginCard({
               </div>
             </div>
           )}
+          {/* DEMO: End of demo section */}
           
           {/* Username Input - Hide when keypad is active */}
           {!showKeypad && (
@@ -146,7 +162,9 @@ export default function LoginCard({
                 <div className="relative">
                   {/* Username icon */}
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 flex items-center justify-center">
-                    <i className="bi bi-person text-gray-500 text-lg sm:text-sm md:text-lg lg:text-lg"></i>
+                    <i className={`bi bi-person text-lg sm:text-sm md:text-lg lg:text-lg transition-colors duration-300 ${
+                      errors.username ? 'text-red-500' : 'text-gray-500'
+                    }`}></i>
                   </div>
                   <input 
                     id="username"
@@ -173,18 +191,15 @@ export default function LoginCard({
                       // Reset font size after blur
                       e.target.style.fontSize = ''
                     }}
-                    className={`w-full rounded-lg sm:rounded-md lg:rounded-md border transition-all duration-300 ${
+                    className={`w-full rounded-lg sm:rounded-md lg:rounded-md transition-all duration-300 ${
                       errors.username 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        ? 'border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500 focus:ring-opacity-50' 
+                        : 'border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                     } placeholder:text-gray-400 focus:scale-100 bg-white pl-10 pr-4 py-3 sm:pl-9 sm:pr-3 sm:py-2 lg:pl-10 lg:pr-3 lg:py-2 text-base sm:text-sm lg:text-sm`}
                     placeholder="Enter your username"
                     style={{ fontSize: '16px' }}
                   />
                 </div>
-                {errors.username && (
-                  <p className="mt-2 sm:mt-1 lg:mt-1 text-sm sm:text-xs lg:text-xs text-red-600">{errors.username}</p>
-                )}
               </div>
             </div>
           )}
@@ -197,13 +212,10 @@ export default function LoginCard({
               <button 
                 type="button"
                 onClick={() => {
-                  if (!username.trim()) {
-                    setErrors(prev => ({ ...prev, username: 'Username is required' }))
-                    return
+                  // Use parent validation instead of local validation
+                  if (onUsernameSubmit) {
+                    onUsernameSubmit(username.trim())
                   }
-                  // Remove focus from username field
-                  document.getElementById('username')?.blur()
-                  setShowKeypad(true)
                 }}
                 disabled={isLoading || !username.trim()}
                 className={`w-24 h-24 sm:w-20 sm:h-20 lg:w-22 lg:h-22 rounded-xl shadow-lg 
@@ -215,7 +227,7 @@ export default function LoginCard({
                            ${isLoading ? 'opacity-60' : 'hover:scale-105 active:scale-95'}`}
               >
                 {isLoading ? (
-                  <Spinner size="sm" color="white" />
+                  <Spinner size="xl" color="white" />
                 ) : (
                   <div className="text-center">
                     <i className="bi bi-grid-3x3-gap text-3xl sm:text-2xl lg:text-3xl block mb-1"></i>
@@ -228,42 +240,24 @@ export default function LoginCard({
 
           {/* MPIN Input - Show on both mobile and desktop when keypad is active */}
           {showKeypad && (
-            <div className="transition-all duration-300 ease-out">
+            <div>
               <div className="text-center pt-4">
-                <label 
-                  className={`block text-lg font-medium text-gray-700 mb-3 transition-all duration-200 ${
-                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-                  }`}
-                >
+                <label className="block text-lg font-medium text-gray-700 mb-3">
                   Enter your 6-digit MPIN
                 </label>
                 <div className="flex justify-center space-x-3 py-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
                       key={index}
-                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner transition-all duration-200 ${
+                      className={`w-3 h-3 rounded-full flex items-center justify-center shadow-inner ${
                         mpin[index] 
                           ? 'bg-green-700' 
                           : 'bg-slate-200'
-                      } ${
-                        showKeypad 
-                          ? 'opacity-100 translate-y-0' 
-                          : 'opacity-0 translate-y-2'
                       }`}
-                      style={{
-                        transitionDelay: showKeypad ? `${index * 50}ms` : `${(5 - index) * 50}ms`
-                      }}
                     >
                     </div>
                   ))}
                 </div>
-                {errors.mpin && (
-                  <p className={`mt-1 text-xs text-red-600 text-center transition-all duration-200 ${
-                    showKeypad ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                  }`} style={{ transitionDelay: showKeypad ? '300ms' : '0ms' }}>
-                    {errors.mpin}
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -274,7 +268,7 @@ export default function LoginCard({
           }`}>
             <a 
               href="#" 
-              onClick={(e) => {
+              onClick={(e) => { 
                 e.preventDefault()
                 e.stopPropagation()
                 setShowForgotModal(true)
@@ -312,7 +306,7 @@ export default function LoginCard({
           style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="h-full w-full bg-gray-100 backdrop-blur-sm rounded-b-lg flex flex-col">
+          <div className="h-full w-full bg-gray-200 backdrop-blur-sm rounded-b-lg flex flex-col">
             {/* Top handle indicator */}
             <div className="flex justify-center pt-2 cursor-pointer" onClick={() => setShowKeypad(false)}>
               <div className="w-10 h-1 bg-gray-400 rounded-full hover:bg-gray-400 active:bg-gray-400 transition-colors duration-200"></div>
@@ -349,7 +343,7 @@ export default function LoginCard({
       >
         {/* Mobile keypad - slides up from bottom */}
         <div 
-          className={`absolute inset-x-0 bottom-0 bg-gray-100 border-t border-gray-300 shadow-2xl pt-6 p-2 transition-transform duration-300 ease-out ${
+          className={`absolute inset-x-0 bottom-0 bg-gray-200 border-t border-gray-300 shadow-2xl pt-6 p-2 transition-transform duration-300 ease-out ${
             showKeypad ? 'translate-y-0' : 'translate-y-full'
           }`}
           style={{ boxShadow: '0 -10px 25px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)' }}
@@ -385,10 +379,12 @@ export default function LoginCard({
         type="alert"
       >
         <p className="text-gray-600">
-          Please visit Barangay LIAS office directly for assistance with account recovery.
-          Bring a valid ID for verification.
+          Please visit Barangay LIAS office for assistance. Bring a valid ID for verification.
         </p>
       </Modal>
+
+      {/* Toast Notification */}
+      <ToastNotification ref={toastRef} />
     </>
   )
 }

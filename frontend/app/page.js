@@ -2,18 +2,19 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import PageLoading from '../components/PageLoading'
-import { auth, ROLE_TYPES } from '../lib/auth'
+import PageLoading from '../components/common/PageLoading'
+import ApiClient from '../lib/api'
+import { ROLE_TYPES } from '../lib/constants'
 
 export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    const checkSessionAndRedirect = () => {
-      // Check if user is authenticated using frontend auth
-      const session = auth.getSession()
+    const checkSessionAndRedirect = async () => {
+      // Check if user is authenticated using ApiClient
+      const session = await ApiClient.getSession()
       
-      if (session) {
+      if (session && session.success) {
         // User is authenticated, redirect to appropriate dashboard
         const dashboardUrl = session.user.role === ROLE_TYPES.ADMIN ? '/admin' : '/resident'
         router.push(dashboardUrl)

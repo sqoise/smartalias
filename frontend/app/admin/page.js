@@ -1,9 +1,43 @@
 'use client'
 
 import { useState } from 'react'
+import ApiClient from '../../lib/api'
 
 export default function AdminDashboard() {
   const [showResidentModal, setShowResidentModal] = useState(false)
+  const [accountStatusData, setAccountStatusData] = useState(null)
+  const [statusUsername, setStatusUsername] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Account security management
+  const handleCheckAccountStatus = async () => {
+    if (!statusUsername.trim()) return
+    
+    setIsLoading(true)
+    try {
+      const result = await ApiClient.getAccountStatus(statusUsername.trim())
+      setAccountStatusData(result)
+    } catch (error) {
+      console.error('Error checking account status:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleUnlockAccount = async (username) => {
+    setIsLoading(true)
+    try {
+      const result = await ApiClient.unlockAccount(username)
+      if (result.success) {
+        // Refresh account status
+        await handleCheckAccountStatus()
+      }
+    } catch (error) {
+      console.error('Error unlocking account:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <>
@@ -117,6 +151,92 @@ export default function AdminDashboard() {
                 <span className="text-sm font-medium text-gray-600 group-hover:text-orange-600">Generate Report</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Security Management Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <i className="bi bi-shield-check text-red-600"></i>
+            Account Security Management
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter username to check status"
+                value={statusUsername}
+                onChange={(e) => setStatusUsername(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleCheckAccountStatus}
+                disabled={isLoading || !statusUsername.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Checking...' : 'Check Status'}
+              </button>
+            </div>
+
+            {accountStatusData && (
+              <div className="mt-4 p-4 border rounded-md">
+                {accountStatusData.success ? (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Account Status for {accountStatusData.accountStatus.username}</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          accountStatusData.accountStatus.isLocked 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {accountStatusData.accountStatus.isLocked ? 'LOCKED' : 'ACTIVE'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Failed Attempts:</span>
+                        <span className="ml-2 font-medium">{accountStatusData.accountStatus.failedAttempts}/5</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Password Changed:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          accountStatusData.accountStatus.passwordChanged 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {accountStatusData.accountStatus.passwordChanged ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      {accountStatusData.accountStatus.remainingLockoutMinutes > 0 && (
+                        <div>
+                          <span className="text-gray-500">Unlocks in:</span>
+                          <span className="ml-2 font-medium text-red-600">
+                            {accountStatusData.accountStatus.remainingLockoutMinutes} minutes
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {accountStatusData.accountStatus.isLocked && (
+                      <button
+                        onClick={() => handleUnlockAccount(accountStatusData.accountStatus.username)}
+                        disabled={isLoading}
+                        className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300"
+                      >
+                        {isLoading ? 'Unlocking...' : 'Unlock Account'}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-red-600">
+                    <i className="bi bi-exclamation-circle mr-2"></i>
+                    {accountStatusData.error}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

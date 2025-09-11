@@ -128,7 +128,7 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={onBack}
-              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-gray-200 active:bg-gray-300
+              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-gray-300 active:bg-gray-300
                        text-gray-800 hover:text-gray-900 active:text-gray-900
                        transition-all duration-200 cursor-pointer
                        focus:outline-none
@@ -158,10 +158,8 @@ export default function MPINKeypad({
               type="button"
               disabled={isLoading}
               onClick={onBackspace}
-              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-red-100 active:bg-red-500
-                       text-red-500 hover:text-red-600 active:text-white
-                       transition-all duration-200 cursor-pointer
-                       focus:outline-none
+              className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-red-100 active:bg-red-200
+                       text-red-500 hover:text-red-600 transition-all duration-200 cursor-pointer focus:outline-none
                        flex items-center justify-center
                        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >

@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { auth } from '../lib/auth'
-import Modal from './Modal'
+import { auth } from '../../lib/auth'
+import Modal from '../common/Modal'
 
 export default function Header({ title, role = 'user', userName = 'Juan Dela Cruz' }) {
   const router = useRouter()

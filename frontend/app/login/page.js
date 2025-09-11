@@ -2,22 +2,29 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import ToastNotification from '../../components/ToastNotification'
-import PublicLayout from '../../components/PublicLayout'
-import LoginCard from '../../components/LoginCard'
-import { auth } from '../../lib/auth'
+import ToastNotification from '../../components/common/ToastNotification'
+import PublicLayout from '../../components/public/PublicLayout'
+import LoginCard from '../../components/public/LoginCard'
+import ApiClient from '../../lib/api'
 
 export default function LoginPage() {
+
+  // ============================================
+  // STATE MANAGEMENT
+  // ============================================
   const router = useRouter()
+  const toastRef = useRef()
+  
   const [isLoading, setIsLoading] = useState(false)
-  const [currentStep, setCurrentStep] = useState('username') // 'username' or 'mpin'
   const [username, setUsername] = useState('')
-  const [mpin, setMpin] = useState('') // Changed from password to mpin
+  const [mpin, setMpin] = useState('')
   const [userInfo, setUserInfo] = useState(null) // Store user details after username validation
   const [errors, setErrors] = useState({})
   const [showKeypad, setShowKeypad] = useState(false) // Track keypad state for PublicLayout
-  const toastRef = useRef()
 
+  // ============================================
+  // UTILITY FUNCTIONS
+  // ============================================
   const handleAlert = (message, type = 'info') => {
     toastRef.current?.show(message, type)
   }
@@ -31,56 +38,11 @@ export default function LoginPage() {
       .slice(0, 100) // Limit length
   }
 
-  const validateUsername = () => {
-    // Demo: Simplified validation for testing frontend design/UX
-    const EASY_TESTING = true; // Set to false for real validation
-    
-    if (EASY_TESTING) {
-      // Demo: Allow any non-empty username for testing
-      const newErrors = {}
-      const sanitizedUsername = sanitizeInput(username)
-      
-      if (!sanitizedUsername) {
-        newErrors.username = 'Username is required'
-      }
-      
-      setErrors(newErrors)
-      return Object.keys(newErrors).length === 0
-    }
-
-    const newErrors = {}
-    const sanitizedUsername = sanitizeInput(username)
-
-    if (!sanitizedUsername) {
-      newErrors.username = 'Username is required'
-    } else if (!/^[a-zA-Z0-9._-]+$/.test(sanitizedUsername)) {
-      newErrors.username = 'Username can only contain letters, numbers, dots, hyphens, and underscores'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
+  // ============================================
+  // VALIDATION FUNCTIONS
+  // ============================================
+  
   const validateMpin = () => {
-    // Demo: Simplified validation for testing frontend design/UX
-    const EASY_TESTING = true; // Set to false for real validation
-    
-    if (EASY_TESTING) {
-      // Demo: Allow any 6-digit MPIN for testing
-      const newErrors = {}
-
-      if (!mpin) {
-        newErrors.mpin = 'MPIN is required'
-      } else if (mpin.length !== 6) {
-        newErrors.mpin = 'MPIN must be 6 digits'
-      } else if (!/^\d{6}$/.test(mpin)) {
-        newErrors.mpin = 'MPIN must contain only numbers'
-      }
-
-      setErrors(newErrors)
-      return Object.keys(newErrors).length === 0
-    }
-
     const newErrors = {}
 
     if (!mpin) {
@@ -95,30 +57,36 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleUsernameSubmit = async (e) => {
-    e.preventDefault()
+  // ============================================
+  // AUTHENTICATION HANDLERS
+  // ============================================
+  const handleUsernameSubmit = async (submittedUsername) => {
+    setUsername(submittedUsername)
     
-    if (!validateUsername()) {
+    const sanitizedUsername = sanitizeInput(submittedUsername)
+    
+    if (!sanitizedUsername) {
+      setErrors({ username: 'Username is required' })
+      handleAlert('Username is required', 'error')
       return
     }
-
+    
     setIsLoading(true)
-    const sanitizedUsername = sanitizeInput(username)
-
+    setErrors({})
+    
     try {
-      // Check if username exists in the system
-      const userExists = await auth.checkUsername(sanitizedUsername)
+      const userExists = await ApiClient.checkUsername(sanitizedUsername)
+
+      console.log(userExists);
       
       if (!userExists.success) {
-        handleAlert(userExists.error || 'Username not found', 'error')
+        handleAlert(userExists.error, 'error')
         setIsLoading(false)
         return
       }
 
-      // Store user info and move to MPIN step
       setUserInfo(userExists.user)
-      setCurrentStep('mpin')
-      setErrors({}) // Clear any previous errors
+      setShowKeypad(true)
       
     } catch (error) {
       handleAlert('Unable to verify username. Please try again.', 'error')
@@ -127,22 +95,13 @@ export default function LoginPage() {
     }
   }
 
-  // Demo: Handle final login with username and MPIN
   const handleLogin = async ({ username, mpin }) => {
-    if (!validateMpin()) {
-      return
-    }
+    if (!validateMpin()) return
 
     setIsLoading(true)
     
-    const sanitizedData = {
-      username: sanitizeInput(username),
-      password: mpin // Use MPIN as password for backend compatibility
-    }
-
     try {
-      // Use frontend-only authentication
-      const result = await auth.login(sanitizedData.username, sanitizedData.password)
+      const result = await ApiClient.login(sanitizeInput(username), mpin)
 
       if (!result.success) {
         handleAlert(result.error, 'error')
@@ -151,11 +110,11 @@ export default function LoginPage() {
       }
 
       // Handle successful login
-      if (!result.user.passwordChanged) {
-        handleAlert('Password change required. Redirecting…', 'info')
-      } else {
-        handleAlert(`Welcome ${result.user.firstName}! Redirecting…`, 'success')
-      }
+      const message = !result.user.passwordChanged 
+        ? 'Password change required. Redirecting…'
+        : `Welcome ${result.user.firstName}! Redirecting…`
+      
+      handleAlert(message, !result.user.passwordChanged ? 'info' : 'success')
 
       setTimeout(() => {
         router.push(result.redirectTo)
@@ -167,28 +126,32 @@ export default function LoginPage() {
     }
   }
 
-  const handleBackToUsername = () => {
-    // Demo: Add smooth transition back to username step
-    setCurrentStep('username')
-    setMpin('')
-    setUserInfo(null)
-    setErrors({})
-  }
-
-  // Demo: MPIN keypad number handler
+  // ============================================
+  // MPIN KEYPAD HANDLERS
+  // ============================================
   const handleKeypadNumber = (number) => {
     if (mpin.length < 6) {
-      setMpin(prev => prev + number)
+      const newMpin = mpin + number
+      setMpin(newMpin)
       if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
+      
+      // Auto-execute login when 6 digits are completed
+      if (newMpin.length === 6) {
+        setTimeout(() => {
+          handleLogin({ username, mpin: newMpin })
+        }, 100) // Small delay for better UX
+      }
     }
   }
 
-  // Demo: MPIN backspace handler
   const handleKeypadBackspace = () => {
     setMpin(prev => prev.slice(0, -1))
     if (errors.mpin) setErrors(prev => ({ ...prev, mpin: '' }))
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <>
       <ToastNotification ref={toastRef} />
@@ -196,6 +159,7 @@ export default function LoginPage() {
         <LoginCard
           username={username}
           setUsername={setUsername}
+          onUsernameSubmit={handleUsernameSubmit}
           mpin={mpin}
           errors={errors}
           setErrors={setErrors}
