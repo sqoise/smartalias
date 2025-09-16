@@ -1,127 +1,98 @@
-.PHONY: help setup dev dev-frontend dev-backend build build-frontend build-backend start start-frontend start-backend clean install-all test
-
-# Default goal
+.PHONY: help setup install dev build start clean test pm2-install pm2-start pm2-stop pm2-restart pm2-status pm2-logs
 .DEFAULT_GOAL := help
 
+FRONTEND_DIR := frontend
+BACKEND_DIR := backend
+
 help:
-	@echo "SmartLias Makefile Commands:"
+	@echo "SmartLias Commands (simplified):"
+	@echo "  make setup    - Install all dependencies"
+	@echo "  make install  - Same as setup"
+	@echo "  make dev      - Run frontend (3000) and backend (9000) in development"
+	@echo "  make build    - Build frontend (and backend if configured)"
+	@echo "  make start    - Run both in production mode"
+	@echo "  make clean    - Remove node_modules and build artifacts"
+	@echo "  make test     - Run tests for both"
 	@echo ""
-	@echo "Development:"
-	@echo "  make dev           - Start both frontend and backend development servers"
-	@echo "  make dev-frontend  - Start only frontend development server (port 3000)"
-	@echo "  make dev-backend   - Start only backend development server (port 5000)"
-	@echo ""
-	@echo "Setup:"
-	@echo "  make setup         - Initial project setup for both frontend and backend"
-	@echo "  make install-all   - Install dependencies for both frontend and backend"
-	@echo ""
-	@echo "Build:"
-	@echo "  make build         - Build both frontend and backend for production"
-	@echo "  make build-frontend - Build only frontend"
-	@echo "  make build-backend - Build only backend"
-	@echo ""
-	@echo "Production:"
-	@echo "  make start         - Start both frontend and backend production servers"
-	@echo "  make start-frontend - Start only frontend production server"
-	@echo "  make start-backend - Start only backend production server"
-	@echo ""
-	@echo "Maintenance:"
-	@echo "  make clean         - Clean all node_modules and build files"
-	@echo "  make test          - Run tests for both frontend and backend"
+	@echo "PM2 Process Management:"
+	@echo "  make pm2-install  - Install PM2 globally"
+	@echo "  make pm2-start    - Start backend with PM2"
+	@echo "  make pm2-stop     - Stop PM2 processes"
+	@echo "  make pm2-restart  - Restart PM2 processes"
+	@echo "  make pm2-status   - Show PM2 process status"
+	@echo "  make pm2-logs     - Show PM2 logs"
 
-setup:
-	@echo "Setting up SmartLias Full-Stack Application..."
-	@echo "Installing frontend dependencies..."
-	@cd frontend && npm install
-	@echo "Installing backend dependencies..."
-	@cd backend && npm install
-	@echo "Setup complete!"
-	@echo ""
-	@echo "To start development: make dev"
-
-install-all:
-	@echo "Installing all dependencies..."
-	@cd frontend && npm install
-	@cd backend && npm install
-	@echo "All dependencies installed!"
+setup install:
+	@echo "Installing dependencies..."
+	@cd $(FRONTEND_DIR) && npm install
+	@cd $(BACKEND_DIR) && npm install
+	@echo "Install complete."
 
 dev:
-	@echo "Starting SmartLias development servers..."
+	@echo "Starting development:"
 	@echo "Frontend: http://localhost:3000"
 	@echo "Backend:  http://localhost:9000"
 	@echo "Health:   http://localhost:9000/api/health"
-	@echo ""
-	@echo "Press Ctrl+C to stop both servers"
-	@echo ""
-	@trap 'echo "Stopping servers..."; kill %1 %2 2>/dev/null; exit' INT; \
-	cd backend && npm run dev & \
-	cd frontend && npm run dev & \
+	@trap 'echo Stopping...; kill %1 %2 2>/dev/null' INT; \
+	cd $(BACKEND_DIR) && npm run dev & \
+	cd $(FRONTEND_DIR) && npm run dev & \
 	wait
-
-dev-frontend:
-	@echo "Starting frontend development server..."
-	@echo "Available at: http://localhost:3000"
-	@cd frontend && npm run dev
-
-dev-backend:
-	@echo "Starting backend development server..."
-	@echo "API available at: http://localhost:9000"
-	@echo "Health check: http://localhost:9000/api/health"
-	@cd backend && npm run dev
 
 build:
-	@echo "Building SmartLias for production..."
-	@echo "Building frontend..."
-	@cd frontend && npm run build
-	@echo "Building backend..."
-	@cd backend && npm run build || echo "Backend build not configured"
-	@echo "Build complete!"
-
-build-frontend:
-	@echo "Building frontend for production..."
-	@cd frontend && npm run build
-	@echo "Frontend build complete!"
-
-build-backend:
-	@echo "Building backend for production..."
-	@cd backend && npm run build || echo "Backend build not configured"
+	@echo "Building application..."
+	@cd $(FRONTEND_DIR) && npm run build
+	@cd $(BACKEND_DIR) && (npm run build || echo "No backend build script")
+	@echo "Build complete."
 
 start:
-	@echo "Starting SmartLias production servers..."
-	@echo "Copying environment variables..."
-	@cp .env frontend/.env.local
+	@echo "Starting production servers..."
+	@test -f .env && cp .env $(FRONTEND_DIR)/.env.local || echo ".env not found, skipping copy"
 	@echo "Frontend: http://localhost:3000"
 	@echo "Backend:  http://localhost:9000"
-	@echo ""
-	@trap 'echo "Stopping servers..."; kill %1 %2 2>/dev/null; exit' INT; \
-	cd backend && npm start & \
-	cd frontend && npm start & \
+	@trap 'echo Stopping...; kill %1 %2 2>/dev/null' INT; \
+	cd $(BACKEND_DIR) && npm start & \
+	cd $(FRONTEND_DIR) && npm start & \
 	wait
 
-start-frontend:
-	@echo "Starting frontend production server..."
-	@echo "Copying environment variables..."
-	@cp .env frontend/.env.local
-	@cd frontend && npm start
-
-start-backend:
-	@echo "Starting backend production server..."
-	@cd backend && npm start
+clean:
+	@echo "Cleaning..."
+	@rm -rf $(FRONTEND_DIR)/node_modules $(FRONTEND_DIR)/.next $(FRONTEND_DIR)/dist
+	@rm -rf $(BACKEND_DIR)/node_modules $(BACKEND_DIR)/dist $(BACKEND_DIR)/build
+	@rm -f $(FRONTEND_DIR)/package-lock.json $(BACKEND_DIR)/package-lock.json
+	@echo "Clean complete."
 
 test:
 	@echo "Running tests..."
-	@echo "Testing frontend..."
-	@cd frontend && npm test || echo "Frontend tests not configured"
-	@echo "Testing backend..."
-	@cd backend && npm test || echo "Backend tests not configured"
+	@cd $(FRONTEND_DIR) && (npm test || echo "Frontend tests not configured")
+	@cd $(BACKEND_DIR) && (npm test || echo "Backend tests not configured")
+	@echo "Test run complete."
 
-clean:
-	@echo "Cleaning SmartLias project..."
-	@echo "Removing frontend build files..."
-	@rm -rf frontend/node_modules frontend/.next frontend/dist
-	@echo "Removing backend build files..."
-	@rm -rf backend/node_modules backend/dist backend/build
-	@echo "Removing lock files..."
-	@rm -f frontend/package-lock.json backend/package-lock.json
-	@echo "Removing copied environment files..."
-	@echo "Clean complete!"
+# PM2 Process Management Commands
+pm2-install:
+	@echo "Installing PM2 globally..."
+	@npm install -g pm2
+	@echo "PM2 installed successfully."
+
+pm2-start:
+	@echo "Starting backend with PM2..."
+	@cd $(BACKEND_DIR) && npm run pm2:start
+	@echo "Backend started with PM2. Use 'make pm2-status' to check status."
+
+pm2-stop:
+	@echo "Stopping PM2 processes..."
+	@cd $(BACKEND_DIR) && npm run pm2:stop
+	@cd $(BACKEND_DIR) && npm run pm2:delete
+	@echo "All PM2 processes stopped and removed."
+
+pm2-restart:
+	@echo "Restarting PM2 processes..."
+	@cd $(BACKEND_DIR) && npm run pm2:restart
+	@echo "PM2 processes restarted."
+
+pm2-status:
+	@echo "PM2 Process Status:"
+	@cd $(BACKEND_DIR) && npm run pm2:status
+
+pm2-logs:
+	@echo "PM2 Logs (press Ctrl+C to exit):"
+	@cd $(BACKEND_DIR) && npm run pm2:logs

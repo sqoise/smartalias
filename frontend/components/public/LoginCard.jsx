@@ -271,8 +271,17 @@ export default function LoginCard({
             </div>
           )}
 
+          {/* Access Notice - Mobile positioning */}
+          <div className={`lg:hidden text-center pt-2 ${
+            showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <p className="text-xs text-gray-600 mb-2">
+              Access for registered administrators only
+            </p>
+          </div>
+
           {/* Forgot Username/PIN Link - Mobile positioning */}
-          <div className={`lg:hidden text-center pt-4 ${
+          <div className={`lg:hidden text-center ${
             showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             <a 
@@ -289,10 +298,13 @@ export default function LoginCard({
           </div>
         </div>
         
-        {/* Forgot Username/PIN Link - Desktop fixed footer */}
+        {/* Access Notice and Forgot Link - Desktop fixed footer */}
         <div className={`hidden lg:block absolute bottom-4 left-0 right-0 text-center transition-opacity duration-300 ${
           showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}>
+          <p className="text-xs text-gray-600 mb-2">
+            Access for registered administrators only
+          </p>
           <a 
             href="#" 
             onClick={(e) => {

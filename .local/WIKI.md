@@ -135,7 +135,7 @@ Frontend ←→ HTTP/REST API ←→ Backend ←→ Database
 ```bash
 # Terminal 1: Start backend server
 cd backend
-npm run dev  # Runs on localhost:5000
+npm run dev  # Runs on localhost:9000
 
 # Terminal 2: Start frontend server
 cd frontend
@@ -190,7 +190,7 @@ Real-time: Supabase Realtime (for live updates)
 
 ### Development Environment
 - **Frontend**: Local development server (localhost:3000)
-- **Backend**: Local Express server (localhost:5000)
+- **Backend**: Local Express server (localhost:9000)
 - **Database**: Supabase cloud instance
 
 ### Production Environment

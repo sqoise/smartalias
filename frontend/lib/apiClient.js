@@ -1,5 +1,7 @@
 'use client'
 
+import { APP_CONFIG } from '@shared/constants'
+
 /**
  * API Client - Frontend to Backend Connector
  * Handles all HTTP communication with the Express.js backend
@@ -7,9 +9,15 @@
  */
 
 const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000/api',
-  TIMEOUT: 10000, // 10 seconds
+  BASE_URL: APP_CONFIG.API.BASE_URL,
+  TIMEOUT: APP_CONFIG.API.TIMEOUT,
 }
+
+/**
+ * API Client - Frontend to Backend Connector
+ * Handles all HTTP communication with the Express.js backend
+ * Backend handles data source switching (mock vs real data)
+ */
 
 class ApiClient {
   /**
@@ -27,7 +35,7 @@ class ApiClient {
     }
 
     // Add JWT token if available
-    const token = this.getStoredToken()
+    const token = ApiClient.getStoredToken()
     if (token) {
       defaultOptions.headers.Authorization = `Bearer ${token}`
     }
@@ -77,7 +85,7 @@ class ApiClient {
       
       return {
         success: false,
-        error: error.message || 'Network error. Please check your connection.',
+        error: error.message || 'Network error. Please check your API connection.',
       }
     }
   }
@@ -113,14 +121,15 @@ class ApiClient {
    * User login
    */
   static async login(username, pin) {
-    const response = await this.request('/auth/login', {
+    const response = await ApiClient.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, pin }),
     })
 
     // Store token on successful login
-    if (response.success && response.token) {
-      this.setStoredToken(response.token)
+    // Backend returns token in response.data.token
+    if (response.success && response.data && response.data.token) {
+      ApiClient.setStoredToken(response.data.token)
     }
 
     return response
@@ -130,12 +139,12 @@ class ApiClient {
    * User logout
    */
   static async logout() {
-    const response = await this.request('/auth/logout', {
+    const response = await ApiClient.request('/auth/logout', {
       method: 'POST',
     })
 
     // Always clear local token
-    this.removeStoredToken()
+    ApiClient.removeStoredToken()
     
     return response
   }
@@ -144,7 +153,7 @@ class ApiClient {
    * Get current user session
    */
   static async getSession() {
-    const token = this.getStoredToken()
+    const token = ApiClient.getStoredToken()
     
     if (!token) {
       return {
@@ -153,14 +162,14 @@ class ApiClient {
       }
     }
 
-    return await this.request('/auth/me')
+    return await ApiClient.request('/auth/me')
   }
 
   /**
    * Change user password/PIN
    */
   static async changePin(currentPin, newPin) {
-    return await this.request('/auth/change-password', {
+    return await ApiClient.request('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({ currentPin, newPin }),
     })
@@ -170,7 +179,7 @@ class ApiClient {
    * Check if username exists (for login flow)
    */
   static async checkUser(username) {
-    return await this.request('/auth/check-user', {
+    return await ApiClient.request('/auth/check-user', {
       method: 'POST',
       body: JSON.stringify({ username }),
     })
@@ -184,7 +193,7 @@ class ApiClient {
    * Get all residents (admin only)
    */
   static async getResidents() {
-    return await this.request('/residents')
+    return await ApiClient.request('/residents')
   }
 
   /**
@@ -198,21 +207,21 @@ class ApiClient {
     const queryString = params.toString()
     const endpoint = queryString ? `/residents?${queryString}` : '/residents'
     
-    return await this.request(endpoint)
+    return await ApiClient.request(endpoint)
   }
 
   /**
    * Get resident by ID
    */
   static async getResident(id) {
-    return await this.request(`/residents/${id}`)
+    return await ApiClient.request(`/residents/${id}`)
   }
 
   /**
    * Create new resident (admin only)
    */
   static async createResident(residentData) {
-    return await this.request('/residents', {
+    return await ApiClient.request('/residents', {
       method: 'POST',
       body: JSON.stringify(residentData),
     })
@@ -222,7 +231,7 @@ class ApiClient {
    * Update resident (admin only)
    */
   static async updateResident(id, residentData) {
-    return await this.request(`/residents/${id}`, {
+    return await ApiClient.request(`/residents/${id}`, {
       method: 'PUT',
       body: JSON.stringify(residentData),
     })
@@ -232,7 +241,7 @@ class ApiClient {
    * Delete resident (admin only)
    */
   static async deleteResident(id) {
-    return await this.request(`/residents/${id}`, {
+    return await ApiClient.request(`/residents/${id}`, {
       method: 'DELETE',
     })
   }
@@ -245,14 +254,14 @@ class ApiClient {
    * Get service requests
    */
   static async getServiceRequests() {
-    return await this.request('/requests')
+    return await ApiClient.request('/requests')
   }
 
   /**
    * Create service request
    */
   static async createServiceRequest(requestData) {
-    return await this.request('/requests', {
+    return await ApiClient.request('/requests', {
       method: 'POST',
       body: JSON.stringify(requestData),
     })
@@ -266,21 +275,21 @@ class ApiClient {
    * Get admin dashboard data
    */
   static async getAdminDashboard() {
-    return await this.request('/admin/dashboard')
+    return await ApiClient.request('/admin/dashboard')
   }
 
   /**
    * Get account security status (admin only)
    */
   static async getAccountStatus(username) {
-    return await this.request(`/admin/account-status?username=${encodeURIComponent(username)}`)
+    return await ApiClient.request(`/admin/account-status?username=${encodeURIComponent(username)}`)
   }
 
   /**
    * Unlock user account (admin only)
    */
   static async unlockAccount(username) {
-    return await this.request('/admin/unlock-account', {
+    return await ApiClient.request('/admin/unlock-account', {
       method: 'POST',
       body: JSON.stringify({ username }),
     })

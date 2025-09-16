@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 
 export const metadata = {
-  title: 'Login — SMART LIAS',
+  title: 'Homepage — SMART LIAS',
   description: 'SMART LIAS Portal',
   icons: {
     icon: 'favicon.ico',

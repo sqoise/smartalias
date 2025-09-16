@@ -242,7 +242,7 @@ const sanitizeInput = (input) => {
 // CORRECT: Environment-controlled data source
 const API_CONFIG = {
   USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || false,
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000/api'
 }
 ```
 
@@ -250,7 +250,7 @@ const API_CONFIG = {
 ```env
 # Development (.env.local)
 NEXT_PUBLIC_USE_MOCK_DATA=true    # Uses JSON files for development
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:9000/api
 
 # Production (deployment environment)
 NEXT_PUBLIC_USE_MOCK_DATA=false   # Uses real backend API
@@ -270,75 +270,319 @@ NEXT_PUBLIC_API_URL=https://api.yourcompany.com
 - **ALWAYS** provide safe defaults with `|| false` pattern
 - **ALWAYS** document environment variables in project documentation
 
-### **📱 Mobile-First Design System**
+### **📱 Modern Compact Design System**
 
-#### **Core Principles**
-- **Target**: 90% mobile users
-- **Touch Targets**: 36px minimum height
-- **Font Size**: 14px (text-sm) as standard
-- **Spacing**: Compact but readable
+#### **Design Principles**
+- **Efficiency First**: Maximum functionality in minimal space
+- **Clean Aesthetics**: Borderless layouts with strategic shadows
+- **Responsive Density**: Compact on desktop, comfortable on mobile
+- **Professional Typography**: Consistent sizing and spacing
+- **Semantic Colors**: Purpose-driven color choices
+- **Touch-Optimized**: 36px minimum touch targets
+- **Fast Interactions**: Smooth transitions and micro-animations
 
-#### **Form Elements (36px height)**
+#### **Layout Architecture**
 ```jsx
-// Input Fields
+// Dashboard Layout - Collapsible Sidebar
+className="h-screen overflow-hidden flex"
+
+// Sidebar - Compact & Clean
+className="fixed inset-y-0 left-0 bg-white text-gray-700 transition-all duration-200 
+           shadow-lg z-40 w-64 lg:w-18 (collapsed)"
+
+// Header - Consistent Height
+className="bg-green-800 relative z-30 h-12"
+
+// Main Content Area - Full Height
+className="flex-1 overflow-auto transition-all duration-200 
+           lg:ml-64 lg:ml-18 (collapsed)"
+```
+
+#### **Navigation Design**
+```jsx
+// Menu Items - Consistent Spacing
+className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 
+           transition-all duration-150 rounded-md px-4 py-2.5 text-sm"
+
+// Active States - Subtle Emphasis
+className="bg-gray-100 text-gray-900 font-medium"
+
+// Icon Containers - Fixed Width
+className="flex justify-center flex-shrink-0 w-6"
+
+// Tooltips (Collapsed) - Contextual Help
+className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs 
+           rounded opacity-0 group-hover:opacity-100 transition-opacity"
+```
+
+#### **Component Sizing Standards**
+
+##### **Form Elements (Optimized Height: 36px)**
+```jsx
+// Input Fields - Standard Height (36px)
 className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 
            focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
-           placeholder:text-gray-400 bg-white"
+           placeholder:text-gray-400 bg-white transition-colors h-9"
 
-// Error State
-className="w-full rounded-md px-3 py-1.5 text-sm border border-red-300 
-           focus:border-red-500 focus:ring-1 focus:ring-red-500"
+// Buttons - Consistent Sizing (36px height)
+className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium 
+           rounded-md bg-blue-600 text-white hover:bg-blue-700 
+           focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9"
 
-// Labels
-className="block text-sm font-medium text-gray-700 mb-1"
+// Small Buttons - Compact (28px height)
+className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium 
+           rounded bg-gray-100 text-gray-700 hover:bg-gray-200 
+           transition-colors cursor-pointer h-7"
 
-// Form Groups
+// Form Groups - Compact Spacing
 className="mb-3"
 
-// Error Messages
+// Labels - Clear Hierarchy (14px font)
+className="block text-sm font-medium text-gray-700 mb-1"
+
+// Error Messages - Small Text (12px font)
 className="text-xs text-red-600 mt-1"
 ```
 
-#### **Buttons (36px height)**
+##### **Typography Scale**
 ```jsx
-// Primary Button
-className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium 
-           rounded-md border bg-blue-600 border-blue-600 text-white 
-           hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 focus:outline-none
-           disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+// Page Titles - Large (24px)
+className="text-2xl font-bold text-gray-900"
 
-// Secondary Button
-className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium 
-           rounded-md border bg-white border-gray-300 text-gray-700
-           hover:bg-gray-50 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+// Section Headers - Medium (20px)
+className="text-xl font-semibold text-gray-900"
+
+// Card Titles - Standard (18px)
+className="text-lg font-medium text-gray-900"
+
+// Body Text - Default (14px)
+className="text-sm text-gray-700"
+
+// Secondary Text - Small (12px)
+className="text-xs text-gray-500"
+
+// Captions/Labels - Extra Small (11px)
+className="text-xs text-gray-400 uppercase tracking-wide"
 ```
 
-#### **Layout Elements**
+##### **Modal Sizing Standards**
 ```jsx
-// Cards (Mobile-responsive)
-className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5 lg:p-6"
+// Small Modal - 400px width
+className="w-full max-w-md mx-auto"
 
-// Containers
-className="px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6"
+// Medium Modal - 600px width
+className="w-full max-w-2xl mx-auto"
 
-// Typography
-className="text-lg font-bold text-gray-900 mb-2 sm:text-xl sm:mb-3" // Large headings
-className="text-sm text-gray-600 leading-relaxed sm:text-base"       // Body text
+// Large Modal - 800px width
+className="w-full max-w-4xl mx-auto"
+
+// Full Screen Modal - Mobile responsive
+className="w-full h-full sm:max-w-4xl sm:h-auto sm:mx-auto"
+
+// Modal Content Padding
+className="p-4 sm:p-6"
+
+// Modal Headers - Consistent Height (48px)
+className="px-4 py-3 border-b border-gray-200 sm:px-6"
+
+// Modal Actions - Button Container
+className="px-4 py-3 bg-gray-50 text-right sm:px-6 space-x-2"
 ```
 
-#### **Color Palette**
-- **Primary**: blue-600, blue-700 (buttons, focus states)
-- **Success**: green-600, green-50
-- **Warning**: yellow-600, yellow-50
-- **Error**: red-600, red-50
-- **Neutral**: gray-900, gray-700, gray-600, gray-300, gray-200
-
-#### **Alerts/Notifications**
+##### **Card Component Sizing**
 ```jsx
-className="p-3 rounded-md border text-sm bg-blue-50 border-blue-200 text-blue-800" // Info
-className="p-3 rounded-md border text-sm bg-green-50 border-green-200 text-green-800" // Success
-className="p-3 rounded-md border text-sm bg-red-50 border-red-200 text-red-800" // Error
+// Small Cards - Compact
+className="bg-white rounded-lg shadow-sm border border-gray-200 p-3"
+
+// Standard Cards - Medium
+className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+
+// Large Cards - Spacious
+className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+
+// Card Headers - Consistent
+className="pb-3 border-b border-gray-200 mb-3"
+
+// Card Actions - Button Groups
+className="pt-3 border-t border-gray-200 mt-3 flex justify-end space-x-2"
 ```
+
+##### **Icon Sizing Standards**
+```jsx
+// Small Icons - 16px (w-4 h-4)
+className="w-4 h-4"
+
+// Standard Icons - 20px (w-5 h-5)
+className="w-5 h-5"
+
+// Large Icons - 24px (w-6 h-6)
+className="w-6 h-6"
+
+// Logo/Avatar Icons - 32px (w-8 h-8)
+className="w-8 h-8"
+
+// Hero Icons - 48px (w-12 h-12)
+className="w-12 h-12"
+```
+
+##### **Spacing & Layout Standards**
+```jsx
+// Container Spacing - Page Level
+className="p-4 sm:p-6 lg:p-8"
+
+// Section Spacing - Between Components
+className="space-y-4"     // 16px between elements
+className="space-y-6"     // 24px for major sections
+className="space-y-8"     // 32px for page sections
+
+// Grid Layouts - Responsive
+className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+
+// Flex Layouts - Common Patterns
+className="flex items-center justify-between"  // Header layouts
+className="flex items-center space-x-2"       // Button groups
+className="flex flex-col space-y-3"           // Vertical stacking
+
+// Padding Standards
+className="px-2 py-1"     // Tight (8px/4px)
+className="px-3 py-1.5"   // Compact (12px/6px)
+className="px-4 py-2"     // Standard (16px/8px)
+className="px-6 py-3"     // Comfortable (24px/12px)
+
+// Margin Standards
+className="mb-1"          // 4px - Tight
+className="mb-2"          // 8px - Close
+className="mb-3"          // 12px - Standard
+className="mb-4"          // 16px - Separated
+className="mb-6"          // 24px - Section break
+```
+
+##### **Responsive Design Breakpoints**
+```jsx
+// Mobile First - Default styles for mobile
+className="text-sm"
+
+// Small screens and up (640px+)
+className="sm:text-base sm:px-4"
+
+// Medium screens and up (768px+)
+className="md:grid-cols-2 md:px-6"
+
+// Large screens and up (1024px+)
+className="lg:grid-cols-3 lg:px-8"
+
+// Extra large screens and up (1280px+)
+className="xl:max-w-6xl xl:mx-auto"
+```
+
+##### **Table Sizing Standards**
+```jsx
+// Table Container - Maximized Height
+className="overflow-auto min-h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]"
+
+// Table Headers - Compact (32px height)
+className="bg-gray-100 sticky top-0 z-[5] cursor-pointer hover:bg-gray-200 
+           transition-colors px-3 py-1 text-xs font-medium"
+
+// Table Cells - Dense (28px height)
+className="px-3 py-1 text-sm"
+
+// Table Row Hover - Subtle Feedback
+className="hover:bg-gray-50 transition-colors"
+
+// Action Buttons in Tables - Small (24px)
+className="w-6 h-6 text-gray-400 hover:text-gray-600 cursor-pointer"
+```
+
+#### **Data Tables - Dense & Functional**
+```jsx
+// See "Table Sizing Standards" section above for complete specifications
+// Key principles: Maximized height, compact padding, sticky headers
+```
+
+#### **Component Density Standards**
+```jsx
+// High Density (Desktop Tables, Lists)
+className="px-2 py-1 text-xs"
+
+// Medium Density (Form Elements, Navigation)
+className="px-3 py-1.5 text-sm"
+
+// Low Density (Cards, Mobile Interfaces)
+className="px-4 py-2 text-base"
+
+// Touch Optimized (Mobile Buttons, Interactive Elements)
+className="px-4 py-2.5 text-sm min-h-[36px]"
+```
+
+#### **Professional Color System**
+- **Primary Actions**: blue-600, blue-700
+- **Success States**: green-600, green-700, green-800
+- **Neutral Interface**: gray-100, gray-200, gray-300, gray-600, gray-700, gray-900
+- **Text Hierarchy**: gray-900 (primary), gray-700 (secondary), gray-500 (tertiary)
+- **Interactive States**: hover:bg-gray-100, focus:ring-1, active:bg-gray-200
+
+#### **Shadow & Depth Strategy**
+```jsx
+// Sidebar Separation
+className="shadow-lg"
+
+// Card Elements
+className="shadow-sm"
+
+// Dropdown Menus
+className="shadow-lg"
+
+// Modal Overlays
+className="shadow-xl"
+```
+
+#### **Responsive Breakpoints**
+```jsx
+// Mobile First Approach
+className="px-3 py-2 sm:px-4 sm:py-2.5 lg:px-3 lg:py-1.5"
+
+// Sidebar Behavior
+className="w-64 lg:w-18 (collapsed) -translate-x-full lg:translate-x-0"
+
+// Content Margins
+className="ml-0 lg:ml-64 lg:ml-18 (collapsed)"
+```
+
+#### **Development Standards for Compact Design**
+
+##### **Space Optimization Rules**
+- **Maximize Content Area**: Use `calc(100vh-280px)` for table heights to minimize dead space
+- **Consistent Component Heights**: 36px for touch targets, 12px for headers
+- **Efficient Padding**: px-3/py-1.5 for medium density, px-4/py-2.5 for comfortable spacing
+- **Fixed Icon Containers**: w-6 for consistent alignment during animations
+
+##### **Professional Interface Guidelines**
+- **No Decorative Borders**: Use shadows (shadow-sm, shadow-lg) instead of borders for separation
+- **Subtle State Changes**: Gray background changes (bg-gray-100) for active states rather than colored borders
+- **Clean Typography**: text-sm standard with clear hierarchy (gray-900, gray-700, gray-500)
+- **Smooth Transitions**: duration-200 for all state changes and animations
+
+##### **Layout Consistency Rules**
+- **Collapsible Elements**: Logo and icons must maintain fixed positions during collapse/expand
+- **Responsive Width**: Sidebar w-18 (collapsed) ↔ w-64 (expanded) with matching margin adjustments
+- **Header Standards**: Fixed height (h-12), green-800 background, white text with proper contrast
+- **Menu Standards**: px-4 padding, consistent icon positioning, no border on active states
+
+##### **Interactive Element Standards**
+- **Cursor Pointers**: All clickable elements must have `cursor-pointer`
+- **Hover States**: Subtle background changes with transition-colors
+- **Focus States**: ring-1 with theme-appropriate colors
+- **Touch Optimization**: Minimum 36px height for all interactive elements
+
+##### **Component Quality Checklist**
+- [ ] No layout shifting during state changes
+- [ ] Consistent spacing across similar components
+- [ ] Professional color usage (no decorative colors)
+- [ ] Smooth animations for all transitions
+- [ ] Proper hover and focus states
+- [ ] Mobile-responsive behavior
+- [ ] Keyboard accessibility
 
 ---
 

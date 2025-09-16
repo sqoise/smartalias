@@ -9,13 +9,19 @@ export default function PublicLayout({
   showCard = true,
   showLogo = true,
   title = 'Barangay LIAS',
-  subtitle = 'Secure access to your Barangay LIAS digital services and portal.',
+  subtitle = 'Digital services and document requests for residents and visitors. Access barangay services conveniently online.',
   mobileImageHeight = 30, // percentage for mobile image section
   hideBackgroundImage = false // Hide background image when keypad is active
 }) {
   // Configure layout based on variant
   const getLayoutConfig = () => {
     switch (variant) {
+      case 'homepage':
+        return {
+          desktopCols: 'lg:grid-cols-[50%_50%]', // More balanced for homepage
+          showDesktopCard: showCard,
+          mobileImageHeight: mobileImageHeight
+        }
       case 'announcement':
         return {
           desktopCols: 'lg:grid-cols-[60%_40%]',
@@ -39,12 +45,13 @@ export default function PublicLayout({
     <div className="bg-gray-100 text-gray-800 overflow-hidden" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
       <main className="h-full relative" style={{ height: '100dvh' }}>
         {/* Large screens: Dynamic column layout */}
-        <div className={`hidden lg:grid ${config.desktopCols} h-full relative`}>
+        <div className={`hidden lg:grid ${config.desktopCols} h-full relative transition-all duration-500 ease-in-out`}>
           {/* LEFT: Hero section with background image */}
-          <section className="relative z-0">
+          <section className="relative z-0 transition-all duration-500 ease-in-out">
             <img 
               src="/images/bg.jpg" 
               className="absolute inset-0 w-full h-full object-cover" 
+              style={{ objectPosition: 'left center' }}
               alt="Background"
             />
             <div className="absolute inset-0 bg-green-900/40"></div>
@@ -61,9 +68,6 @@ export default function PublicLayout({
               <p className="mt-6 max-w-xl text-white/90">
                 {subtitle}
               </p>
-              <p className="mt-6 text-sm text-white/70">
-                Access for registered residents and administrators.
-              </p>
               
               <p className="mt-10 text-sm text-white/70">
                 &copy; 2025 Smart LIAS
@@ -73,18 +77,20 @@ export default function PublicLayout({
 
           {/* RIGHT: Content section (card or content) */}
           {config.showDesktopCard ? (
-            <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible">
-              {/* Overlapping card - pull left on large screens */}
-              <div className="lg:-ml-120">
+            <section className="flex items-center justify-center p-6 lg:p-12 relative overflow-visible transition-all duration-500 ease-in-out">
+              {/* Overlapping card - pull left on large screens, bigger for homepage */}
+              <div className={`transition-all duration-500 ease-in-out ${variant === 'homepage' ? 'lg:-ml-40' : 'lg:-ml-120'}`}>
                 {/* Clone children with showLogo=false for desktop and restore card styling */}
                 {cloneElement(children, { 
                   showLogo: false,
-                  className: "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
+                  className: variant === 'homepage' 
+                    ? "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-6 lg:p-12 w-full max-w-4xl min-h-[500px]"
+                    : "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
                 })}
               </div>
             </section>
           ) : (
-            <section className="flex items-center justify-center p-6 lg:p-12 relative">
+            <section className="flex items-center justify-center p-6 lg:p-12 relative transition-all duration-500 ease-in-out">
               {/* Content without card styling for announcements */}
               <div className="w-full h-full flex items-center justify-center">
                 {children}
@@ -151,7 +157,7 @@ export default function PublicLayout({
               
               {/* Content container with mobile-optimized padding */}
               <div className={`h-full flex flex-col relative z-30 ${
-                hideBackgroundImage ? 'px-6 py-8' : 'px-6 py-6'
+                hideBackgroundImage ? 'px-6 py-8' : 'px-4 py-4'
               }`}>
                 {/* Main content area - centered with extra top padding for logo overlap */}
                 <div className={`flex-1 flex items-center justify-center ${
@@ -174,9 +180,9 @@ export default function PublicLayout({
                 </div>
                 
                 {/* Comprehensive fixed footer - forgot credentials, access message and copyright */}
-                <div className={`flex-shrink-0 text-center transition-all duration-500 ease-out ${
-                  hideBackgroundImage ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 pt-4 space-y-2'
-                }`} style={{ minHeight: hideBackgroundImage ? '0px' : '80px' }}>
+                <div className={`text-center transition-all duration-500 ease-out ${
+                  hideBackgroundImage ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 pb-2'
+                }`}>
                   
                   {/* Back to Login link - only for change-pin variant - Mobile only */}
                   {variant === 'change-pin' && (
@@ -191,13 +197,6 @@ export default function PublicLayout({
                   )}
 
 
-                  
-                  {/* Access message - hide for change-pin variant */}
-                  {variant !== 'change-pin' && (
-                    <p className="text-xs text-gray-600">
-                      Access for registered residents and administrators.
-                    </p>
-                  )}
                   
                   {/* Copyright - hide for change-pin variant */}
                   {variant !== 'change-pin' && (

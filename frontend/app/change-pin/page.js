@@ -2,11 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import ChangePINCard from '../../components/public/ChangePINCard'
 import PageLoading from '../../components/common/PageLoading'
 import ApiClient from '../../lib/apiClient'
+import { alertToast } from '../../lib/utility'
+import { AUTH_MESSAGES } from '@shared/constants'
 
 export default function ChangePINPage() {
   const router = useRouter()
@@ -85,20 +88,22 @@ export default function ChangePINPage() {
     }
   }, [isValidToken, showKeypad])
 
+  // ==================== UI HELPERS ====================
+  const showAlert = (message, type = 'info') => {
+    alertToast(toastRef, message, type)
+  }
+
   // ==================== VALIDATION LOGIC ====================
   const validatePIN = (pin) => {
-    return {
-      length: pin?.length === 6,
-      numeric: /^\d+$/.test(pin)
-    }
+    if (!pin) return { isValid: false, error: AUTH_MESSAGES.PIN_REQUIRED }
+    if (pin.length !== 6) return { isValid: false, error: AUTH_MESSAGES.PIN_INVALID_LENGTH }
+    if (!/^\d+$/.test(pin)) return { isValid: false, error: AUTH_MESSAGES.PIN_INVALID_FORMAT }
+    return { isValid: true }
   }
 
   const isValidPIN = (pin) => {
-    const validation = validatePIN(pin)
-    return validation.length && validation.numeric
+    return validatePIN(pin).isValid
   }
-
-  // ==================== API READY FUNCTIONS ====================
   const submitNewPIN = async (pin) => {
     try {
       const token = searchParams.get('token')
@@ -109,19 +114,16 @@ export default function ChangePINPage() {
       if (result.success) {
         return { success: true, message: result.message || 'Password changed successfully' }
       } else {
-        return { success: false, error: result.error || 'Failed to change password' }
+        return { success: false, error: result.error || AUTH_MESSAGES.PIN_CHANGE_FAILED }
       }
     } catch (error) {
       console.error('API Error:', error)
-      return { success: false, error: 'Network error. Please try again.' }
+      return { success: false, error: AUTH_MESSAGES.NETWORK_ERROR }
     }
   }
 
+  // ==================== API READY FUNCTIONS ====================
   // ==================== UI HELPERS ====================
-  const showAlert = (message, type = 'info') => {
-    toastRef.current?.show(message, type)
-  }
-
   const getCurrentPin = () => {
     return currentStep === 'new-pin' ? newPin : confirmPin
   }
@@ -132,8 +134,10 @@ export default function ChangePINPage() {
 
   // ==================== STEP HANDLERS ====================
   const handleNewPinSubmit = () => {
-    if (!isValidPIN(newPin)) {
-      showAlert('PIN must be exactly 6 digits', 'error')
+    const validation = validatePIN(newPin)
+    if (!validation.isValid) {
+      setErrors({ newPin: true })
+      showAlert(validation.error, 'error')
       return
     }
 
@@ -143,7 +147,8 @@ export default function ChangePINPage() {
 
   const handleConfirmPinSubmit = async () => {
     if (newPin !== confirmPin) {
-      showAlert('PINs do not match', 'error')
+      setErrors({ confirmPin: true })
+      showAlert(AUTH_MESSAGES.PIN_MISMATCH, 'error')
       return
     }
 
@@ -153,13 +158,13 @@ export default function ChangePINPage() {
       const result = await submitNewPIN(newPin)
       
       if (result.success) {
-        showAlert('PIN changed successfully! Redirecting to login...', 'success')
+        showAlert(AUTH_MESSAGES.PIN_CHANGE_SUCCESS, 'success')
         setTimeout(() => router.push('/login'), 2000)
       } else {
-        showAlert('Failed to change PIN. Please try again.', 'error')
+        showAlert(AUTH_MESSAGES.PIN_CHANGE_FAILED, 'error')
       }
     } catch (error) {
-      showAlert('Failed to change PIN. Please try again.', 'error')
+      showAlert(AUTH_MESSAGES.PIN_CHANGE_FAILED, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -213,9 +218,24 @@ export default function ChangePINPage() {
     return <PageLoading />
   }
 
+  // Simple Navigation Header
+  const NavigationHeader = () => (
+    <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
+      <nav className="flex justify-end items-center">
+        <Link 
+          href="/home"
+          className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white/90 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-white/50 focus:outline-none transition-all duration-200"
+        >
+          ← Home
+        </Link>
+      </nav>
+    </header>
+  )
+
   return (
     <>
       <ToastNotification ref={toastRef} />
+      <NavigationHeader />
       <PublicLayout 
         variant="change-pin" 
         hideBackgroundImage={showKeypad}

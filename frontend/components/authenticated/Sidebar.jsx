@@ -4,14 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
-export default function Sidebar({ role = 'user', collapsed, setCollapsed }) {
+export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen }) {
   const pathname = usePathname() || ''
-  // Use local state if not provided from parent
   const [localCollapsed, setLocalCollapsed] = useState(false)
   const isCollapsed = collapsed !== undefined ? collapsed : localCollapsed
-  const toggleCollapsed = setCollapsed || setLocalCollapsed
 
-  // Demo: Load collapsed state from localStorage on component mount
+  // Load collapsed state from localStorage
   useEffect(() => {
     if (collapsed === undefined) {
       const savedState = localStorage.getItem('sidebarCollapsed')
@@ -21,44 +19,26 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed }) {
     }
   }, [collapsed])
 
-  // Demo: Save to localStorage when state changes
+  // Save to localStorage when state changes
   const handleToggle = () => {
     const newState = !isCollapsed
-    toggleCollapsed(newState)
-    if (collapsed === undefined) {
+    if (setCollapsed) {
+      setCollapsed(newState)
+    } else {
+      setLocalCollapsed(newState)
       localStorage.setItem('sidebarCollapsed', JSON.stringify(newState))
     }
   }
 
-  // Auto-collapse on mobile/tablet screens
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024 && collapsed === undefined && !isCollapsed) {
-        handleToggle()
-      }
-    }
-
-    // Check on mount
-    handleResize()
-    
-    // Add event listener
-    window.addEventListener('resize', handleResize)
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize)
-  }, [collapsed, isCollapsed])
-
   const menus = {
     user: [
-      { name: 'Dashboard', href: '/resident', icon: 'bi-speedometer2' },
-      { name: 'My Documents', href: '/resident/documents', icon: 'bi-file-earmark-text' },
+      { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
       { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
       { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
     ],
     resident: [
-      { name: 'Dashboard', href: '/resident', icon: 'bi-speedometer2' },
-      { name: 'My Documents', href: '/resident/documents', icon: 'bi-file-earmark-text' },
+      { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
       { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
       { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
@@ -75,52 +55,76 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed }) {
   const items = menus[role] || menus.user
 
   return (
-    <div className={`fixed inset-y-0 left-0 bg-green-700 text-white transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20 shadow-[6px_0_12px_-2px_rgba(0,0,0,0.25),_3px_0_20px_-4px_rgba(0,0,0,0.15)]' : 'w-64 shadow-lg'}`} aria-label={`${role} navigation`}>
+    <div 
+      className={`fixed inset-y-0 left-0 bg-white text-gray-700 transition-all duration-200 ease-in-out shadow-lg z-40 ${
+        isCollapsed ? 'w-18' : 'w-64'
+      } ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
+    >
+      {/* Mobile Close Button */}
+      <div className="lg:hidden absolute top-3 right-3 z-10">
+                <button
+          onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
+          className="p-1 rounded-md text-gray-500 hover:text-gray-700 focus:outline-none bg-gray-100 hover:bg-gray-200 cursor-pointer"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       {/* Header */}
-      <div className="p-4 border-b border-green-700/30 transition-all duration-300 ease-in-out">
-        <div className="flex items-center transition-all duration-300 ease-in-out">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-white/10">
-              <img src="/images/barangay_logo.png" alt="Barangay Logo" className="object-contain" />
-            </div>
-            <div className={`ml-3 transition-all duration-300 ease-in-out ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-              <h2 className="text-lg font-semibold whitespace-nowrap">SMART LIAS</h2>
-              <p className="text-green-200 text-sm whitespace-nowrap">{role === 'admin' ? 'Admin Portal' : 'User Portal'}</p>
-            </div>
+      <div className={`py-3 border-b border-gray-200 bg-white px-2`}>
+        <div className="flex items-center">
+          <div className="flex items-center justify-center rounded-md w-14 h-14 flex-shrink-0">
+            <img src="/images/barangay_logo.png" alt="Logo" className="w-8 h-8 object-contain" />
           </div>
+          {!isCollapsed && (
+            <div className="ml-3 min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-gray-900">SMARTLIAS</h2>
+              <p className="text-xs text-gray-500">{role === 'admin' ? 'Admin' : 'User'}</p>
+            </div>
+          )}
         </div>
+        
+        {/* Toggle Button - Desktop Only */}
+        <button 
+          onClick={handleToggle}
+          className="hidden lg:flex absolute -right-3 top-6 w-6 h-6 bg-white border border-gray-300 rounded-full items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors shadow-sm cursor-pointer"
+        >
+          <i className={`bi bi-chevron-left text-xs ${isCollapsed ? 'rotate-180' : ''}`}></i>
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="mt-8 px-2 space-y-2" role="navigation">
-        {items.map((it) => {
-          const active = pathname === it.href || (pathname.startsWith(it.href + '/') && it.href !== '/resident' && it.href !== '/admin')
-          const classes = `flex items-center text-white hover:bg-black/10 cursor-pointer transition-all duration-200 ease-in-out rounded-md px-4 py-3 mx-2 ${active ? 'bg-black/15 font-bold' : ''}`
+      <nav className="mt-4 px-2 space-y-1">
+        {items.map((item) => {
+          const active = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/resident' && item.href !== '/admin')
           return (
-            <div key={it.href} className="relative group">
-              <Link href={it.href} className={classes} aria-current={active ? 'page' : undefined}>
-                <i className={`bi ${it.icon} flex-shrink-0 text-lg ${active ? 'font-black' : 'font-normal'} ${isCollapsed ? 'mr-0' : 'mr-3'} transition-all duration-200`} aria-hidden></i>
-                <span className={`transition-all duration-300 ease-in-out whitespace-nowrap ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{it.name}</span>
+            <div key={item.href} className="relative group">
+              <Link 
+                href={item.href} 
+                className={`flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-4 py-2.5 text-sm ${
+                  active ? 'bg-gray-100 text-gray-900 font-medium' : ''
+                }`}
+                onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
+              >
+                <div className="flex justify-center flex-shrink-0 w-6">
+                  <i className={`bi ${item.icon} text-base`}></i>
+                </div>
+                {!isCollapsed && <span className="ml-3">{item.name}</span>}
               </Link>
-              {/* Custom Tooltip */}
               {isCollapsed && (
-                <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-black text-white text-sm rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50 shadow-lg">
-                  {it.name}
-                  <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-black"></div>
+                <div className="hidden lg:block absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
+                  {item.name}
+                  <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
                 </div>
               )}
             </div>
           )
         })}
       </nav>
-
-      {/* Toggle Button */}
-      <button 
-        onClick={handleToggle}
-        className="absolute -right-6 bottom-8 w-12 h-12 bg-green-700 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3),_0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.15),_0_1px_4px_rgba(0,0,0,0.1)] flex items-center justify-center text-white hover:text-white hover:font-bold active:font-bold transition-all duration-300 ease-in-out z-10 cursor-pointer"
-      >
-        <i className={`bi ${isCollapsed ? 'bi-layout-sidebar-reverse' : 'bi-chevron-right'} text-lg font-normal hover:font-black transition-all duration-500 ease-in-out transform ${isCollapsed ? 'rotate-0' : 'rotate-180'}`}></i>
-      </button>
     </div>
   )
 }

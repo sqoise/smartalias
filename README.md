@@ -9,7 +9,7 @@ A modern full-stack web application for Barangay management built with **separat
 ```
 SmartLias/
 ├── frontend/          # Next.js React Application (Port 3000)
-├── backend/           # Express.js API Server (Port 5000)
+├── backend/           # Express.js API Server (Port 9000)
 ├── Makefile          # Development & Build Commands
 ├── WIKI.md           # Detailed Architecture Documentation
 └── README.md         # This file
@@ -51,12 +51,12 @@ make dev
 ```
 Starts both servers:
 - **Frontend**: http://localhost:3000
-- **Backend**: http://localhost:5000
-- **Health Check**: http://localhost:5000/health
+- **Backend**: http://localhost:9000
+- **Health Check**: http://localhost:9000/health
 Starts both servers:
 - **Frontend**: http://localhost:3000
-- **Backend**: http://localhost:5000
-- **Health Check**: http://localhost:5000/health
+- **Backend**: http://localhost:9000
+- **Health Check**: http://localhost:9000/health
 
 ## Available Commands
 
@@ -125,7 +125,7 @@ PORT=3000
 NODE_ENV=development
 
 # Frontend Configuration  
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_BASE_URL=http://localhost:9000/api
 NEXT_PUBLIC_APP_NAME=SmartLias
 NEXT_PUBLIC_APP_VERSION=1.0.0
 ```
@@ -160,7 +160,7 @@ BCRYPT_SALT_ROUNDS=12
 1. **Start Development**: `make dev`
 2. **Frontend Development**: Modify files in `/frontend/src`
 3. **Backend Development**: Modify files in `/backend`
-4. **API Testing**: Use http://localhost:5000/health
+4. **API Testing**: Use http://localhost:9000/health
 5. **Database**: Configure Supabase connection in backend
 
 ## Documentation

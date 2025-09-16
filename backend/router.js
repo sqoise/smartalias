@@ -17,6 +17,9 @@ const ApiResponse = require('./utils/apiResponse')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
+// Import shared messages
+const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('../shared/constants')
+
 const router = express.Router()
 
 // ==========================================================================
@@ -82,7 +85,7 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     if (!user) {
       logger.warn('Login attempt with non-existent username', { username, ip: req.ip })
-      return ApiResponse.unauthorized(res, 'Invalid credentials')
+      return ApiResponse.unauthorized(res, 'Invalid username or PIN')
     }
 
     // Check if account is locked
@@ -108,7 +111,7 @@ router.post('/auth/login', authLimiter, async (req, res) => {
       await saveJsonData('users.json', users)
 
       logger.warn('Failed login attempt', { username, ip: req.ip, attempts: user.failedLoginAttempts })
-      return ApiResponse.unauthorized(res, 'Invalid credentials')
+      return ApiResponse.unauthorized(res, 'Invalid PIN. Please try again.')
     }
 
     // Successful login - reset failed attempts
@@ -247,7 +250,7 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
     if (userIndex === -1) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: AUTH_MESSAGES.USER_NOT_FOUND
       })
     }
 
@@ -259,7 +262,7 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
       logger.warn('Invalid current PIN in change request', { username: req.user.username })
       return res.status(400).json({
         success: false,
-        error: 'Current PIN is incorrect'
+        error: AUTH_MESSAGES.PIN_CURRENT_INCORRECT
       })
     }
 
