@@ -91,7 +91,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
         {/* Toggle Button - Desktop Only */}
         <button 
           onClick={handleToggle}
-          className="hidden lg:flex absolute -right-3 top-8 w-7 h-7 bg-white border border-gray-200 rounded-full items-center justify-center text-gray-600 hover:border-gray-300 transition-colors shadow-sm cursor-pointer hover:shadow-lg" 
+          className="hidden lg:flex absolute -right-3 top-6 w-6 h-6 bg-white border border-gray-300 rounded-full items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors shadow-sm cursor-pointer"
         >
           <i className={`bi bi-chevron-left text-sm ${isCollapsed ? 'rotate-180' : ''}`}></i>
         </button>

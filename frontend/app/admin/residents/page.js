@@ -95,7 +95,11 @@ export default function ResidentsPage() {
       )}
 
       {/* Advanced Residents Table */}
+<<<<<<< HEAD
       <ResidentsContainer
+=======
+      <ResidentsTable
+>>>>>>> f637394 (Add resident management)
         residents={residentsData}
         loading={loading}
         onView={handleView}
@@ -152,10 +156,57 @@ export default function ResidentsPage() {
         </div>
       )}
 
+<<<<<<< HEAD
       {/* View Resident Slide Panel */}
       <ResidentsView open={showView} onClose={() => setShowView(false)}>
         {selectedResident}
       </ResidentsView>
+=======
+      {/* View Resident Modal */}
+      <Modal
+        isOpen={showView}
+        onClose={() => setShowView(false)}
+        title="Resident Details"
+        type="info"
+      >
+        {selectedResident && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Name</label>
+                <p className="text-gray-900">{selectedResident.name}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">ID</label>
+                <p className="text-gray-900">{selectedResident.id}</p>
+              </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-500">Address</label>
+                <p className="text-gray-900">{selectedResident.address}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Phone</label>
+                <p className="text-gray-900">{selectedResident.phone}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Email</label>
+                <p className="text-gray-900">{selectedResident.email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Status</label>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  selectedResident.status === 'Active' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {selectedResident.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+>>>>>>> f637394 (Add resident management)
 
       {/* Delete Confirmation Modal */}
       <Modal

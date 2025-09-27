@@ -16,6 +16,10 @@ export default function ResidentDashboard() {
     <>
       {/* Demo: Dashboard Content - No sidebar/header since layout.js provides them */}
       <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Online Application</h1>
+            <p className="text-sm text-gray-600 mt-1">Easily submit and process barangay requests anytime, anywhere.</p>
+          </div>
         {/* Document Requests Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-4">

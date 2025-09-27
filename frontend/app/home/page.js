@@ -86,8 +86,7 @@ function AnnouncementCard({ announcement, onClick }) {
     return {
       date: dateObj.toLocaleDateString('en-US', { 
         month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+        day: 'numeric'
       }),
       time: dateObj.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
@@ -102,11 +101,11 @@ function AnnouncementCard({ announcement, onClick }) {
   return (
     <div 
       onClick={() => onClick(announcement)}
-      className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-white hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer"
+      className="bg-white border border-gray-200 rounded-md p-2.5 hover:shadow-sm hover:border-gray-300 transition-all duration-200 cursor-pointer"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+      <div className="flex items-start justify-between mb-1.5">
+        <div className="flex items-center space-x-1">
+          <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${
             announcement.category === 'news' 
               ? 'bg-blue-100 text-blue-800' 
               : 'bg-green-100 text-green-800'
@@ -114,116 +113,68 @@ function AnnouncementCard({ announcement, onClick }) {
             {announcement.category === 'news' ? 'News' : 'Activity'}
           </span>
           {announcement.isNew && (
-            <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">
               New
             </span>
           )}
         </div>
-        <div className="text-xs text-gray-500 text-right flex-shrink-0">
-          <div>{date}</div>
+        <div className="text-xs text-gray-500 text-right flex-shrink-0 ml-2">
+          <div className="font-medium">{date}</div>
           <div>{time}</div>
         </div>
       </div>
 
-      <h3 className="font-semibold text-gray-900 mb-2 text-sm leading-tight">
+      <h3 className="font-medium text-gray-900 mb-1 text-sm leading-tight">
         {announcement.title}
       </h3>
       
-      <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
+      <p className="text-xs text-gray-600 leading-relaxed line-clamp-1 mb-1.5">
         {announcement.content}
       </p>
 
       {/* Read more indicator */}
-      <div className="mt-3 flex items-center text-blue-600 text-xs font-medium">
-        <span>Read more</span>
-        <i className="bi bi-arrow-right ml-1"></i>
+      <div className="flex items-center justify-end text-blue-600 text-xs">
+        <span className="hover:underline">Read more</span>
+        <i className="bi bi-arrow-right ml-1 text-xs"></i>
       </div>
     </div>
   )
 }
 
 // Homepage Content Component
-function HomepageContent() {
+function HomepageContent({ className = '' }) {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const announcementsPerPage = 3
 
-  // Calculate pagination
-  const totalPages = Math.ceil(ANNOUNCEMENTS.length / announcementsPerPage)
-  const startIndex = (currentPage - 1) * announcementsPerPage
-  const currentAnnouncements = ANNOUNCEMENTS.slice(startIndex, startIndex + announcementsPerPage)
+  // Show only the first 3 announcements
+  const latestAnnouncements = ANNOUNCEMENTS.slice(0, 3)
 
   const handleAnnouncementClick = (announcement) => {
     setSelectedAnnouncement(announcement)
     setShowAnnouncementModal(true)
   }
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page)
-  }
-
   return (
-    <div className="w-full h-full flex flex-col bg-white">
-      {/* Header Section */}
-      <div className="text-center mb-6 pt-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Community Announcements
-        </h1>
-        <p className="text-sm text-gray-600">
+    <div className={`w-full max-w-sm lg:max-w-md ${className}`}>
+      {/* Header Section - More compact */}
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">
+          Latest 3 Announcements
+        </h2>
+        <p className="text-xs text-gray-600">
           Stay updated with the latest barangay news and events
         </p>
       </div>
 
-      {/* Announcements List */}
-      <div className="flex-1 px-6 overflow-y-auto">
-        <div className="space-y-4 mb-6">
-          {currentAnnouncements.map((announcement) => (
-            <AnnouncementCard 
-              key={announcement.id} 
-              announcement={announcement}
-              onClick={handleAnnouncementClick}
-            />
-          ))}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center space-x-2 pb-6">
-            {/* Previous Button */}
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-2 text-sm rounded-md border bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <i className="bi bi-chevron-left text-xs"></i>
-            </button>
-
-            {/* Page Numbers */}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                  currentPage === page
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-
-            {/* Next Button */}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 text-sm rounded-md border bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <i className="bi bi-chevron-right text-xs"></i>
-            </button>
-          </div>
-        )}
+      {/* Announcements List - More compact spacing */}
+      <div className="space-y-3">
+        {latestAnnouncements.map((announcement) => (
+          <AnnouncementCard 
+            key={announcement.id} 
+            announcement={announcement}
+            onClick={handleAnnouncementClick}
+          />
+        ))}
       </div>
 
       {/* Announcement Detail Modal */}

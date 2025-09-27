@@ -106,9 +106,6 @@ export default function Announcements() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <i className="bi bi-megaphone text-white text-lg"></i>
-            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
               <p className="text-sm text-gray-600 mt-0.5">Stay updated with barangay news and activities</p>
