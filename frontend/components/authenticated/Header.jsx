@@ -6,10 +6,18 @@ import { useRouter } from 'next/navigation'
 import ApiClient from '../../lib/apiClient'
 import Modal from '../common/Modal'
 
-export default function Header({ title, role = 'user', userName = 'Juan Dela Cruz', mobileMenuOpen, setMobileMenuOpen }) {
+export default function Header({ 
+  title, 
+  role = 'user', 
+  userName = 'Juan Dela Cruz', 
+  mobileMenuOpen, 
+  setMobileMenuOpen,
+  showLogoutModal,
+  setShowLogoutModal,
+  onLogout
+}) {
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const computedTitle = title ?? (role === 'admin' ? 'Admin Dashboard' : 'Resident Dashboard')
 
@@ -25,16 +33,17 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showUserMenu])
 
-  const handleLogout = async () => {
-    try {
-      await ApiClient.logout()
-    } catch (error) {
-      console.error('Logout error:', error)
+    const handleLogout = async () => {
+    if (onLogout) {
+      onLogout()
+    } else {
+      try {
+        await ApiClient.logout()
+        router.push('/login')
+      } catch (error) {
+        console.error('Logout error:', error)
+      }
     }
-    
-    // Clear local storage and redirect regardless of API response
-    localStorage.removeItem('authToken')
-    router.push('/login')
   }
 
   return (
@@ -90,22 +99,6 @@ export default function Header({ title, role = 'user', userName = 'Juan Dela Cru
           </div>
         </div>
       </header>
-
-      {/* Logout Confirmation Modal */}
-      <Modal
-        isOpen={showLogoutModal}
-        onClose={() => setShowLogoutModal(false)}
-        title="Confirm Logout"
-        type="confirm"
-        confirmText="Logout"
-        cancelText="Cancel"
-        onConfirm={handleLogout}
-        confirmButtonClass="text-white bg-red-600 hover:bg-red-700"
-      >
-        <p className="text-gray-600">
-          Are you sure you want to logout?
-        </p>
-      </Modal>
     </>
   )
 }

@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import ApiClient from '../../lib/apiClient'
+import Modal from '../common/Modal'
 
 export default function DashboardLayout({ 
   children, 
@@ -9,8 +12,19 @@ export default function DashboardLayout({
   title = "smartlias",
   className = "" 
 }) {
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await ApiClient.logout()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   return (
     <div className="h-screen bg-gray-50 overflow-hidden flex">
@@ -41,15 +55,34 @@ export default function DashboardLayout({
             mobileMenuOpen, 
             setMobileMenuOpen,
             collapsed,
-            setCollapsed 
+            setCollapsed,
+            showLogoutModal,
+            setShowLogoutModal,
+            onLogout: handleLogout
           })}
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto bg-gray-50 p-4">
+        <main className="flex-1 overflow-hidden bg-gray-50 p-4">
           {children}
         </main>
       </div>
+
+      {/* Logout Confirmation Modal - Rendered at root level */}
+      <Modal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Confirm Logout"
+        type="confirm"
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        confirmButtonClass="text-white bg-red-600 hover:bg-red-700"
+      >
+        <p className="text-gray-600">
+          Are you sure you want to logout?
+        </p>
+      </Modal>
     </div>
   )
 }

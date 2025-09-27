@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import ApiClient from '../../../lib/apiClient'
-import ResidentsTable from '../../../components/authenticated/ResidentsTable'
+import ResidentsContainer from '../../../components/authenticated/admin/ResidentsContainer'
+import ResidentsView from '../../../components/authenticated/admin/ResidentsView'
 import Modal from '../../../components/common/Modal'
 
 export default function ResidentsPage() {
@@ -69,7 +70,7 @@ export default function ResidentsPage() {
         id: Date.now(),
         name: name.trim(),
         address: 'New Address - Please update',
-        status: 'Active',
+        is_active: 1, // 1 means active
         phone: 'Not provided',
         email: 'Not provided',
         created_at: new Date().toISOString()
@@ -94,7 +95,7 @@ export default function ResidentsPage() {
       )}
 
       {/* Advanced Residents Table */}
-      <ResidentsTable
+      <ResidentsContainer
         residents={residentsData}
         loading={loading}
         onView={handleView}
@@ -151,50 +152,10 @@ export default function ResidentsPage() {
         </div>
       )}
 
-      {/* View Resident Modal */}
-      <Modal
-        isOpen={showView}
-        onClose={() => setShowView(false)}
-        title="Resident Details"
-        type="info"
-      >
-        {selectedResident && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Name</label>
-                <p className="text-gray-900">{selectedResident.name}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">ID</label>
-                <p className="text-gray-900">{selectedResident.id}</p>
-              </div>
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-500">Address</label>
-                <p className="text-gray-900">{selectedResident.address}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Phone</label>
-                <p className="text-gray-900">{selectedResident.phone}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Email</label>
-                <p className="text-gray-900">{selectedResident.email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                  selectedResident.status === 'Active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {selectedResident.status}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* View Resident Slide Panel */}
+      <ResidentsView open={showView} onClose={() => setShowView(false)}>
+        {selectedResident}
+      </ResidentsView>
 
       {/* Delete Confirmation Modal */}
       <Modal

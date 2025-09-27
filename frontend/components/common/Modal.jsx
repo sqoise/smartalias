@@ -31,7 +31,7 @@ export default function Modal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-300"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-in fade-in duration-300"
       onClick={handleOverlayClick}
     >
       <div className="bg-white rounded-lg p-6 w-96 mx-4 animate-in zoom-in-95 duration-300 ease-out">
