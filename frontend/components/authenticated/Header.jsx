@@ -33,7 +33,7 @@ export default function Header({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showUserMenu])
 
-  const handleLogout = async () => {
+    const handleLogout = async () => {
     if (onLogout) {
       onLogout()
     } else {
