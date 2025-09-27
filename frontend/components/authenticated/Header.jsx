@@ -34,17 +34,6 @@ export default function Header({
   }, [showUserMenu])
 
   const handleLogout = async () => {
-    try {
-      await ApiClient.logout()
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showUserMenu])
-
-    const handleLogout = async () => {
     if (onLogout) {
       onLogout()
     } else {
