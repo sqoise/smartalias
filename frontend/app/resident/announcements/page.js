@@ -194,14 +194,6 @@ export default function Announcements() {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              <div className="absolute top-3 right-3">
-                <button
-                  onClick={() => setShowAnnouncementModal(false)}
-                  className="w-7 h-7 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 transition-all duration-200 backdrop-blur-sm"
-                >
-                  <i className="bi bi-x text-sm"></i>
-                </button>
-              </div>
               {selectedAnnouncement.isNew && (
                 <div className="absolute top-3 left-3">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
@@ -231,10 +223,20 @@ export default function Announcements() {
               </h2>
 
               {/* Full Description */}
-              <div className="mb-4">
+              <div className="mb-6">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {selectedAnnouncement.fullDescription}
                 </p>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAnnouncementModal(false)}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

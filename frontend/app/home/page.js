@@ -159,7 +159,7 @@ function HomepageContent({ className = '' }) {
       {/* Header Section - More compact */}
       <div className="mb-4">
         <h2 className="text-lg font-bold text-gray-900 mb-1">
-          Latest 3 Announcements
+          Announcements
         </h2>
         <p className="text-xs text-gray-600">
           Stay updated with the latest barangay news and events
@@ -179,60 +179,66 @@ function HomepageContent({ className = '' }) {
 
       {/* Announcement Detail Modal */}
       {showAnnouncementModal && selectedAnnouncement && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-white rounded-lg sm:rounded-xl w-full max-w-sm sm:max-w-md lg:max-w-lg max-h-[95vh] sm:max-h-[85vh] overflow-hidden shadow-xl mx-2 sm:mx-0">
             {/* Modal Header with Image */}
-            <div className="relative h-32 bg-gradient-to-r from-blue-500 to-blue-600">
-              <img
-                src={selectedAnnouncement.image}
-                alt="Announcement header"
-                className="w-full h-full object-cover"
+            <div className="relative">
+              <img 
+                src={selectedAnnouncement.image} 
+                alt={selectedAnnouncement.title}
+                className="w-full h-24 sm:h-32 object-cover"
                 onError={(e) => {
-                  e.target.style.display = 'none'
+                  e.target.src = '/images/barangay_logo.png'
                 }}
               />
-              <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-              <button
-                onClick={() => setShowAnnouncementModal(false)}
-                className="absolute top-3 right-3 w-8 h-8 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full flex items-center justify-center text-white transition-colors"
-              >
-                <i className="bi bi-x text-xl"></i>
-              </button>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              {selectedAnnouncement.isNew && (
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+                  <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
+                    New
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Modal Content */}
-            <div className="p-4 overflow-y-auto max-h-[calc(80vh-8rem)]">
-              {/* Title and Metadata */}
-              <div className="mb-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">
-                  {selectedAnnouncement.title}
-                </h2>
-                <div className="flex items-center space-x-3 text-xs text-gray-500 mb-3">
-                  <span className={`px-2 py-1 font-medium rounded-full ${
-                    selectedAnnouncement.category === 'news' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {selectedAnnouncement.category === 'news' ? 'News' : 'Activity'}
-                  </span>
-                  <span>{new Date(`${selectedAnnouncement.date}T${selectedAnnouncement.time}`).toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric', 
-                    year: 'numeric' 
+            <div className="p-3 sm:p-4 overflow-y-auto max-h-[calc(95vh-6rem)] sm:max-h-[calc(85vh-8rem)]">
+              {/* Date and Time */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs text-gray-500 mb-3">
+                <div className="flex items-center gap-1">
+                  <i className="bi bi-calendar3"></i>
+                  <span>{new Date(selectedAnnouncement.date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: '2-digit',
+                    year: 'numeric'
                   })}</span>
-                  <span>{new Date(`${selectedAnnouncement.date}T${selectedAnnouncement.time}`).toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                  })}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <i className="bi bi-clock"></i>
+                  <span>{selectedAnnouncement.time}</span>
                 </div>
               </div>
 
+              {/* Title */}
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 leading-tight">
+                {selectedAnnouncement.title}
+              </h2>
+
               {/* Full Description */}
-              <div className="mb-4">
+              <div className="mb-4 sm:mb-6">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {selectedAnnouncement.fullDescription}
                 </p>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-center sm:justify-end pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => setShowAnnouncementModal(false)}
+                  className="w-full sm:w-auto px-6 py-2.5 sm:px-4 sm:py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

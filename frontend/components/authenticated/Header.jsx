@@ -80,13 +80,6 @@ export default function Header({
 
               {showUserMenu && (
                 <div className="absolute right-0 mt-1 w-44 bg-white rounded shadow-lg z-50 py-1">
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                    <i className="bi bi-person text-sm mr-2"></i>Profile
-                  </a>
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                    <i className="bi bi-gear text-sm mr-2"></i>Settings
-                  </a>
-                  <div className="border-t border-gray-100 my-1"></div>
                   <button 
                     onClick={() => { setShowLogoutModal(true); setShowUserMenu(false) }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"

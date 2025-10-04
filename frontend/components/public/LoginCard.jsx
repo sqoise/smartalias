@@ -296,15 +296,27 @@ export default function LoginCard({
               Forgot Username or PIN?
             </a>
           </div>
+
+          {/* Register Link - Mobile positioning */}
+          <div className={`lg:hidden text-center mt-2 ${
+            showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <p className="text-xs text-gray-600">
+              Don't have an account?{' '}
+              <a 
+                href="/register"
+                className="text-green-600 hover:text-green-700 active:text-green-800 font-medium cursor-pointer transition-colors"
+              >
+                Register here
+              </a>
+            </p>
+          </div>
         </div>
         
         {/* Access Notice and Forgot Link - Desktop fixed footer */}
         <div className={`hidden lg:block absolute bottom-4 left-0 right-0 text-center transition-opacity duration-300 ${
           showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}>
-          <p className="text-xs text-gray-600 mb-2">
-            Access for registered administrators only
-          </p>
           <a 
             href="#" 
             onClick={(e) => {
@@ -316,6 +328,19 @@ export default function LoginCard({
           >
             Forgot Username or PIN?
           </a>
+          
+          {/* Register Link - Desktop */}
+          <div className="mt-2">
+            <p className="text-xs text-gray-600">
+              Don't have an account?{' '}
+              <a 
+                href="/register"
+                className="text-green-600 hover:text-green-700 active:text-green-800 font-medium cursor-pointer transition-colors"
+              >
+                Register here
+              </a>
+            </p>
+          </div>
         </div>
         </div>
         
