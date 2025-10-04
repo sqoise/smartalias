@@ -31,12 +31,12 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
   }
 
   const menus = {
-    user: [
-      { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
-      { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
-      { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
-      { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
-    ],
+    // user: [
+    //   { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
+    //   { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
+    //   { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
+    //   { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
+    // ],
     resident: [
       { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
       { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
@@ -46,9 +46,10 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
-      { name: 'Documents', href: '/admin/documents', icon: 'bi-file-earmark-text' },
-      { name: 'Reports', href: '/admin/reports', icon: 'bi-graph-up' },
-      { name: 'Settings', href: '/admin/settings', icon: 'bi-gear' },
+      { name: 'Household', href: '/admin/household', icon: 'bi-house' },
+      { name: 'Document Requests', href: '/admin/documents', icon: 'bi-file-earmark-text' },
+      { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
+      { name: 'Maintenance', href: '/admin/settings', icon: 'bi-gear' },
     ],
   }
 

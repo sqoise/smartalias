@@ -12,43 +12,20 @@ const jwt = require('jsonwebtoken')
 // Import utilities and middleware
 const config = require('./config/config')
 const logger = require('./config/logger')
+const db = require('./config/db')
 const Validator = require('./utils/validator')
 const ApiResponse = require('./utils/apiResponse')
+const IDUtils = require('./utils/idUtils')
+const UserRepository = require('./repositories/UserRepository')
+const ResidentRepository = require('./repositories/ResidentRepository')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
 // Import shared messages
 const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('../shared/constants')
+const { USER_ROLES } = require('./config/constants')
 
 const router = express.Router()
-
-// ==========================================================================
-// DATA HELPERS
-// ==========================================================================
-
-// Load JSON data
-async function loadJsonData(filename) {
-  try {
-    const filePath = path.join(__dirname, 'data', filename)
-    const data = await fs.readFile(filePath, 'utf8')
-    return JSON.parse(data)
-  } catch (error) {
-    logger.error(`Failed to load ${filename}`, error)
-    return []
-  }
-}
-
-// Save JSON data
-async function saveJsonData(filename, data) {
-  try {
-    const filePath = path.join(__dirname, 'data', filename)
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8')
-    return true
-  } catch (error) {
-    logger.error(`Failed to save ${filename}`, error)
-    return false
-  }
-}
 
 // ==========================================================================
 // AUTHENTICATION ROUTES
@@ -79,9 +56,8 @@ router.post('/auth/login', authLimiter, async (req, res) => {
       }, 'Invalid PIN format')
     }
 
-    // Load users
-    const users = await loadJsonData('users.json')
-    const user = users.find(u => u.username === username)
+    // Get user from repository
+    const user = await UserRepository.findByUsername(username)
 
     if (!user) {
       logger.warn('Login attempt with non-existent username', { username, ip: req.ip })
@@ -95,39 +71,34 @@ router.post('/auth/login', authLimiter, async (req, res) => {
     }
 
     // Verify PIN
-    const isValidPin = await bcrypt.compare(pin.toString(), user.passwordHash)
+    const isValidPin = await bcrypt.compare(pin.toString(), user.password)
 
     if (!isValidPin) {
       // Increment failed attempts
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1
-      user.lastFailedLogin = new Date().toISOString()
-
+      const failedAttempts = (user.failedLoginAttempts || 0) + 1
+      
       // Lock account if too many failed attempts
-      if (user.failedLoginAttempts >= config.MAX_LOGIN_ATTEMPTS) {
-        user.lockedUntil = new Date(Date.now() + config.LOCKOUT_TIME).toISOString()
-        logger.warn('Account locked due to failed attempts', { username, attempts: user.failedLoginAttempts })
+      let lockedUntil = null
+      if (failedAttempts >= config.MAX_LOGIN_ATTEMPTS) {
+        lockedUntil = new Date(Date.now() + config.LOCKOUT_TIME).toISOString()
+        logger.warn('Account locked due to failed attempts', { username, attempts: failedAttempts })
       }
 
-      await saveJsonData('users.json', users)
+      await UserRepository.updateLoginFailure(user.id, username, failedAttempts, lockedUntil)
 
-      logger.warn('Failed login attempt', { username, ip: req.ip, attempts: user.failedLoginAttempts })
+      logger.warn('Failed login attempt', { username, ip: req.ip, attempts: failedAttempts })
       return ApiResponse.unauthorized(res, 'Invalid PIN. Please try again.')
     }
 
     // Successful login - reset failed attempts
-    user.failedLoginAttempts = 0
-    user.lockedUntil = null
-    user.lastLogin = new Date().toISOString()
-    await saveJsonData('users.json', users)
+    await UserRepository.updateLoginSuccess(user.id, username)
 
     // Generate JWT token
     const token = jwt.sign(
       {
         id: user.id,
         username: user.username,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName
+        role: user.role
       },
       config.JWT_SECRET,
       { expiresIn: config.JWT_EXPIRES_IN }
@@ -135,8 +106,8 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     logger.info('Successful login', { username, role: user.role })
 
-    // Determine redirect URL
-    const redirectTo = user.role === 'admin' ? '/admin' : '/resident'
+    // Determine redirect URL based on role constants
+    const redirectTo = user.role === USER_ROLES.ADMIN ? '/admin' : '/resident'
 
     return ApiResponse.success(res, {
       token,
@@ -144,12 +115,10 @@ router.post('/auth/login', authLimiter, async (req, res) => {
         id: user.id,
         username: user.username,
         role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        passwordChanged: user.passwordChanged !== false
+        passwordChanged: user.is_password_changed !== 0
       },
       redirectTo
-    }, `Welcome ${user.firstName}!`)
+    }, `Welcome ${user.username}!`)
 
   } catch (error) {
     logger.error('Login error', error)
@@ -173,8 +142,7 @@ router.post('/auth/check-user', authLimiter, async (req, res) => {
       }, 'Invalid username format')
     }
 
-    const users = await loadJsonData('users.json')
-    const user = users.find(u => u.username === username)
+    const user = await UserRepository.findByUsername(username)
 
     if (!user) {
       return ApiResponse.notFound(res, 'User not found')
@@ -183,7 +151,6 @@ router.post('/auth/check-user', authLimiter, async (req, res) => {
     return ApiResponse.success(res, {
       user: {
         username: user.username,
-        firstName: user.firstName,
         role: user.role
       }
     }, 'User found')
@@ -201,9 +168,7 @@ router.get('/auth/me', authenticateToken, (req, res) => {
     user: {
       id: req.user.id,
       username: req.user.username,
-      role: req.user.role,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName
+      role: req.user.role
     },
     message: 'User information retrieved'
   })
@@ -243,21 +208,18 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
       })
     }
 
-    // Load users
-    const users = await loadJsonData('users.json')
-    const userIndex = users.findIndex(u => u.id === req.user.id)
+    // Get user
+    const user = await UserRepository.findByUsername(req.user.username)
 
-    if (userIndex === -1) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         error: AUTH_MESSAGES.USER_NOT_FOUND
       })
     }
 
-    const user = users[userIndex]
-
     // Verify current PIN
-    const isValidCurrentPin = await bcrypt.compare(currentPin.toString(), user.passwordHash)
+    const isValidCurrentPin = await bcrypt.compare(currentPin.toString(), user.password)
     if (!isValidCurrentPin) {
       logger.warn('Invalid current PIN in change request', { username: req.user.username })
       return res.status(400).json({
@@ -269,15 +231,8 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
     // Hash new PIN
     const newHashedPin = await bcrypt.hash(newPin.toString(), config.BCRYPT_ROUNDS)
 
-    // Update user
-    users[userIndex] = {
-      ...user,
-      passwordHash: newHashedPin,
-      passwordChanged: true,
-      updatedAt: new Date().toISOString()
-    }
-
-    await saveJsonData('users.json', users)
+    // Update user password
+    await UserRepository.updatePassword(user.id, user.username, newHashedPin)
 
     logger.info('Password changed successfully', { username: req.user.username })
 
@@ -302,54 +257,20 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
 // GET /api/residents - Get all residents
 router.get('/residents', generalLimiter, authenticateToken, async (req, res) => {
   try {
-    const { page, limit, search } = req.query
-    const residents = await loadJsonData('residents.json')
+    const { page = 1, limit = 50, search = '' } = req.query
 
-    let filteredResidents = residents
-
-    // Search functionality
-    if (search) {
-      const searchTerm = Validator.sanitizeInput(search).toLowerCase()
-      filteredResidents = residents.filter(resident =>
-        resident.firstName.toLowerCase().includes(searchTerm) ||
-        resident.lastName.toLowerCase().includes(searchTerm) ||
-        (resident.middleName && resident.middleName.toLowerCase().includes(searchTerm)) ||
-        (resident.email && resident.email.toLowerCase().includes(searchTerm)) ||
-        (resident.contactNumber && resident.contactNumber.includes(search))
-      )
-    }
-
-    // Pagination
-    if (page || limit) {
-      const pagination = Validator.validatePagination(page, limit)
-      if (!pagination.isValid) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid pagination parameters',
-          details: pagination.errors
-        })
-      }
-
-      const offset = (pagination.page - 1) * pagination.limit
-      const paginatedResidents = filteredResidents.slice(offset, offset + pagination.limit)
-
-      return res.json({
-        success: true,
-        data: paginatedResidents,
-        pagination: {
-          page: pagination.page,
-          limit: pagination.limit,
-          total: filteredResidents.length,
-          totalPages: Math.ceil(filteredResidents.length / pagination.limit)
-        },
-        message: `Retrieved ${paginatedResidents.length} residents`
-      })
-    }
+    const result = await ResidentRepository.findAll(search, parseInt(page), parseInt(limit))
 
     res.json({
       success: true,
-      data: filteredResidents,
-      message: `Retrieved ${filteredResidents.length} residents`
+      data: result.residents,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.limit)
+      },
+      message: `Retrieved ${result.residents.length} residents`
     })
 
   } catch (error) {
@@ -373,8 +294,7 @@ router.get('/residents/:id', generalLimiter, authenticateToken, async (req, res)
       })
     }
 
-    const residents = await loadJsonData('residents.json')
-    const resident = residents.find(r => r.id === parseInt(id))
+    const resident = await ResidentRepository.findById(id)
 
     if (!resident) {
       return res.status(404).json({
@@ -407,11 +327,7 @@ router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async
     const validation = Validator.validateResident(residentData)
     if (!validation.isValid) {
       Validator.logValidationError(req, validation, 'resident creation')
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid resident data',
-        details: validation.errors
-      })
+      return ApiResponse.validationError(res, validation.errors, 'Invalid resident data')
     }
 
     // Sanitize input data
@@ -419,44 +335,72 @@ router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async
       firstName: Validator.sanitizeInput(residentData.firstName),
       lastName: Validator.sanitizeInput(residentData.lastName),
       middleName: Validator.sanitizeInput(residentData.middleName || ''),
+      suffix: Validator.sanitizeInput(residentData.suffix || ''),
       birthDate: residentData.birthDate || null,
+      gender: Validator.sanitizeInput(residentData.gender || ''),
       civilStatus: Validator.sanitizeInput(residentData.civilStatus || ''),
-      address: Validator.sanitizeInput(residentData.address || ''),
-      contactNumber: Validator.sanitizeInput(residentData.contactNumber || ''),
+      homeNumber: Validator.sanitizeInput(residentData.homeNumber || ''),
+      mobileNumber: Validator.sanitizeInput(residentData.mobileNumber || ''),
       email: Validator.sanitizeInput(residentData.email || ''),
+      address: Validator.sanitizeInput(residentData.address || ''),
+      purok: residentData.purok || null,
+      religion: Validator.sanitizeInput(residentData.religion || ''),
+      occupation: Validator.sanitizeInput(residentData.occupation || ''),
+      specialCategory: Validator.sanitizeInput(residentData.specialCategory || ''),
+      notes: Validator.sanitizeInput(residentData.notes || '')
     }
 
-    const residents = await loadJsonData('residents.json')
+    // Generate username and PIN
+    const username = `${sanitizedData.firstName.toLowerCase()}.${sanitizedData.lastName.toLowerCase()}`
+    const pin = Math.floor(100000 + Math.random() * 900000).toString() // 6-digit random PIN
+    const hashedPassword = await bcrypt.hash(pin, config.BCRYPT_ROUNDS)
 
-    // Generate new ID
-    const newId = residents.length > 0 
-      ? Math.max(...residents.map(r => r.id)) + 1 
-      : 1
+    // Check if username already exists
+    const existingUser = await UserRepository.findByUsername(username)
+    if (existingUser) {
+      return ApiResponse.error(res, 'Username already exists. Please try with different names.', 409)
+    }
 
-    const newResident = {
-      id: newId,
+    // Create user account first
+    const userData = {
+      username: username,
+      passwordHash: hashedPassword,
+      role: 'resident',
+      passwordChanged: false // User must change PIN on first login
+    }
+
+    const newUser = await UserRepository.create(userData)
+
+    // Create resident record
+    const residentDataWithUser = {
       ...sanitizedData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      userId: IDUtils.parseID(newUser.id), // Parse formatted ID back to integer for database
+      isActive: 1,
+      createdBy: IDUtils.parseID(req.user.id)
     }
 
-    residents.push(newResident)
-    await saveJsonData('residents.json', residents)
+    const newResident = await ResidentRepository.create(residentDataWithUser)
 
-    logger.info(`Resident created by ${req.user.username}`, { residentId: newId })
-
-    res.status(201).json({
-      success: true,
-      data: newResident,
-      message: 'Resident created successfully'
+    logger.info(`Resident and user created by ${req.user.username}`, { 
+      residentId: newResident.id, 
+      userId: newUser.id,
+      username: username 
     })
+
+    // Return resident data with credentials
+    const responseData = {
+      resident: newResident,
+      credentials: {
+        username: username,
+        pin: pin
+      }
+    }
+
+    return ApiResponse.success(res, responseData, 'Resident added successfully', 201)
 
   } catch (error) {
-    logger.error('Error creating resident', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create resident'
-    })
+    logger.error('Error creating resident and user', error)
+    return ApiResponse.error(res, 'Failed to create resident. Please try again.', 500)
   }
 })
 
@@ -466,68 +410,100 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireAdmin, as
     const { id } = req.params
     const updateData = req.body
 
+    // Validate resident ID
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid resident ID is required'
-      })
+      return ApiResponse.error(res, 'Valid resident ID is required', 400)
     }
 
-    // Validate input
+    // CRITICAL: Use identical validation as POST /api/residents (create endpoint)
     const validation = Validator.validateResident(updateData)
     if (!validation.isValid) {
       Validator.logValidationError(req, validation, 'resident update')
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid resident data',
-        details: validation.errors
-      })
+      return ApiResponse.validationError(res, validation.errors, 'Invalid resident data')
     }
 
-    const residents = await loadJsonData('residents.json')
-    const index = residents.findIndex(r => r.id === parseInt(id))
-
-    if (index === -1) {
-      return res.status(404).json({
-        success: false,
-        error: 'Resident not found'
-      })
-    }
-
-    // Sanitize input data
+    // Sanitize input data (identical to create endpoint)
     const sanitizedData = {
       firstName: Validator.sanitizeInput(updateData.firstName),
       lastName: Validator.sanitizeInput(updateData.lastName),
       middleName: Validator.sanitizeInput(updateData.middleName || ''),
+      suffix: Validator.sanitizeInput(updateData.suffix || ''),
       birthDate: updateData.birthDate || null,
+      gender: Validator.sanitizeInput(updateData.gender || ''),
       civilStatus: Validator.sanitizeInput(updateData.civilStatus || ''),
-      address: Validator.sanitizeInput(updateData.address || ''),
-      contactNumber: Validator.sanitizeInput(updateData.contactNumber || ''),
+      homeNumber: Validator.sanitizeInput(updateData.homeNumber || ''),
+      mobileNumber: Validator.sanitizeInput(updateData.mobileNumber || ''),
       email: Validator.sanitizeInput(updateData.email || ''),
+      address: Validator.sanitizeInput(updateData.address || ''),
+      purok: updateData.purok || null,
+      religion: Validator.sanitizeInput(updateData.religion || ''),
+      occupation: Validator.sanitizeInput(updateData.occupation || ''),
+      specialCategory: Validator.sanitizeInput(updateData.specialCategory || ''),
+      notes: Validator.sanitizeInput(updateData.notes || ''),
+      isActive: updateData.isActive !== undefined ? updateData.isActive : 1
     }
 
-    residents[index] = {
-      ...residents[index],
-      ...sanitizedData,
-      updatedAt: new Date().toISOString()
+    // Apply formatTitleCase for consistency (same as create)
+    sanitizedData.firstName = Validator.formatTitleCase(sanitizedData.firstName)
+    sanitizedData.lastName = Validator.formatTitleCase(sanitizedData.lastName)
+    sanitizedData.middleName = Validator.formatTitleCase(sanitizedData.middleName)
+    sanitizedData.address = Validator.formatTitleCase(sanitizedData.address)
+
+    const updatedResident = await ResidentRepository.updateById(id, sanitizedData)
+
+    if (!updatedResident) {
+      return ApiResponse.error(res, 'Resident not found', 404)
     }
 
-    await saveJsonData('residents.json', residents)
-
-    logger.info(`Resident updated by ${req.user.username}`, { residentId: id })
-
-    res.json({
-      success: true,
-      data: residents[index],
-      message: 'Resident updated successfully'
+    logger.info(`Resident updated by ${req.user.username}`, { 
+      residentId: id, 
+      updatedFields: Object.keys(sanitizedData).filter(key => sanitizedData[key] !== null && sanitizedData[key] !== '')
     })
+
+    return ApiResponse.success(res, updatedResident, 'Resident updated successfully')
 
   } catch (error) {
     logger.error('Error updating resident', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update resident'
+    return ApiResponse.error(res, 'Failed to update resident. Please try again.', 500)
+  }
+})
+
+// PATCH /api/residents/:id/status - Update resident status (admin only)
+router.patch('/residents/:id/status', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { is_active } = req.body
+
+    // Validate resident ID
+    if (!id || isNaN(parseInt(id))) {
+      return ApiResponse.error(res, 'Valid resident ID is required', 400)
+    }
+
+    // Validate is_active value
+    if (is_active === undefined || ![0, 1].includes(parseInt(is_active))) {
+      return ApiResponse.error(res, 'is_active must be 0 (inactive) or 1 (active)', 400)
+    }
+
+    // Quick status toggle without full validation
+    const updatedResident = await ResidentRepository.updateStatus(id, parseInt(is_active))
+
+    if (!updatedResident) {
+      return ApiResponse.error(res, 'Resident not found', 404)
+    }
+
+    logger.info(`Resident status updated by ${req.user.username}`, { 
+      residentId: id, 
+      newStatus: is_active === 1 ? 'active' : 'inactive'
     })
+
+    return ApiResponse.success(res, { 
+      id: updatedResident.id, 
+      is_active: updatedResident.is_active 
+    }, `Resident ${is_active === 1 ? 'activated' : 'deactivated'} successfully`)
+
+  } catch (error) {
+    logger.error('Error updating resident status', error)
+    return ApiResponse.error(res, 'Failed to update resident status. Please try again.', 500)
   }
 })
 
@@ -543,20 +519,14 @@ router.delete('/residents/:id', generalLimiter, authenticateToken, requireAdmin,
       })
     }
 
-    const residents = await loadJsonData('residents.json')
-    const index = residents.findIndex(r => r.id === parseInt(id))
+    const deleted = await ResidentRepository.delete(id)
 
-    if (index === -1) {
+    if (!deleted) {
       return res.status(404).json({
         success: false,
         error: 'Resident not found'
       })
     }
-
-    const deletedResident = residents[index]
-    residents.splice(index, 1)
-
-    await saveJsonData('residents.json', residents)
 
     logger.info(`Resident deleted by ${req.user.username}`, { residentId: id })
 
@@ -577,17 +547,7 @@ router.delete('/residents/:id', generalLimiter, authenticateToken, requireAdmin,
 // GET /api/residents/stats - Get resident statistics (admin only)
 router.get('/residents/stats', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const residents = await loadJsonData('residents.json')
-    
-    const stats = {
-      total: residents.length,
-      recentCount: residents.filter(r => {
-        const created = new Date(r.createdAt)
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        return created > thirtyDaysAgo
-      }).length
-    }
+    const stats = await ResidentRepository.getStats()
 
     res.json({
       success: true,
@@ -684,6 +644,108 @@ router.delete('/admin/logs', generalLimiter, authenticateToken, requireAdmin, (r
       success: false,
       error: 'Failed to clear log files'
     })
+  }
+})
+
+// ==========================================================================
+// RESIDENT SELF-REGISTRATION ROUTES
+// ==========================================================================
+
+// POST /api/auth/register - Resident self-registration (public endpoint)
+router.post('/auth/register', generalLimiter, async (req, res) => {
+  try {
+    const registrationData = req.body
+
+    // Validate input
+    const validation = Validator.validateResident(registrationData)
+    if (!validation.isValid) {
+      Validator.logValidationError(req, validation, 'resident self-registration')
+      return ApiResponse.validationError(res, validation.errors, 'Invalid registration data')
+    }
+
+    // Validate username and PIN are provided for self-registration
+    if (!registrationData.username || !registrationData.pin) {
+      return ApiResponse.validationError(res, {
+        username: !registrationData.username ? ['Username is required'] : [],
+        pin: !registrationData.pin ? ['PIN is required'] : []
+      }, 'Username and PIN are required for registration')
+    }
+
+    // Validate PIN format (6 digits)
+    const pinValidation = Validator.validatePin(registrationData.pin)
+    if (!pinValidation.isValid) {
+      return ApiResponse.validationError(res, {
+        pin: pinValidation.errors
+      }, 'Invalid PIN format')
+    }
+
+    // Sanitize input data
+    const sanitizedData = {
+      firstName: Validator.sanitizeInput(registrationData.firstName),
+      lastName: Validator.sanitizeInput(registrationData.lastName),
+      middleName: Validator.sanitizeInput(registrationData.middleName || ''),
+      suffix: Validator.sanitizeInput(registrationData.suffix || ''),
+      birthDate: registrationData.birthDate || null,
+      gender: Validator.sanitizeInput(registrationData.gender || ''),
+      civilStatus: Validator.sanitizeInput(registrationData.civilStatus || ''),
+      homeNumber: Validator.sanitizeInput(registrationData.homeNumber || ''),
+      mobileNumber: Validator.sanitizeInput(registrationData.mobileNumber || ''),
+      email: Validator.sanitizeInput(registrationData.email || ''),
+      address: Validator.sanitizeInput(registrationData.address || ''),
+      purok: registrationData.purok || null,
+      religion: Validator.sanitizeInput(registrationData.religion || ''),
+      occupation: Validator.sanitizeInput(registrationData.occupation || ''),
+      specialCategory: Validator.sanitizeInput(registrationData.specialCategory || ''),
+      notes: Validator.sanitizeInput(registrationData.notes || '')
+    }
+
+    const username = Validator.sanitizeInput(registrationData.username)
+    const pin = registrationData.pin
+
+    // Check if username already exists
+    const existingUser = await UserRepository.findByUsername(username)
+    if (existingUser) {
+      return ApiResponse.error(res, 'Username already exists. Please choose a different username.', 409)
+    }
+
+    // Hash the PIN
+    const hashedPassword = await bcrypt.hash(pin, config.BCRYPT_ROUNDS)
+
+    // Create user account first
+    const userData = {
+      username: username,
+      passwordHash: hashedPassword,
+      role: 'resident',
+      passwordChanged: true // User chose their own PIN, no need to change
+    }
+
+    const newUser = await UserRepository.create(userData)
+
+    // Create resident record
+    const residentDataWithUser = {
+      ...sanitizedData,
+      userId: IDUtils.parseID(newUser.id), // Parse formatted ID back to integer for database
+      isActive: 1,
+      selfRegistered: true // Flag to indicate self-registration
+    }
+
+    const newResident = await ResidentRepository.create(residentDataWithUser)
+
+    logger.info(`Resident self-registered`, { 
+      residentId: newResident.id, 
+      userId: newUser.id,
+      username: username 
+    })
+
+    // Return success without credentials (user already knows their own credentials)
+    return ApiResponse.success(res, {
+      resident: newResident,
+      message: 'Registration successful! You can now login with your username and PIN.'
+    }, 'Registration completed successfully', 201)
+
+  } catch (error) {
+    logger.error('Error in resident self-registration', error)
+    return ApiResponse.error(res, 'Registration failed. Please try again.', 500)
   }
 })
 

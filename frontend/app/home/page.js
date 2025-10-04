@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import PublicLayout from '../../components/public/PublicLayout'
+import ApiClient from '../../lib/apiClient'
+import { USER_ROLES } from '../../lib/constants'
 
 // Sample announcements data (same as resident announcements)
 const ANNOUNCEMENTS = [
@@ -65,15 +68,69 @@ const ANNOUNCEMENTS = [
 
 // Navigation Header Component
 function NavigationHeader() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userRole, setUserRole] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkAuthentication = async () => {
+      try {
+        const sessionResponse = await ApiClient.getSession()
+        if (sessionResponse.success) {
+          setIsAuthenticated(true)
+          setUserRole(sessionResponse.user.role)
+        }
+      } catch (error) {
+        // User is not authenticated, which is fine for home page
+        console.log('User not authenticated')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuthentication()
+  }, [])
+
+  const handleDashboardClick = () => {
+    // Redirect based on user role
+    if (userRole === USER_ROLES.ADMIN) {
+      router.push('/admin')
+    } else {
+      router.push('/resident')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
+        <nav className="flex justify-end items-center">
+          <div className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700">
+            Loading...
+          </div>
+        </nav>
+      </header>
+    )
+  }
+
   return (
     <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
       <nav className="flex justify-end items-center">
-        <Link 
-          href="/login"
-          className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700 hover:text-white lg:hover:text-gray-900 hover:bg-white/10 lg:hover:bg-gray-100 hover:border-white/50 lg:hover:border-gray-400 focus:ring-2 focus:ring-white/50 lg:focus:ring-gray-400 focus:outline-none transition-all duration-200"
-        >
-          Login
-        </Link>
+        {isAuthenticated ? (
+          <button
+            onClick={handleDashboardClick}
+            className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700 hover:text-white lg:hover:text-gray-900 hover:bg-white/10 lg:hover:bg-gray-100 hover:border-white/50 lg:hover:border-gray-400 focus:ring-2 focus:ring-white/50 lg:focus:ring-gray-400 focus:outline-none transition-all duration-200"
+          >
+            Go to Dashboard
+          </button>
+        ) : (
+          <Link 
+            href="/login"
+            className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700 hover:text-white lg:hover:text-gray-900 hover:bg-white/10 lg:hover:bg-gray-100 hover:border-white/50 lg:hover:border-gray-400 focus:ring-2 focus:ring-white/50 lg:focus:ring-gray-400 focus:outline-none transition-all duration-200"
+          >
+            Login
+          </Link>
+        )}
       </nav>
     </header>
   )

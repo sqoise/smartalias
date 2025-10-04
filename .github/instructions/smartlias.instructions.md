@@ -720,7 +720,103 @@ USE_MOCK_DATA=false
 - ✅ **Testing Flexibility**: Test with known data sets or live database
 - ✅ **Deployment Safety**: Production flag prevents accidental mock data usage
 
-#### **Security Implementation**
+---
+
+### **🔐 AUTHENTICATION & SECURITY**
+
+**📖 Complete Authentication Flow Documentation**: See `/.github/docs/AUTHENTICATION_FLOW.md` for comprehensive developer guide.
+
+#### **Authentication Method: JWT Tokens**
+
+**Stateless Authentication**:
+- JWT tokens contain user info (no server-side session storage)
+- Token expiration acts as session duration (default: 24 hours)
+- Tokens stored in client-side localStorage
+- Every protected API request includes token in Authorization header
+
+**JWT Token Structure**:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Decoded Payload:
+{
+  "userId": 6,
+  "username": "admin.kapitan",
+  "role": 1,
+  "iat": 1728028800,  // Issued at
+  "exp": 1728115200   // Expires in 24 hours
+}
+```
+
+#### **Security Configuration**
+
+```javascript
+// backend/config/config.js
+JWT_SECRET: process.env.JWT_SECRET              // Cryptographic signing key
+JWT_EXPIRES_IN: '24h'                           // Token/session duration
+BCRYPT_ROUNDS: 12                               // Password hashing strength
+MAX_LOGIN_ATTEMPTS: 10                          // Failed attempts before lockout
+LOCKOUT_TIME: 15 * 60 * 1000                    // 15 minutes lockout duration
+```
+
+#### **Login Security Features**
+
+1. **Account Lockout**: 10 failed attempts = 15-minute lockout
+2. **Auto-Unlock**: Account automatically unlocks after lockout period
+3. **PIN Requirements**: 6-digit PIN (000000-999999)
+4. **Rate Limiting**: 5 login attempts per 15 minutes per IP
+5. **Bcrypt Hashing**: 12 rounds (2^12 = 4096 iterations)
+6. **Input Sanitization**: All inputs sanitized to prevent XSS attacks
+7. **No User Enumeration**: Same error for wrong username or wrong PIN
+
+#### **Password Change Flow**
+
+**Column: `is_password_changed`**
+- `0` = Must change password (admin-created accounts, password resets)
+- `1` = Password already changed (self-registration, user-chosen PIN)
+
+**Scenarios**:
+1. **Self-Registration**: User creates account → `is_password_changed = 1` → Direct to dashboard
+2. **Admin Creates User**: Admin generates PIN → `is_password_changed = 0` → Forced to change PIN on first login
+3. **Admin Resets Password**: Admin resets PIN → `is_password_changed = 0` → Forced to change PIN on next login
+
+**Login Flow**:
+```
+User logs in
+  ↓
+Backend checks is_password_changed
+  ↓
+If 0: requirePasswordChange = true → Frontend redirects to /change-pin
+If 1: requirePasswordChange = false → Frontend redirects to dashboard
+```
+
+#### **Role-Based Access Control**
+
+| Role ID | Role Name | Dashboard | Access Level |
+|---------|-----------|-----------|--------------|
+| 1 | Admin | `/admin` | Full access (CRUD residents, view logs, manage users) |
+| 2 | Staff | `/staff` | Limited access (view residents, process requests) |
+| 3 | Resident | `/resident` | Personal access (view own info, submit requests) |
+
+**Middleware Usage**:
+```javascript
+// All authenticated users
+router.get('/residents', authenticateToken, handler)
+
+// Admin only
+router.post('/residents', authenticateToken, requireAdmin, handler)
+
+// Staff or Admin
+router.get('/requests', authenticateToken, requireStaff, handler)
+```
+
+---
+
+### **📊 Database Schema**
+
+**For complete database structure and audit system**: See `smartliasdb_pg.sql`
+
+#### **Users Table (Authentication)**
 ```javascript
 // Input Sanitization (All endpoints)
 const sanitizeInput = (input) => {

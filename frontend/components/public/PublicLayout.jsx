@@ -1,7 +1,10 @@
 'use client'
 
-import { cloneElement } from 'react'
+import { cloneElement, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ApiClient from '../../lib/apiClient'
+import { USER_ROLES } from '../../lib/constants'
 
 export default function PublicLayout({ 
   children,
@@ -13,6 +16,30 @@ export default function PublicLayout({
   mobileImageHeight = 30, // percentage for mobile image section
   hideBackgroundImage = false // Hide background image when keypad is active
 }) {
+  const router = useRouter()
+
+  // ============================================
+  // SILENT AUTHENTICATION CHECK ON LAYOUT LOAD
+  // ============================================
+  useEffect(() => {
+    const checkExistingAuthentication = async () => {
+      try {
+        const sessionResponse = await ApiClient.getSession()
+        if (sessionResponse.success) {
+          // User is already authenticated, redirect to appropriate dashboard
+          const userRole = sessionResponse.user.role
+          const redirectPath = userRole === USER_ROLES.ADMIN ? '/admin' : '/resident'
+          router.replace(redirectPath)
+          return
+        }
+      } catch (error) {
+        // User is not authenticated, continue to public page silently
+        console.log('User not authenticated, showing public page')
+      }
+    }
+
+    checkExistingAuthentication()
+  }, [router])
   // Configure layout based on variant
   const getLayoutConfig = () => {
     switch (variant) {

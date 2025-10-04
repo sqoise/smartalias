@@ -3,7 +3,8 @@
  * Handles HTTP requests for resident operations
  */
 
-const ResidentModel = require('../models/residentModel')
+const ResidentRepository = require('../repositories/ResidentRepository')
+const Resident = require('../models/Resident')
 const Validator = require('../utils/validator')
 const logger = require('../config/logger')
 
@@ -115,16 +116,24 @@ class ResidentController {
         })
       }
       
-      // Sanitize input data
+      // Sanitize and format input data
       const sanitizedData = {
-        firstName: Validator.sanitizeInput(residentData.firstName),
-        lastName: Validator.sanitizeInput(residentData.lastName),
-        middleName: Validator.sanitizeInput(residentData.middleName || ''),
-        birthDate: residentData.birthDate || null,
+        firstName: Validator.formatTitleCase(Validator.sanitizeInput(residentData.firstName)),
+        lastName: Validator.formatTitleCase(Validator.sanitizeInput(residentData.lastName)),
+        middleName: residentData.middleName ? Validator.formatTitleCase(Validator.sanitizeInput(residentData.middleName)) : '',
+        suffix: Validator.sanitizeInput(residentData.suffix || ''),
+        birthDate: Validator.sanitizeInput(residentData.birthDate || ''),
+        gender: Validator.sanitizeInput(residentData.gender || ''),
         civilStatus: Validator.sanitizeInput(residentData.civilStatus || ''),
-        address: Validator.sanitizeInput(residentData.address || ''),
-        contactNumber: Validator.sanitizeInput(residentData.contactNumber || ''),
+        homeNumber: Validator.sanitizeInput(residentData.homeNumber || ''),
+        mobileNumber: Validator.sanitizeInput(residentData.mobileNumber || ''),
         email: Validator.sanitizeInput(residentData.email || ''),
+        address: Validator.formatTitleCase(Validator.sanitizeInput(residentData.address || '')),
+        purok: Validator.sanitizeInput(residentData.purok || ''),
+        religion: Validator.sanitizeInput(residentData.religion || ''),
+        occupation: Validator.sanitizeInput(residentData.occupation || ''),
+        specialCategory: Validator.sanitizeInput(residentData.specialCategory || ''),
+        notes: Validator.sanitizeInput(residentData.notes || '')
       }
       
       const newResident = await ResidentModel.create(sanitizedData)
@@ -177,16 +186,24 @@ class ResidentController {
         })
       }
       
-      // Sanitize input data
+      // Sanitize and format input data
       const sanitizedData = {
-        firstName: Validator.sanitizeInput(updateData.firstName),
-        lastName: Validator.sanitizeInput(updateData.lastName),
-        middleName: Validator.sanitizeInput(updateData.middleName || ''),
-        birthDate: updateData.birthDate || null,
+        firstName: Validator.formatTitleCase(Validator.sanitizeInput(updateData.firstName)),
+        lastName: Validator.formatTitleCase(Validator.sanitizeInput(updateData.lastName)),
+        middleName: updateData.middleName ? Validator.formatTitleCase(Validator.sanitizeInput(updateData.middleName)) : '',
+        suffix: Validator.sanitizeInput(updateData.suffix || ''),
+        birthDate: Validator.sanitizeInput(updateData.birthDate || ''),
+        gender: Validator.sanitizeInput(updateData.gender || ''),
         civilStatus: Validator.sanitizeInput(updateData.civilStatus || ''),
-        address: Validator.sanitizeInput(updateData.address || ''),
-        contactNumber: Validator.sanitizeInput(updateData.contactNumber || ''),
+        homeNumber: Validator.sanitizeInput(updateData.homeNumber || ''),
+        mobileNumber: Validator.sanitizeInput(updateData.mobileNumber || ''),
         email: Validator.sanitizeInput(updateData.email || ''),
+        address: Validator.formatTitleCase(Validator.sanitizeInput(updateData.address || '')),
+        purok: Validator.sanitizeInput(updateData.purok || ''),
+        religion: Validator.sanitizeInput(updateData.religion || ''),
+        occupation: Validator.sanitizeInput(updateData.occupation || ''),
+        specialCategory: Validator.sanitizeInput(updateData.specialCategory || ''),
+        notes: Validator.sanitizeInput(updateData.notes || '')
       }
       
       const updatedResident = await ResidentModel.update(id, sanitizedData)

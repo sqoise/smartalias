@@ -6,6 +6,7 @@
 const jwt = require('jsonwebtoken')
 const config = require('../config/config')
 const logger = require('../config/logger')
+const { USER_ROLES } = require('../config/constants')
 
 // Verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -35,9 +36,10 @@ const authenticateToken = (req, res, next) => {
 
 // Require admin role
 const requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || req.user.role !== USER_ROLES.ADMIN) {
     logger.warn('Unauthorized admin access attempt', { 
       user: req.user?.username || 'unknown',
+      role: req.user?.role || 'none',
       ip: req.ip 
     })
     return res.status(403).json({
@@ -50,9 +52,10 @@ const requireAdmin = (req, res, next) => {
 
 // Require resident role (or admin)
 const requireResident = (req, res, next) => {
-  if (!req.user || (req.user.role !== 'resident' && req.user.role !== 'admin')) {
+  if (!req.user || (req.user.role !== USER_ROLES.RESIDENT && req.user.role !== USER_ROLES.ADMIN)) {
     logger.warn('Unauthorized resident access attempt', { 
       user: req.user?.username || 'unknown',
+      role: req.user?.role || 'none',
       ip: req.ip 
     })
     return res.status(403).json({

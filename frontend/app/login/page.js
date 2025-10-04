@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
@@ -9,6 +9,7 @@ import LoginCard from '../../components/public/LoginCard'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
 import { AUTH_MESSAGES } from '@shared/constants'
+import { USER_ROLES } from '../../lib/constants'
 
 export default function LoginPage() {
 
@@ -199,19 +200,19 @@ export default function LoginPage() {
       <NavigationHeader />
       <PublicLayout hideBackgroundImage={showKeypad}>
         <LoginCard
-          username={username}
-          setUsername={setUsername}
-          onUsernameSubmit={handleUsernameSubmit}
-          pin={pin}
-          errors={errors}
-          setErrors={setErrors}
-          isLoading={isLoading}
-          onLogin={handleLogin}
-          onKeypadNumber={handleKeypadNumber}
-          onKeypadBackspace={handleKeypadBackspace}
-          showKeypad={showKeypad}
-          setShowKeypad={setShowKeypad}
-        />
+            username={username}
+            setUsername={setUsername}
+            onUsernameSubmit={handleUsernameSubmit}
+            pin={pin}
+            errors={errors}
+            setErrors={setErrors}
+            isLoading={isLoading}
+            onLogin={handleLogin}
+            onKeypadNumber={handleKeypadNumber}
+            onKeypadBackspace={handleKeypadBackspace}
+            showKeypad={showKeypad}
+            setShowKeypad={setShowKeypad}
+          />
       </PublicLayout>
     </>
   )

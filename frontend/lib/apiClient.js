@@ -165,13 +165,26 @@ class ApiClient {
     return await ApiClient.request('/auth/me')
   }
 
-  /**
-   * Change user password/PIN
+    /**
+   * Change user PIN/password
    */
-  static async changePin(currentPin, newPin) {
+  static async changePassword(currentPin, newPin) {
     return await ApiClient.request('/auth/change-password', {
       method: 'POST',
-      body: JSON.stringify({ currentPin, newPin }),
+      body: JSON.stringify({
+        currentPin,
+        newPin,
+      }),
+    })
+  }
+
+  /**
+   * Register new resident (public endpoint)
+   */
+  static async register(registrationData) {
+    return await ApiClient.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(registrationData),
     })
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
@@ -8,6 +8,7 @@ import PublicLayout from '../../components/public/PublicLayout'
 import RegisterCard from '../../components/public/RegisterCard'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
+import { USER_ROLES } from '../../lib/constants'
 
 export default function RegisterPage() {
 

@@ -497,8 +497,20 @@ export default function ResidentsContainer({
               placeholder="Search by resident id, name, address.."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 text-sm font-medium tracking-normal antialiased border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              className="block w-full pl-10 pr-10 py-2 text-sm font-medium tracking-normal antialiased border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-text"
             />
+            {/* Clear button - only show when there's text */}
+            {searchQuery && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  onClick={() => handleSearchChange('')}
+                  className="w-4 h-4 p-3 rounded-full text-gray-400 hover:text-gray-600 flex items-center justify-center transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <i className="bi bi-x text-xl"></i>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -746,7 +758,7 @@ export default function ResidentsContainer({
                 {/* Skeleton rows */}
                 {Array.from({ length: FIXED_ROWS_COUNT }, (_, index) => (
                   <tr key={`skeleton-${index}`} className={`divide-x divide-gray-200 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                   }`}>
                     <td className="px-3 py-1 whitespace-nowrap w-14">
                       <div className="w-8 h-3 bg-gray-200 rounded animate-pulse"></div>
@@ -853,7 +865,7 @@ export default function ResidentsContainer({
                     */}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
+                <tbody className="bg-white">
                   {currentData.map((resident, index) => (
                     <tr 
                       key={resident.id} 
@@ -861,7 +873,7 @@ export default function ResidentsContainer({
                         onView?.(resident);
                       }}
                       className={`hover:bg-gray-50 transition-colors cursor-pointer divide-x divide-gray-200 ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                       } ${
                         index === currentData.length - 1 ? 'shadow-sm' : ''
                       }`}

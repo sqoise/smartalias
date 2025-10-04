@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import ApiClient from '../../../lib/apiClient'
 import ResidentsContainer from '../../../components/authenticated/admin/ResidentsContainer'
 import ResidentsView from '../../../components/authenticated/admin/ResidentsView'
+import AddResidentsView from '../../../components/authenticated/admin/AddResidentsView'
 import Modal from '../../../components/common/Modal'
 
 export default function ResidentsPage() {
@@ -15,7 +16,7 @@ export default function ResidentsPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [selectedResident, setSelectedResident] = useState(null)
-  const [name, setName] = useState('')
+  const [addLoading, setAddLoading] = useState(false)
 
   useEffect(() => {
     loadResidents()
@@ -62,24 +63,21 @@ export default function ResidentsPage() {
     setSelectedResident(null)
   }
 
-  async function handleAdd(e) {
-    e.preventDefault()
+  const handleAddResident = async (newResident) => {
     try {
-      // Demo: Add resident to local state only (no backend persistence yet)
-      const newResident = {
-        id: Date.now(),
-        name: name.trim(),
-        address: 'New Address - Please update',
-        is_active: 1, // 1 means active
-        phone: 'Not provided',
-        email: 'Not provided',
-        created_at: new Date().toISOString()
-      }
+      setAddLoading(true)
+      
+      // Add new resident to local state for immediate UI update
       setResidentsData(prev => [...(prev || []), newResident])
-      setName('')
+      
+      // Optionally reload all residents to ensure data consistency
+      // await loadResidents()
+      
       setShowAdd(false)
     } catch (err) {
-      console.error(err)
+      console.error('Error handling added resident:', err)
+    } finally {
+      setAddLoading(false)
     }
   }
 
@@ -105,52 +103,13 @@ export default function ResidentsPage() {
         onAdd={() => setShowAdd(true)}
       />
 
-      {/* Add Resident Modal */}
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Add New Resident</h3>
-              <button 
-                onClick={() => setShowAdd(false)} 
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500" 
-                  placeholder="Enter full name"
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAdd(false)} 
-                  className="px-4 py-2 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
-                  disabled={!name.trim()}
-                >
-                  Add Resident
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Add Resident Slide Panel */}
+      <AddResidentsView 
+        open={showAdd} 
+        onClose={() => setShowAdd(false)}
+        onSubmit={handleAddResident}
+        loading={addLoading}
+      />
 
       {/* View Resident Slide Panel */}
       <ResidentsView open={showView} onClose={() => setShowView(false)}>

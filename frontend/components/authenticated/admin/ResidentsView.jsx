@@ -1,8 +1,15 @@
 import React from 'react'
 
 export default function ResidentsView({ open, onClose, children, onStatusUpdate }) {
+  // Status management (existing)
   const [currentStatus, setCurrentStatus] = React.useState(children?.is_active || 0)
   const [isUpdating, setIsUpdating] = React.useState(false)
+
+  // Edit state management (Task 2.1)
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editFormData, setEditFormData] = React.useState({})
+  const [editErrors, setEditErrors] = React.useState({})
+  const [isUpdatingResident, setIsUpdatingResident] = React.useState(false)
 
   // Update local status when children changes
   React.useEffect(() => {
@@ -45,6 +52,61 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
   }
 
   const statusInfo = getStatusInfo(currentStatus)
+
+  // Initialize edit form data when entering edit mode
+  React.useEffect(() => {
+    if (isEditing && children) {
+      setEditFormData({
+        firstName: children.first_name || '',
+        lastName: children.last_name || '',
+        middleName: children.middle_name || '',
+        suffix: children.suffix || '',
+        birthDate: children.birth_date || '',
+        gender: children.gender || '',
+        civilStatus: children.civil_status || '',
+        homeNumber: children.home_number || '',
+        mobileNumber: children.mobile_number || '',
+        email: children.email || '',
+        address: children.address || '',
+        purok: children.purok || '',
+        religion: children.religion || '',
+        occupation: children.occupation || '',
+        specialCategory: children.special_category || '',
+        notes: children.notes || '',
+        isActive: children.is_active || 1
+      })
+      setEditErrors({})
+    }
+  }, [isEditing, children])
+
+  // Enter edit mode
+  const handleEditStart = () => {
+    setIsEditing(true)
+  }
+
+  // Cancel edit mode
+  const handleEditCancel = () => {
+    setIsEditing(false)
+    setEditFormData({})
+    setEditErrors({})
+  }
+
+  // Handle form field changes
+  const handleFieldChange = (fieldName, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }))
+    
+    // Clear field error when user starts typing
+    if (editErrors[fieldName]) {
+      setEditErrors(prev => ({
+        ...prev,
+        [fieldName]: ''
+      }))
+    }
+  }
+
   // Close on Escape key
   React.useEffect(() => {
     if (!open) return;
@@ -143,9 +205,6 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                         {isUpdating && <i className="bi bi-arrow-clockwise animate-spin ml-1" />}
                       </span>
                     </div>
-                    <button className="inline-flex items-center justify-center w-7 h-7 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
-                      <i className="bi bi-pencil text-xs" />
-                    </button>
                   </div>
                 </div>
 
@@ -163,6 +222,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                         <span className="text-xs text-gray-500">Date of Birth</span>
                         <span className="text-xs text-gray-900">
                           {children.birth_date ? new Date(children.birth_date).toLocaleDateString() : '-'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-500">Age</span>
+                        <span className="text-xs text-gray-900">
+                          {children.age !== null && children.age !== undefined ? `${children.age} years old` : '-'}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -208,6 +273,39 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                     </div>
                   </div>
                 </div>
+
+                {/* Temporary Credentials Section - Only show if password hasn't been changed */}
+                {children.is_password_changed === 0 && children.username && children.temp_password && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <div className="flex items-center mb-2">
+                      <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mr-2">Temporary Login Credentials</div>
+                      <i className="bi bi-key text-amber-500 text-xs" />
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Requires Password Change
+                      </span>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-amber-700 mb-1 font-medium">Username</div>
+                          <div className="text-xs font-mono text-amber-900 bg-white px-2 py-1 rounded border border-amber-200">
+                            {children.username}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-amber-700 mb-1 font-medium">Temporary PIN</div>
+                          <div className="text-xs font-mono text-amber-900 bg-white px-2 py-1 rounded border border-amber-200">
+                            {children.temp_password}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-amber-700">
+                        <i className="bi bi-info-circle mr-1" />
+                        User must change this PIN on first login for security.
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Administrative Notes */}
                 <div className="pt-2 border-t border-gray-200">
@@ -319,6 +417,50 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
           )}
           </div>
         </div>
+
+        {/* Edit Controls - Sticky Footer (like AddResidentsView) */}
+        {children && children.id && (
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-end space-x-2">
+            {!isEditing ? (
+              // Normal Mode - Edit Button (Yellow theme)
+              <button 
+                className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-md hover:bg-yellow-100 focus:ring-1 focus:ring-yellow-500 transition-colors cursor-pointer h-9"
+                onClick={handleEditStart}
+                title="Edit resident information"
+              >
+                <i className="bi bi-pencil mr-1.5" />
+                Edit
+              </button>
+            ) : (
+              // Edit Mode - Cancel and Update Buttons
+              <>
+                <button 
+                  className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-gray-500 transition-colors cursor-pointer h-9"
+                  onClick={handleEditCancel}
+                  disabled={isUpdatingResident}
+                  title="Cancel editing"
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer h-9"
+                  onClick={() => {/* TODO: Handle update */}}
+                  disabled={isUpdatingResident}
+                  title="Save changes"
+                >
+                  {isUpdatingResident ? (
+                    <>
+                      <i className="bi bi-arrow-clockwise animate-spin mr-1.5" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update'
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

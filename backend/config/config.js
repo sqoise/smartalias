@@ -27,11 +27,22 @@ const config = {
   
   // Security Configuration
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 12,
-  MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
+  MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 10, // 10 attempts for 6-digit PIN
   LOCKOUT_TIME: parseInt(process.env.LOCKOUT_TIME) || 15 * 60 * 1000, // 15 minutes
   
-  // Database Configuration (for future use)
+  // Database Configuration
+  // Local PostgreSQL (Development - Docker)
+  POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
+  POSTGRES_PORT: parseInt(process.env.POSTGRES_PORT) || 5432,
+  POSTGRES_DB: process.env.POSTGRES_DB || 'smartliasdb',
+  POSTGRES_USER: process.env.POSTGRES_USER || 'smartlias_user',
+  POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'smartlias_password',
   DATABASE_URL: process.env.DATABASE_URL || null,
+  
+  // Supabase Configuration (Production)
+  SUPABASE_URL: process.env.SUPABASE_URL || null,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || null,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || null,
   
   // Data Source Configuration
   USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true' || false,

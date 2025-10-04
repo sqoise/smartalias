@@ -4,13 +4,28 @@
 -- Compatible with PostgreSQL 12+
 
 -- Drop existing database if exists (optional)
--- DROP DATABASE IF EXISTS smartliasdb;
+DROP DATABASE IF EXISTS smartliasdb;
 
 -- Create database (run this separately if needed)
--- CREATE DATABASE smartliasdb WITH ENCODING 'UTF8';
+CREATE DATABASE smartliasdb WITH ENCODING 'UTF8';
 
 -- Connect to database
--- \c smartliasdb;
+\c smartliasdb;
+
+-- ============================================
+-- DATABASE CONFIGURATION
+-- ============================================
+
+-- Set timezone to Philippines (Manila)
+ALTER DATABASE smartliasdb SET timezone TO 'Asia/Manila';
+
+-- Apply timezone setting to current session
+SET timezone TO 'Asia/Manila';
+
+-- ============================================
+-- DISPLAY TIMEZONE CONFIRMATION
+-- ============================================
+SELECT 'Database timezone set to: ' || current_setting('timezone') AS timezone_status;
 
 -- ============================================
 -- USERS TABLE
@@ -24,15 +39,16 @@ CREATE TABLE users (
     role INTEGER DEFAULT 3, -- 1=Admin, 2=Staff, 3=Resident
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Password change tracking
+    -- 0 = Must change password (default/generated PIN from admin)
+    -- 1 = Password already changed (user chose their own PIN or changed default)
+    -- Used for: Registration (set to 1), Admin-created accounts (set to 0), Admin password reset (set to 0)
     is_password_changed INTEGER DEFAULT 0,
-    failed_login_attempts INTEGER DEFAULT 0,
-    locked_until TIMESTAMP DEFAULT NULL,
-    last_login TIMESTAMP DEFAULT NULL,
-    last_failed_login TIMESTAMP DEFAULT NULL,
-    reset_token VARCHAR(256),
-    reset_token_expires TIMESTAMP DEFAULT NULL,
-    verification_token VARCHAR(256),
-    verification_token_expires TIMESTAMP DEFAULT NULL
+    -- Login security tracking (10 attempts allowed before account lockout)
+    failed_login_attempts INTEGER DEFAULT 0,  -- Increments on wrong PIN, resets to 0 on successful login, locks at 10
+    locked_until TIMESTAMP DEFAULT NULL,      -- Account locked until this time (NULL = not locked), 15 minutes lockout
+    last_login TIMESTAMP DEFAULT NULL,        -- Last successful login timestamp
+    last_failed_login TIMESTAMP DEFAULT NULL  -- Last failed login attempt timestamp
 );
 
 -- Create indexes for better performance
@@ -58,12 +74,14 @@ CREATE TABLE residents (
     civil_status VARCHAR(50), -- Single, Married, Widowed, Separated, Live-In
     
     -- Contact Information
-    contact_number VARCHAR(20), -- 11-digit cellphone (09xxxxxxxxx) or 8-digit telephone
+    home_number VARCHAR(20), -- 8-digit landline number (e.g., 8000 0000)
+    mobile_number VARCHAR(20), -- 11-digit mobile number (09xxxxxxxxx)
     email VARCHAR(256),
     
     -- Address Information
     address TEXT, -- Optional - some residents may not want to provide address
     purok INTEGER,
+    street 
     
     -- Family Information
     family_group_id INTEGER REFERENCES family_groups(id) ON DELETE SET NULL, -- Links to family group
@@ -214,20 +232,10 @@ INSERT INTO users (username, password, role) VALUES
 
 -- Insert sample special categories (lookup data)
 INSERT INTO special_categories (category_code, category_name, description) VALUES
-('SENIOR_CITIZEN', 'Senior Citizen', 'Residents aged 60 and above eligible for senior citizen benefits'),
 ('PWD', 'Person with Disability', 'Residents with physical, mental, intellectual, or sensory disabilities'),
 ('SOLO_PARENT', 'Solo Parent', 'Single parents raising children alone'),
 ('INDIGENT', 'Indigent', 'Residents classified as indigent for social services'),
-('OFW_FAMILY', 'OFW Family', 'Family members of Overseas Filipino Workers'),
-('VOTER', 'Registered Voter', 'Residents registered to vote in elections'),
-('4PS_BENEFICIARY', 'Pantawid Pamilyang Pilipino Program Beneficiary', 'Beneficiaries of the 4Ps conditional cash transfer program'),
-('BARANGAY_KAGAWAD', 'Barangay Kagawad', 'Elected barangay council member'),
-('SK_MEMBER', 'Sangguniang Kabataan Member', 'Youth council member'),
-('HEALTH_WORKER', 'Community Health Worker', 'Volunteer or employed health worker in the barangay'),
-('BUSINESS_OWNER', 'Business Owner', 'Resident who owns a business in the barangay'),
 ('STUDENT', 'Student', 'Currently enrolled in educational institution'),
-('ATHLETE', 'Athlete', 'Represents barangay in sports competitions'),
-('ARTIST_PERFORMER', 'Artist/Performer', 'Cultural artist or performer in the community');
 
 -- Insert sample family groups
 INSERT INTO family_groups (family_name) VALUES

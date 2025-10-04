@@ -1,32 +1,40 @@
 # Test Credentials for SMARTLIAS
 
-## Fixed Login Issues
+## Database Configuration
 
-The login system has been fixed and synchronized between frontend and backend.
+**IMPORTANT**: SMARTLIAS is now using PostgreSQL database instead of JSON files.
 
-## Available Test Accounts
+- **Data Source**: PostgreSQL Database (smartliasdb)
+- **Configuration**: USE_MOCK_DATA=false in .env
+- **Backend Port**: 9000
+- **API Base URL**: `http://localhost:9000/api`
+- **Auth Endpoint**: `/api/auth/login`
+
+## Available Test Accounts (Database)
 
 ### Admin Account
-- **Username**: `admin.staff`
-- **PIN**: `123456`
-- **Role**: admin
+- **Username**: `admin.kapitan`
+- **PIN**: Check database or ask system admin
+- **Role**: 1 (Admin)
 - **Access**: Full admin dashboard
+- **Status**: Password change required (is_password_changed = 0)
 
-### Resident Accounts  
-- **Username**: `juan.delacruz`
-- **PIN**: `654321`
-- **Role**: resident
+### Additional Users
+- Check database for current users with: 
+```sql
+SELECT id, username, role, is_password_changed FROM users;
+```
 
-- **Username**: `maria.santos`
-- **PIN**: `654321`
-- **Role**: resident
+## Role System (Numeric)
+- **Role 1**: Admin (Full access)
+- **Role 2**: Staff (Limited access) 
+- **Role 3**: Resident (Personal access)
 
-## Backend Configuration
-
-- **Port**: 9000
-- **API Base URL**: `http://localhost:9000/api`
-- **Data Source**: JSON files in `backend/data/`
-- **Auth Endpoint**: `/api/auth/login`
+## Migration Status
+- ✅ **Database**: PostgreSQL running and connected
+- ✅ **User Authentication**: Using database instead of JSON files
+- ✅ **Role-based Access**: Numeric roles (1=Admin, 2=Staff, 3=Resident)
+- ⚠️ **JSON Files**: Will be removed soon (no longer used)
 
 ## Frontend Configuration
 

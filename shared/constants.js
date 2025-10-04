@@ -58,7 +58,7 @@ const AUTH_MESSAGES = {
   USERNAME_REQUIRED: 'Username is required',
   USERNAME_TOO_SHORT: 'Username must be at least 8 characters',
   USERNAME_TOO_LONG: 'Username must be at most 32 characters',
-  USERNAME_NOT_FOUND: 'Username is not registered. Please visit Barangay Office.',
+  USERNAME_NOT_FOUND: 'Username is not registered. Please register or visit barangay office.',
   USERNAME_INVALID_FORMAT: 'Username can only contain letters, numbers, dots, and underscores',
   USERNAME_CONNECTION_ERROR: 'Unable to connect to server. Please check your connection.',
   USERNAME_VALIDATION_FAILED: 'Username validation failed',
