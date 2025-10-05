@@ -278,15 +278,8 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
 
               {/* Form Footer - Visibility Info */}
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-0.5">Audience:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700 border border-gray-200">
-                      All Residents
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 ml-[70px]">
+               
+                <p className="text-xs text-gray-500">
                   This announcement will be visible to all residents in the system.
                 </p>
               </div>
