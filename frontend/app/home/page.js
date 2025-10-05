@@ -312,6 +312,7 @@ export default function HomePage() {
         showCard={true}
         title="Barangay LIAS"
         subtitle="Digital services and document requests for residents and visitors. Access barangay services conveniently online."
+        allowAuthenticated={true}
       >
         <HomepageContent />
       </PublicLayout>

@@ -69,7 +69,7 @@ export default function Header({
             <div className="relative user-menu-container">
               <button 
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-2 px-2 py-1 rounded hover:bg-green-700 cursor-pointer transition-colors duration-150"
+                className="flex items-center space-x-2 px-2 py-2 rounded hover:bg-green-700 cursor-pointer transition-colors duration-150"
               >
                 <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center text-green-800 text-xs font-medium">
                   {userName?.[0] ?? 'U'}
@@ -84,7 +84,7 @@ export default function Header({
                     onClick={() => { setShowLogoutModal(true); setShowUserMenu(false) }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
                   >
-                    <i className="bi bi-box-arrow-right text-sm mr-2"></i>Logout
+                    <i className="bi bi-power text-sm mr-2"></i>Logout
                   </button>
                 </div>
               )}

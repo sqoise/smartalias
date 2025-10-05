@@ -9,7 +9,7 @@ import ChangePINCard from '../../components/public/ChangePINCard'
 import PageLoading from '../../components/common/PageLoading'
 import ApiClient from '../../lib/apiClient'
 import { alertToast } from '../../lib/utility'
-import { AUTH_MESSAGES } from '@shared/constants'
+import { AUTH_MESSAGES } from '../../lib/constants'
 
 export default function ChangePINPage() {
   const router = useRouter()

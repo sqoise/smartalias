@@ -47,7 +47,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
       { name: 'Household', href: '/admin/household', icon: 'bi-house' },
-      { name: 'Document Requests', href: '/admin/documents', icon: 'bi-file-earmark-text' },
+      { name: 'Documents', href: '/admin/documents', icon: 'bi-file-earmark-text' },
       { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
       { name: 'Maintenance', href: '/admin/settings', icon: 'bi-gear' },
     ],
@@ -83,8 +83,8 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
           </div>
           {!isCollapsed && (
             <div className="ml-3 min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-gray-900">SMARTLIAS</h2>
-              <p className="text-xs text-gray-500">{role === 'admin' ? 'Admin' : 'User'}</p>
+              <h2 className="text-lg font-semibold text-gray-900">SMARTLIAS</h2>
+              <p className="text-sm text-gray-500">{role === 'admin' ? 'Admin' : 'User'}</p>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { APP_CONFIG } from '@shared/constants'
+import { APP_CONFIG } from './constants'
 
 /**
  * API Client - Frontend to Backend Connector

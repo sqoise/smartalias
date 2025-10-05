@@ -8,8 +8,7 @@ import PublicLayout from '../../components/public/PublicLayout'
 import LoginCard from '../../components/public/LoginCard'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
-import { AUTH_MESSAGES } from '@shared/constants'
-import { USER_ROLES } from '../../lib/constants'
+import { AUTH_MESSAGES, USER_ROLES } from '../../lib/constants'
 
 export default function LoginPage() {
 

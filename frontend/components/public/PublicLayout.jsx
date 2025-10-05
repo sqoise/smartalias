@@ -14,7 +14,8 @@ export default function PublicLayout({
   title = 'Barangay LIAS',
   subtitle = 'Digital services and document requests for residents and visitors. Access barangay services conveniently online.',
   mobileImageHeight = 30, // percentage for mobile image section
-  hideBackgroundImage = false // Hide background image when keypad is active
+  hideBackgroundImage = false, // Hide background image when keypad is active
+  allowAuthenticated = false // Allow authenticated users to access this page (for home page)
 }) {
   const router = useRouter()
 
@@ -22,6 +23,11 @@ export default function PublicLayout({
   // SILENT AUTHENTICATION CHECK ON LAYOUT LOAD
   // ============================================
   useEffect(() => {
+    // Only redirect if allowAuthenticated is false (for login/register pages)
+    if (allowAuthenticated) {
+      return // Skip authentication check for pages that allow authenticated users
+    }
+
     const checkExistingAuthentication = async () => {
       try {
         const sessionResponse = await ApiClient.getSession()
@@ -39,7 +45,7 @@ export default function PublicLayout({
     }
 
     checkExistingAuthentication()
-  }, [router])
+  }, [router, allowAuthenticated])
   // Configure layout based on variant
   const getLayoutConfig = () => {
     switch (variant) {
@@ -188,7 +194,7 @@ export default function PublicLayout({
               }`}>
                 {/* Main content area - centered with extra top padding for logo overlap */}
                 <div className={`flex-1 flex items-center justify-center ${
-                  hideBackgroundImage ? 'pt-4' : 'pt-10'
+                  hideBackgroundImage ? 'pt-4' : 'pt-5'
                 } `} style={{ minHeight: 0 }}>
                   <div className="w-full max-w-md sm:max-w-sm lg:max-w-sm">
                     {showCard ? (

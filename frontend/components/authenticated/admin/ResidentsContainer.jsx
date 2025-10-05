@@ -429,7 +429,7 @@ export default function ResidentsContainer({
           {onAdd && (
             <button
               onClick={() => onAdd?.()}
-              className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium tracking-normal rounded-md hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer"
+              className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-sm font-medium tracking-normal rounded-md hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer"
               title="Add new resident"
             >
               <i className="bi bi-person-plus mr-1 text-xs"></i>
@@ -443,10 +443,10 @@ export default function ResidentsContainer({
             <button
               onClick={() => onRefresh?.()}
               disabled={loading}
-              className="inline-flex items-center justify-center w-7 h-7 text-gray-700 font-medium tracking-normal bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center w-8 h-8 text-gray-700 font-medium tracking-normal bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Refresh residents list"
             >
-              <i className="bi bi-arrow-clockwise text-sm"></i>
+              <i className="bi bi-arrow-clockwise text-md"></i>
             </button>
           )}
 
@@ -454,7 +454,7 @@ export default function ResidentsContainer({
           <div className="relative dropdown-container">
             <button
               onClick={() => setOpenDropdown(openDropdown === 'perPage' ? null : 'perPage')}
-              className="inline-flex items-center justify-center w-7 h-7 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center w-8 h-8 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer"
               title="Items per page"
             >
               <i className="bi bi-three-dots-vertical text-sm"></i>

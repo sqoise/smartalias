@@ -5,6 +5,7 @@
 
 const express = require('express')
 const fs = require('fs').promises
+const fsSync = require('fs')
 const path = require('path')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
@@ -17,12 +18,16 @@ const Validator = require('./utils/validator')
 const ApiResponse = require('./utils/apiResponse')
 const IDUtils = require('./utils/idUtils')
 const UserRepository = require('./repositories/UserRepository')
+
+// Import route modules
+const uploadRoutes = require('./routes/uploadRoutes')
 const ResidentRepository = require('./repositories/ResidentRepository')
+const AnnouncementRepository = require('./repositories/AnnouncementRepository')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
 // Import shared messages
-const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('../shared/constants')
+const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('./config/constants')
 const { USER_ROLES } = require('./config/constants')
 
 const router = express.Router()
@@ -748,5 +753,280 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
     return ApiResponse.error(res, 'Registration failed. Please try again.', 500)
   }
 })
+
+// ==========================================================================
+// ANNOUNCEMENTS ROUTES
+// ==========================================================================
+
+// GET /api/announcements - List announcements (filtered by user role/targeting)
+router.get('/announcements', authenticateToken, async (req, res) => {
+  try {
+    // Get announcements from database
+    const announcements = await AnnouncementRepository.findAll()
+    
+    // Transform database format to API format
+    const transformedAnnouncements = announcements.map(announcement => ({
+      id: announcement.id,
+      title: announcement.title,
+      content: announcement.content,
+      type: announcement.type,
+      is_urgent: announcement.type === 5, // Advisory type
+      status: announcement.published_at ? 'published' : 'draft',
+      target_groups: announcement.target_groups || ['all'],
+      sms_target_groups: [],
+      created_by: announcement.created_by,
+      created_at: announcement.created_at,
+      updated_at: announcement.updated_at,
+      published_by: announcement.published_by,
+      published_at: announcement.published_at
+    }))
+
+    return ApiResponse.success(res, transformedAnnouncements, 'Announcements retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching announcements', error)
+    return ApiResponse.error(res, 'Failed to fetch announcements', 500)
+  }
+})
+
+// GET /api/announcements/:id - Get specific announcement
+router.get('/announcements/:id', authenticateToken, async (req, res) => {
+  try {
+    const announcementId = parseInt(req.params.id)
+    
+    // Mock implementation - replace with actual database query
+    const mockAnnouncement = {
+      id: announcementId,
+      title: 'Community Health Drive',
+      content: 'Join us for a free health check-up and vaccination drive this Saturday. All residents are welcome.',
+      is_urgent: false,
+      status: 'published',
+      published_at: '2024-01-15T10:00:00Z',
+      expires_at: null,
+      target_groups: ['all'],
+      created_by: 1,
+      created_at: '2024-01-15T08:00:00Z',
+      updated_at: '2024-01-15T08:00:00Z'
+    }
+
+    return ApiResponse.success(res, mockAnnouncement, 'Announcement retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching announcement', error)
+    return ApiResponse.error(res, 'Failed to fetch announcement', 500)
+  }
+})
+
+// POST /api/announcements - Create new announcement (Admin only)
+router.post('/announcements', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      title,
+      content,
+      image_url,
+      image_description,
+      is_urgent,
+      expires_at,
+      target_groups,
+      sms_target_groups,
+      status
+    } = req.body
+
+    // Validate required fields
+    if (!title || !content) {
+      return ApiResponse.validationError(res, {
+        title: !title ? ['Title is required'] : [],
+        content: !content ? ['Content is required'] : []
+      }, 'Missing required fields')
+    }
+
+    // Validate target groups
+    if (!target_groups || !Array.isArray(target_groups) || target_groups.length === 0) {
+      return ApiResponse.validationError(res, {
+        target_groups: ['At least one target group is required']
+      }, 'Invalid target groups')
+    }
+
+    // Create announcement in database
+    const announcementData = {
+      title: Validator.sanitizeInput(title),
+      content: Validator.sanitizeInput(content),
+      type: is_urgent ? 5 : 1, // 5=Advisory (urgent), 1=General
+      status: status || 'draft',
+      created_by: req.user.userId,
+      published_by: status === 'published' ? req.user.userId : null
+    }
+
+    const newAnnouncement = await AnnouncementRepository.create(announcementData, target_groups)
+
+    // If publishing and SMS targets specified, log SMS sending
+    if (status === 'published' && sms_target_groups && sms_target_groups.length > 0) {
+      logger.info('SMS notifications triggered', {
+        announcementId: newAnnouncement.id,
+        smsTargets: sms_target_groups,
+        title: title
+      })
+      // TODO: Implement SMS sending and logging
+    }
+
+    const message = status === 'published' 
+      ? 'Announcement created and published successfully'
+      : 'Announcement saved as draft'
+
+    return ApiResponse.success(res, newAnnouncement, message, 201)
+  } catch (error) {
+    logger.error('Error creating announcement', error)
+    return ApiResponse.error(res, 'Failed to create announcement', 500)
+  }
+})
+
+// PUT /api/announcements/:id - Update announcement (Admin only)
+router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const announcementId = parseInt(req.params.id)
+    const {
+      title,
+      content,
+      is_urgent,
+      expires_at,
+      target_groups,
+      sms_target_groups,
+      status
+    } = req.body
+
+    // Validate required fields
+    if (!title || !content) {
+      return ApiResponse.validationError(res, {
+        title: !title ? ['Title is required'] : [],
+        content: !content ? ['Content is required'] : []
+      }, 'Missing required fields')
+    }
+
+    // Check if announcement exists
+    const existing = await AnnouncementRepository.findById(announcementId)
+    if (!existing) {
+      return ApiResponse.error(res, 'Announcement not found', 404)
+    }
+
+    // Prepare update data
+    const updateData = {
+      title: Validator.sanitizeInput(title),
+      content: Validator.sanitizeInput(content),
+      type: is_urgent !== undefined ? (is_urgent ? 5 : 1) : existing.type // 5=Advisory, 1=General
+    }
+
+    // Handle status change (draft → published)
+    const existingStatus = existing.published_at ? 'published' : 'draft'
+    if (status && status !== existingStatus) {
+      updateData.status = status
+      if (status === 'published' && existingStatus === 'draft') {
+        updateData.published_by = req.user.userId // Track who published it
+      }
+    }
+
+    // Update announcement in database
+    const updatedAnnouncement = await AnnouncementRepository.update(
+      announcementId, 
+      updateData, 
+      target_groups
+    )
+
+    // If publishing and SMS targets specified, log SMS sending
+    if (status === 'published' && sms_target_groups && sms_target_groups.length > 0) {
+      logger.info('SMS notifications triggered for updated announcement', {
+        announcementId: announcementId,
+        smsTargets: sms_target_groups,
+        title: title
+      })
+      // TODO: Implement SMS sending and logging
+    }
+
+    const message = status === 'published' 
+      ? 'Announcement updated and published successfully'
+      : 'Announcement updated and saved as draft'
+
+    return ApiResponse.success(res, updatedAnnouncement, message)
+  } catch (error) {
+    logger.error('Error updating announcement', error)
+    return ApiResponse.error(res, 'Failed to update announcement', 500)
+  }
+})
+
+// DELETE /api/announcements/:id - Delete announcement (Admin only)
+router.delete('/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const announcementId = parseInt(req.params.id)
+    
+    // Check if announcement exists
+    const existing = await AnnouncementRepository.findById(announcementId)
+    if (!existing) {
+      return ApiResponse.error(res, 'Announcement not found', 404)
+    }
+
+    // Delete from database (CASCADE will remove target groups and SMS records)
+    await AnnouncementRepository.delete(announcementId)
+    
+    logger.info('Announcement deleted', { announcementId, deletedBy: req.user.userId })
+
+    return ApiResponse.success(res, null, 'Announcement deleted successfully')
+  } catch (error) {
+    logger.error('Error deleting announcement', error)
+    return ApiResponse.error(res, 'Failed to delete announcement', 500)
+  }
+})
+
+// GET /api/announcements/:id/sms-status - Get SMS delivery status for announcement (Admin only)
+router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const announcementId = parseInt(req.params.id)
+    
+    // Mock SMS status data - replace with actual database query
+    const mockSMSStatus = [
+      {
+        id: 1,
+        announcement_id: announcementId,
+        recipient_phone: '+639123456789',
+        recipient_name: 'Sarah Macariola',
+        resident_id: 2,
+        delivery_status: 'delivered',
+        sent_at: '2024-01-15T10:05:00Z',
+        delivered_at: '2024-01-15T10:06:00Z',
+        error_message: null
+      },
+      {
+        id: 2,
+        announcement_id: announcementId,
+        recipient_phone: '+639987654321',
+        recipient_name: 'Orlando Macariola Jr',
+        resident_id: 1,
+        delivery_status: 'failed',
+        sent_at: '2024-01-15T10:05:00Z',
+        delivered_at: null,
+        error_message: 'Invalid phone number'
+      }
+    ]
+
+    const summary = {
+      total: mockSMSStatus.length,
+      pending: mockSMSStatus.filter(s => s.delivery_status === 'pending').length,
+      sent: mockSMSStatus.filter(s => s.delivery_status === 'sent').length,
+      delivered: mockSMSStatus.filter(s => s.delivery_status === 'delivered').length,
+      failed: mockSMSStatus.filter(s => s.delivery_status === 'failed').length
+    }
+
+    return ApiResponse.success(res, {
+      sms_records: mockSMSStatus,
+      summary: summary
+    }, 'SMS status retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching SMS status', error)
+    return ApiResponse.error(res, 'Failed to fetch SMS status', 500)
+  }
+})
+
+// ==========================================================================
+// UPLOAD ROUTES
+// ==========================================================================
+
+// Use upload routes
+router.use('/upload', uploadRoutes)
 
 module.exports = router
