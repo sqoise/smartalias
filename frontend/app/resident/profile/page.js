@@ -17,7 +17,8 @@ export default function Profile() {
     
     // Contact Information
     email: 'juan.delacruz@email.com',
-    contactNumber: '09123456789',
+    homeNumber: '8000-0000',
+    mobileNumber: '09123456789',
     address: '123 Rizal Street, Barangay Lias',
     purok: 'Purok 1',
     
@@ -267,17 +268,17 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-0.5">Contact Number</label>
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">Mobile Number</label>
               {isEditing ? (
                 <input
                   type="text"
-                  name="contactNumber"
-                  value={editData.contactNumber}
+                  name="mobileNumber"
+                  value={editData.mobileNumber}
                   onChange={handleInputChange}
                   className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none h-9"
                 />
               ) : (
-                <p className="text-sm text-gray-900 py-1">{profileData.contactNumber}</p>
+                <p className="text-sm text-gray-900 py-1">{profileData.mobileNumber}</p>
               )}
             </div>
 

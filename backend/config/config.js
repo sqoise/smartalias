@@ -44,12 +44,17 @@ const config = {
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || null,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || null,
   
-  // Data Source Configuration
-  USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true' || false,
+  // Data Source Configuration (removed mock data)
+  // Always use PostgreSQL database
+  USE_MOCK_DATA: false,
   
   // Rate Limiting
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW) || 15 * 60 * 1000, // 15 minutes
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX) || 100, // requests per window
+  
+  // SMS Configuration (Semaphore - Philippine SMS Provider)
+  SEMAPHORE_API_KEY: process.env.SEMAPHORE_API_KEY || 'your-semaphore-api-key-here',
+  SEMAPHORE_SENDER_NAME: process.env.SEMAPHORE_SENDER_NAME || 'BARANGAY',
   
   // Development flags
   isDevelopment: process.env.NODE_ENV === 'development',

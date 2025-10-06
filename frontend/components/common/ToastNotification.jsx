@@ -1,10 +1,34 @@
 "use client"
 
-import { forwardRef, useImperativeHandle, useState } from 'react'
+import { forwardRef, useImperativeHandle, useState, useEffect } from 'react'
 
 const ToastNotification = forwardRef((props, ref) => {
   const [toasts, setToasts] = useState([])
   const [expandedToasts, setExpandedToasts] = useState(new Set())
+
+  // Handle props-based usage
+  useEffect(() => {
+    if (props.show && props.message) {
+      const newToast = {
+        id: Date.now() + Math.random(),
+        message: props.message,
+        type: props.type || 'success',
+        show: true
+      }
+      setToasts(prev => {
+        const updatedToasts = [...prev, newToast]
+        // Limit to maximum of 3 toasts - remove oldest if exceeding limit
+        return updatedToasts.length > 3 ? updatedToasts.slice(-3) : updatedToasts
+      })
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== newToast.id))
+        // Call onClose if provided
+        props.onClose?.()
+      }, 5000)
+    }
+  }, [props.show, props.message, props.type])
 
 useImperativeHandle(ref, () => ({
   show: (message, type = 'success') => {
@@ -34,6 +58,8 @@ useImperativeHandle(ref, () => ({
       newSet.delete(id)
       return newSet
     })
+    // Call onClose if provided (for props-based usage)
+    props.onClose?.()
   }
 
   const toggleExpand = (id) => {
@@ -106,7 +132,7 @@ useImperativeHandle(ref, () => ({
   }
 
   return (
-    <div className="fixed top-6 left-3 right-3 lg:left-auto lg:right-6 lg:w-auto z-50 space-y-2">
+    <div className="fixed top-6 left-3 right-3 lg:left-auto lg:right-6 lg:w-auto z-[9999] space-y-2">
       {toasts.map((toast, index) => {
         const isExpanded = expandedToasts.has(toast.id)
         const messageToShow = toast.message

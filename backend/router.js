@@ -23,6 +23,7 @@ const UserRepository = require('./repositories/UserRepository')
 const uploadRoutes = require('./routes/uploadRoutes')
 const ResidentRepository = require('./repositories/ResidentRepository')
 const AnnouncementRepository = require('./repositories/AnnouncementRepository')
+const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
@@ -773,7 +774,7 @@ router.get('/announcements', authenticateToken, async (req, res) => {
       is_urgent: announcement.type === 5, // Advisory type
       status: announcement.published_at ? 'published' : 'draft',
       target_groups: announcement.target_groups || ['all'],
-      sms_target_groups: [],
+      sms_target_groups: announcement.sms_target_groups || [], // Use actual SMS target groups from repository
       created_by: announcement.created_by,
       created_at: announcement.created_at,
       updated_at: announcement.updated_at,
@@ -821,10 +822,7 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
     const {
       title,
       content,
-      image_url,
-      image_description,
-      is_urgent,
-      expires_at,
+      type,
       target_groups,
       sms_target_groups,
       status
@@ -838,33 +836,80 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
       }, 'Missing required fields')
     }
 
-    // Validate target groups
-    if (!target_groups || !Array.isArray(target_groups) || target_groups.length === 0) {
-      return ApiResponse.validationError(res, {
-        target_groups: ['At least one target group is required']
-      }, 'Invalid target groups')
+    // Validate target groups (use default if not provided)
+    const finalTargetGroups = target_groups && Array.isArray(target_groups) && target_groups.length > 0 
+      ? target_groups 
+      : ['all_residents'] // Default target group
+
+    // Parse SMS target groups to target_type and target_value
+    let target_type = null  // null = SMS disabled
+    let target_value = null
+    
+    if (sms_target_groups && sms_target_groups.length > 0) {
+      if (sms_target_groups.includes('all')) {
+        // If 'all' is included, use 'all' (ignore other selections)
+        target_type = 'all'
+        target_value = null
+      } else if (sms_target_groups.length === 1) {
+        // Single specific target group
+        const target = sms_target_groups[0]
+        if (target.includes(':')) {
+          const [type, value] = target.split(':')
+          target_type = type
+          target_value = value
+        } else {
+          target_type = 'specific'
+          target_value = target
+        }
+      } else {
+        // Multiple specific target groups - store as JSON array
+        target_type = 'multiple'
+        target_value = JSON.stringify(sms_target_groups)
+      }
     }
+    // If sms_target_groups is empty or null, target_type remains null (SMS disabled)
 
     // Create announcement in database
     const announcementData = {
       title: Validator.sanitizeInput(title),
       content: Validator.sanitizeInput(content),
-      type: is_urgent ? 5 : 1, // 5=Advisory (urgent), 1=General
-      status: status || 'draft',
-      created_by: req.user.userId,
-      published_by: status === 'published' ? req.user.userId : null
+      type: type || 1, // Use provided type or default to 1 (General)
+      status: status || 'unpublished',
+      target_type: target_type,
+      target_value: target_value,
+      created_by: req.user.id,
+      published_by: status === 'published' ? req.user.id : null
     }
 
-    const newAnnouncement = await AnnouncementRepository.create(announcementData, target_groups)
+    const newAnnouncement = await AnnouncementRepository.create(announcementData)
 
-    // If publishing and SMS targets specified, log SMS sending
-    if (status === 'published' && sms_target_groups && sms_target_groups.length > 0) {
-      logger.info('SMS notifications triggered', {
-        announcementId: newAnnouncement.id,
-        smsTargets: sms_target_groups,
-        title: title
-      })
-      // TODO: Implement SMS sending and logging
+    // If publishing and SMS enabled (target_type is not null), send SMS notifications
+    if (status === 'published' && target_type !== null) {
+      const smsTargetGroups = [`${target_type}:${target_value}`]
+      
+      // Send SMS in background (don't wait for completion)
+      SMSService.getRecipients(smsTargetGroups)
+        .then(recipients => {
+          logger.info('SMS recipients retrieved', {
+            announcementId: newAnnouncement.id,
+            recipientCount: recipients.length,
+            targetGroups: sms_target_groups
+          })
+          
+          return SMSService.sendSMS(newAnnouncement, recipients, sms_target_groups)
+        })
+        .then(results => {
+          logger.info('SMS notifications sent', {
+            announcementId: newAnnouncement.id,
+            ...results
+          })
+        })
+        .catch(error => {
+          logger.error('Error sending SMS notifications', {
+            announcementId: newAnnouncement.id,
+            error: error.message
+          })
+        })
     }
 
     const message = status === 'published' 
@@ -882,15 +927,27 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
 router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const announcementId = parseInt(req.params.id)
+    // Extract fields from request body
     const {
       title,
       content,
+      type,
       is_urgent,
       expires_at,
       target_groups,
       sms_target_groups,
+      send_sms,
       status
     } = req.body
+
+    // Debug logging
+    logger.info('Update announcement request data', {
+      announcementId,
+      send_sms,
+      sms_target_groups,
+      sms_target_groups_type: typeof sms_target_groups,
+      sms_target_groups_length: sms_target_groups?.length
+    })
 
     // Validate required fields
     if (!title || !content) {
@@ -910,7 +967,35 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
     const updateData = {
       title: Validator.sanitizeInput(title),
       content: Validator.sanitizeInput(content),
-      type: is_urgent !== undefined ? (is_urgent ? 5 : 1) : existing.type // 5=Advisory, 1=General
+      type: type ? parseInt(type) : existing.type // Use the actual type from frontend, fallback to existing
+    }
+
+    // Parse SMS target groups to target_type and target_value
+    if (send_sms && sms_target_groups && sms_target_groups.length > 0) {
+      if (sms_target_groups.includes('all')) {
+        // If 'all' is included, use 'all' (ignore other selections)
+        updateData.target_type = 'all'
+        updateData.target_value = null
+      } else if (sms_target_groups.length === 1) {
+        // Single specific target group
+        const target = sms_target_groups[0]
+        if (target.includes(':')) {
+          const [type, value] = target.split(':')
+          updateData.target_type = type
+          updateData.target_value = value
+        } else {
+          updateData.target_type = 'specific'
+          updateData.target_value = target
+        }
+      } else {
+        // Multiple specific target groups - store as JSON array
+        updateData.target_type = 'multiple'
+        updateData.target_value = JSON.stringify(sms_target_groups)
+      }
+    } else {
+      // No SMS - set to null (SMS disabled)
+      updateData.target_type = null
+      updateData.target_value = null
     }
 
     // Handle status change (draft → published)
@@ -922,21 +1007,40 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
       }
     }
 
-    // Update announcement in database
+    // Update announcement in database (simplified - no separate target groups parameter)
     const updatedAnnouncement = await AnnouncementRepository.update(
       announcementId, 
-      updateData, 
-      target_groups
+      updateData
     )
 
-    // If publishing and SMS targets specified, log SMS sending
-    if (status === 'published' && sms_target_groups && sms_target_groups.length > 0) {
-      logger.info('SMS notifications triggered for updated announcement', {
-        announcementId: announcementId,
-        smsTargets: sms_target_groups,
-        title: title
-      })
-      // TODO: Implement SMS sending and logging
+    // If publishing and SMS enabled (target_type is not null), send SMS notifications
+    if (status === 'published' && updateData.target_type !== null) {
+      const smsTargetGroups = [`${updateData.target_type}:${updateData.target_value}`]
+      
+      // Send SMS in background (don't wait for completion)
+      SMSService.getRecipients(smsTargetGroups)
+        .then(recipients => {
+          logger.info('SMS recipients retrieved for update', {
+            announcementId: announcementId,
+            recipientCount: recipients.length,
+            targetGroups: sms_target_groups
+          })
+          
+          // Add id to updatedAnnouncement for SMS sending
+          return SMSService.sendSMS({ ...updatedAnnouncement, id: announcementId }, recipients, sms_target_groups)
+        })
+        .then(results => {
+          logger.info('SMS notifications sent for update', {
+            announcementId: announcementId,
+            ...results
+          })
+        })
+        .catch(error => {
+          logger.error('Error sending SMS notifications for update', {
+            announcementId: announcementId,
+            error: error.message
+          })
+        })
     }
 
     const message = status === 'published' 
@@ -978,43 +1082,44 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, asy
   try {
     const announcementId = parseInt(req.params.id)
     
-    // Mock SMS status data - replace with actual database query
-    const mockSMSStatus = [
-      {
-        id: 1,
-        announcement_id: announcementId,
-        recipient_phone: '+639123456789',
-        recipient_name: 'Sarah Macariola',
-        resident_id: 2,
-        delivery_status: 'delivered',
-        sent_at: '2024-01-15T10:05:00Z',
-        delivered_at: '2024-01-15T10:06:00Z',
-        error_message: null
-      },
-      {
-        id: 2,
-        announcement_id: announcementId,
-        recipient_phone: '+639987654321',
-        recipient_name: 'Orlando Macariola Jr',
-        resident_id: 1,
-        delivery_status: 'failed',
-        sent_at: '2024-01-15T10:05:00Z',
-        delivered_at: null,
-        error_message: 'Invalid phone number'
-      }
-    ]
-
-    const summary = {
-      total: mockSMSStatus.length,
-      pending: mockSMSStatus.filter(s => s.delivery_status === 'pending').length,
-      sent: mockSMSStatus.filter(s => s.delivery_status === 'sent').length,
-      delivered: mockSMSStatus.filter(s => s.delivery_status === 'delivered').length,
-      failed: mockSMSStatus.filter(s => s.delivery_status === 'failed').length
+    // Query actual SMS logs from database
+    const query = `
+      SELECT 
+        announcement_id,
+        target_groups,
+        total_recipients,
+        successful_sends,
+        failed_sends,
+        sms_content,
+        sent_at
+      FROM announcement_sms_logs 
+      WHERE announcement_id = $1
+      ORDER BY sent_at DESC
+      LIMIT 1
+    `
+    
+    const result = await db.query(query, [announcementId])
+    
+    if (result.rows.length === 0) {
+      // No SMS logs found for this announcement
+      return ApiResponse.success(res, {
+        total_recipients: 0,
+        successful_sends: 0,
+        failed_sends: 0,
+        sms_content: null,
+        sent_at: null
+      }, 'No SMS data found for this announcement')
     }
-
+    
+    const smsLog = result.rows[0]
+    
     return ApiResponse.success(res, {
-      sms_records: mockSMSStatus,
-      summary: summary
+      total_recipients: smsLog.total_recipients || 0,
+      successful_sends: smsLog.successful_sends || 0,
+      failed_sends: smsLog.failed_sends || 0,
+      sms_content: smsLog.sms_content,
+      target_groups: smsLog.target_groups,
+      sent_at: smsLog.sent_at
     }, 'SMS status retrieved successfully')
   } catch (error) {
     logger.error('Error fetching SMS status', error)

@@ -1,4 +1,4 @@
-.PHONY: help install dev start stop restart status logs clean
+.PHONY: help install dev start stop restart status logs clean db-migrate
 .DEFAULT_GOAL := help
 
 FRONTEND_DIR := frontend
@@ -7,14 +7,15 @@ BACKEND_DIR := backend
 help:
 	@echo "SmartLias - Essential Commands"
 	@echo ""
-	@echo "  make install  - Install all dependencies"
-	@echo "  make dev      - Run frontend (3000) and backend (9000) in development"
-	@echo "  make start    - Start backend with PM2 (production)"
-	@echo "  make stop     - Stop backend"
-	@echo "  make restart  - Restart backend"
-	@echo "  make status   - Show backend status"
-	@echo "  make logs     - Show backend logs"
-	@echo "  make clean    - Remove node_modules"
+	@echo "  make install    - Install all dependencies"
+	@echo "  make dev        - Run frontend (3000) and backend (9000) in development"
+	@echo "  make start      - Start backend with PM2 (production)"
+	@echo "  make stop       - Stop backend"
+	@echo "  make restart    - Restart backend"
+	@echo "  make status     - Show backend status"
+	@echo "  make logs       - Show backend logs"
+	@echo "  make clean      - Remove node_modules"
+	@echo "  make db-migrate - Run database migration (remove is_active column)"
 
 install:
 	@echo "Installing dependencies..."
@@ -68,3 +69,6 @@ clean:
 	@rm -rf $(BACKEND_DIR)/node_modules
 	@echo "✅ Clean complete"
 
+db-migrate:
+	@echo "Running database migration..."
+	@./.local/db/migrate.sh

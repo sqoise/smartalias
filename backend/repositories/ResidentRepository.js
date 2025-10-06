@@ -121,16 +121,7 @@ class ResidentRepository {
     }
   }
 
-  /**
-   * Update resident
-   */
-  static async update(id, residentData) {
-    if (config.USE_MOCK_DATA) {
-      return await this._updateJSON(id, residentData)
-    } else {
-      return await this._updateDB(id, residentData)
-    }
-  }
+
 
   /**
    * Delete resident
@@ -240,13 +231,13 @@ class ResidentRepository {
     const result = await db.query(`
       INSERT INTO residents (
         user_id, last_name, first_name, middle_name, birth_date, gender,
-        civil_status, contact_number, email, address, purok,
+        civil_status, home_number, mobile_number, email, address, purok,
         religion, occupation, is_active, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 1, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       dbData.userId, dbData.lastName, dbData.firstName, dbData.middleName, 
-      dbData.birthDate, dbData.gender, dbData.civilStatus, dbData.contactNumber, 
+      dbData.birthDate, dbData.gender, dbData.civilStatus, dbData.homeNumber, dbData.mobileNumber,
       dbData.email, dbData.address, dbData.purok, dbData.religion, dbData.occupation
     ])
     return this.enrichWithAge(result.rows[0])
@@ -439,25 +430,7 @@ class ResidentRepository {
     }
   }
 
-  static async _updateDB(id, data) {
-    // Transform data for database compatibility
-    const dbData = this._transformForDB(data)
-    
-    const result = await db.query(`
-      UPDATE residents SET
-        last_name = $1, first_name = $2, middle_name = $3, birth_date = $4,
-        gender = $5, civil_status = $6, contact_number = $7, email = $8,
-        address = $9, purok = $10, religion = $11, occupation = $12,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $13
-      RETURNING *
-    `, [
-      dbData.lastName, dbData.firstName, dbData.middleName, dbData.birthDate,
-      dbData.gender, dbData.civilStatus, dbData.contactNumber, dbData.email,
-      dbData.address, dbData.purok, dbData.religion, dbData.occupation, id
-    ])
-    return this.enrichWithAge(result.rows[0])
-  }
+
 
   static async _deleteDB(id) {
     await db.query('UPDATE residents SET is_active = 0 WHERE id = $1', [id])

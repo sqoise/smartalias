@@ -264,7 +264,8 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
         birthDate: '',
         gender: '',
         civilStatus: '',
-        contactNumber: '',
+        homeNumber: '',
+        mobileNumber: '',
         email: '',
         address: '',
         purok: '',
@@ -874,16 +875,14 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                 <div className="flex justify-center gap-3">
                   <button
                     onClick={handleCancelSubmit}
-                    className="w-24 h-10 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer"
+                    className="w-26 h-10 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer"
                   >
-                    <i className="bi bi-x-lg mr-1.5"></i>
                     Cancel
                   </button>
                   <button
                     onClick={handleConfirmSubmit}
-                    className="w-32 h-10 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors cursor-pointer"
+                    className="w-28 h-10 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors cursor-pointer"
                   >
-                    <i className="bi bi-check-lg mr-1.5"></i>
                     Confirm
                   </button>
                 </div>
@@ -933,8 +932,8 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
           
           <div className="text-center">
             {/* Success Icon */}
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-              <i className="bi bi-check-lg text-green-600 text-xl"></i>
+            <div className="mx-auto flex items-center justify-center h-11 w-11 rounded-full bg-green-100 mb-4">
+              <i className="bi bi-check-lg text-green-600 text-2xl"></i>
             </div>
             
             {/* Title */}
@@ -945,7 +944,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
             {/* Expandable Credentials Section */}
             {addedResident && (
               <div className="mb-6 flex justify-center">
-                <div className="w-[80%]">
+                <div className="w-[100%]">
                   <button
                     onClick={() => setShowCredentials(!showCredentials)}
                     className="w-full p-2 bg-gray-100 border-dashed border border-gray-300 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
@@ -970,7 +969,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                           className={`ml-2 p-1 rounded-md transition-colors cursor-pointer ${
                             copied 
                               ? 'text-gray-600' 
-                              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-200'
+                              : 'text-gray-600 hover:text-gray-800'
                           }`}
                           title={copied ? "Copied!" : "Copy credentials to clipboard"}
                         >

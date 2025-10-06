@@ -76,7 +76,7 @@ export default function ResidentsContainer({
         (resident.first_name && resident.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (resident.last_name && resident.last_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (resident.address && resident.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (resident.contact_number && resident.contact_number.toLowerCase().includes(searchQuery.toLowerCase()))
+        (resident.mobile_number && resident.mobile_number.toLowerCase().includes(searchQuery.toLowerCase()))
       
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'active' && resident.is_active === 1) ||
@@ -905,7 +905,7 @@ export default function ResidentsContainer({
                         </span>
                       </td>
                       <td className="px-3 py-1 whitespace-nowrap w-28">
-                        <span className="text-xs font-medium tracking-normal antialiased text-gray-900">{displayValue(resident.contact_number)}</span>
+                        <span className="text-xs font-medium tracking-normal antialiased text-gray-900">{displayValue(resident.mobile_number)}</span>
                       </td>
                       <td className="px-3 py-1 whitespace-nowrap w-12">
                         <span className="text-xs font-medium tracking-normal antialiased text-gray-900">

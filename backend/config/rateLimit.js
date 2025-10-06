@@ -9,7 +9,7 @@ const config = require('./config')
 // General API rate limiting
 const generalLimiter = rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW,
-  max: config.RATE_LIMIT_MAX,
+  max: config.isDevelopment ? 2000 : 500, // 2000 in dev, 500 in production
   message: {
     success: false,
     error: 'Too many requests. Please try again later.',
@@ -21,7 +21,7 @@ const generalLimiter = rateLimit({
 // Strict rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // 500 attempts per window
+  max: config.isDevelopment ? 1000 : 200, // 1000 in dev, 200 in production
   message: {
     success: false,
     error: 'Too many authentication attempts. Please try again later.',
@@ -33,7 +33,7 @@ const authLimiter = rateLimit({
 // Very strict rate limiting for password changes
 const passwordChangeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 100, // 100 attempts per hour
+  max: config.isDevelopment ? 200 : 50, // 200 in dev, 50 in production per hour
   message: {
     success: false,
     error: 'Too many password change attempts. Please try again later.',

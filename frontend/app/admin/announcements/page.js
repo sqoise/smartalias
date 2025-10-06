@@ -6,6 +6,7 @@ import AnnouncementsContainer from '../../../components/authenticated/admin/Anno
 import AnnouncementDetailView from '../../../components/authenticated/admin/AnnouncementDetailView'
 import AddAnnouncementView from '../../../components/authenticated/admin/AddAnnouncementView'
 import Modal from '../../../components/common/Modal'
+import ToastNotification from '../../../components/common/ToastNotification'
 
 export default function AnnouncementsPage() {
   const [announcementsData, setAnnouncementsData] = useState([])
@@ -16,6 +17,7 @@ export default function AnnouncementsPage() {
   const [showDelete, setShowDelete] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
   const [addLoading, setAddLoading] = useState(false)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
 
   useEffect(() => {
     loadAnnouncements()
@@ -47,6 +49,10 @@ export default function AnnouncementsPage() {
   }
 
   const handleDelete = (announcement) => {
+    // Only allow deletion of unpublished announcements
+    if (announcement.status === 'published') {
+      return // Do nothing if announcement is published
+    }
     setSelectedAnnouncement(announcement)
     setShowDelete(true)
   }
@@ -86,6 +92,12 @@ export default function AnnouncementsPage() {
     await loadAnnouncements()
   }
 
+  const showToast = (message, type = 'success') => {
+    console.log('showToast called:', { message, type })
+    setToast({ show: true, message, type })
+    console.log('Toast state will be updated to:', { show: true, message, type })
+  }
+
   return (
     <div className="space-y-2">
       {error && (
@@ -116,6 +128,7 @@ export default function AnnouncementsPage() {
         onClose={() => setShowView(false)}
         announcement={selectedAnnouncement}
         onUpdate={handleUpdateAnnouncement}
+        onToast={showToast}
       />
 
       <Modal
@@ -142,6 +155,13 @@ export default function AnnouncementsPage() {
           </div>
         )}
       </Modal>
+
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
     </div>
   )
 }

@@ -1,28 +1,76 @@
 import React from 'react'
-import ToastNotification from '../../common/ToastNotification'
+import Modal from '../../common/Modal'
 import { ANNOUNCEMENT_TYPE_NAMES } from '../../../lib/constants'
+import ApiClient from '../../../lib/apiClient'
+import SMSTargetSection from './SMSTargetSection'
 
-export default function AnnouncementDetailView({ open, onClose, announcement, onUpdate }) {
-  const toastRef = React.useRef()
+export default function AnnouncementDetailView({ open, onClose, announcement, onUpdate, onToast }) {
   const [isEditing, setIsEditing] = React.useState(false)
   const [formData, setFormData] = React.useState({})
   const [errors, setErrors] = React.useState({})
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isPublishing, setIsPublishing] = React.useState(false)
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false)
+  const [showPublishModal, setShowPublishModal] = React.useState(false)
+  const [smsStatus, setSmsStatus] = React.useState(null) // { total: 0, sent: 0, failed: 0 }
 
   // Load announcement data when panel opens
   React.useEffect(() => {
     if (open && announcement) {
+      // Determine status based on published_at field
+      const status = announcement.published_at ? 'published' : 'draft'
+      
+      // Use SMS target groups directly from API response (backend already converts target_type/target_value)
+      const smsTargetGroups = announcement.sms_target_groups || []
+      const isSmsEnabled = smsTargetGroups.length > 0 // SMS enabled if there are target groups
+      
+      // Debug logging
+      console.log('Loading announcement for edit:', {
+        announcement,
+        target_type: announcement.target_type,
+        target_value: announcement.target_value,
+        sms_target_groups: announcement.sms_target_groups,
+        isSmsEnabled,
+        smsTargetGroups
+      })
+      
       setFormData({
         title: announcement.title || '',
         content: announcement.content || '',
+        type: announcement.type || 1,
         is_urgent: announcement.is_urgent || false,
         target_groups: announcement.target_groups || ['all'],
-        sms_target_groups: announcement.sms_target_groups || [],
-        status: announcement.status || 'draft'
+        sms_target_groups: smsTargetGroups,
+        send_sms: isSmsEnabled,
+        status: status
       })
       setIsEditing(false)
       setErrors({})
+      setSmsStatus(null) // Reset SMS status when loading new announcement
     }
+  }, [open, announcement])
+
+  // Fetch SMS status for published announcements with SMS enabled
+  React.useEffect(() => {
+    const fetchSmsStatus = async () => {
+      if (open && announcement && announcement.published_at && 
+          announcement.target_type !== null) {
+        try {
+          const smsResponse = await ApiClient.request(`/announcements/${announcement.id}/sms-status`)
+          if (smsResponse.success && smsResponse.data) {
+            setSmsStatus({
+              total: smsResponse.data.total_recipients || 0,
+              sent: smsResponse.data.successful_sends || 0,
+              failed: smsResponse.data.failed_sends || 0
+            })
+          }
+        } catch (smsError) {
+          console.error('Error fetching SMS status on load:', smsError)
+        }
+      }
+    }
+    
+    fetchSmsStatus()
   }, [open, announcement])
 
   // Close on Escape key
@@ -44,14 +92,25 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
     
     if (!formData.title?.trim()) {
       newErrors.title = 'Title is required'
+    } else if (formData.title.trim().length < 10) {
+      newErrors.title = 'Title must be at least 10 characters'
     }
     
     if (!formData.content?.trim()) {
       newErrors.content = 'Content is required'
+    } else if (formData.content.trim().length < 30) {
+      newErrors.content = 'Content must be at least 30 characters'
+    } else if (formData.content.length > 1000) {
+      newErrors.content = 'Content must be 1000 characters or less'
     }
 
-    if (!formData.target_groups || formData.target_groups.length === 0) {
-      newErrors.target_groups = 'At least one target group is required'
+    if (!formData.type) {
+      newErrors.type = 'Type is required'
+    }
+
+    // SMS Target Group Validation - Only if SMS is enabled
+    if (formData.send_sms && (!formData.sms_target_groups || formData.sms_target_groups.length === 0)) {
+      newErrors.smsTargets = 'Please select at least one target group for SMS notifications'
     }
     
     setErrors(newErrors)
@@ -60,33 +119,38 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
 
   const handleSave = async () => {
     if (!validateForm() || !announcement?.id) {
-      toastRef.current?.show('Please fix the errors before saving', 'error')
-      return
+      return // Just return without toast - validation errors are shown inline
     }
 
     setIsSaving(true)
     try {
-      const response = await fetch(`/api/announcements/${announcement.id}`, {
+      // Ensure target_groups is always set to 'all'
+      const updateData = {
+        title: formData.title,
+        content: formData.content,
+        type: parseInt(formData.type) || 1,
+        target_groups: ['all'],
+        sms_target_groups: formData.send_sms ? (formData.sms_target_groups || []) : [],
+        send_sms: formData.send_sms || false,
+        status: 'draft' // Use 'draft' instead of 'unpublished'
+      }
+
+      const response = await ApiClient.request(`/announcements/${announcement.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(updateData)
       })
 
-      const result = await response.json()
-
-      if (response.ok) {
-        toastRef.current?.show('Announcement updated successfully', 'success')
+      if (response.success) {
+        onToast?.('Announcement updated successfully', 'success')
         setIsEditing(false)
         onUpdate()
       } else {
-        toastRef.current?.show(result.message || 'Failed to update announcement', 'error')
+        console.error('Update failed:', response)
+        onToast?.(response.error || 'Failed to update announcement', 'error')
       }
     } catch (error) {
       console.error('Error updating announcement:', error)
-      toastRef.current?.show('Failed to update announcement', 'error')
+      onToast?.('Failed to update announcement', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -94,41 +158,81 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
 
   const handlePublish = async () => {
     if (!announcement?.id) {
-      toastRef.current?.show('No announcement selected', 'error')
+      onToast?.('No announcement selected', 'error')
       return
     }
     
-    setIsSaving(true)
+    setIsPublishing(true)
+    setSmsStatus(null) // Reset SMS status
+    
     try {
-      const response = await fetch(`/api/announcements/${announcement.id}`, {
+      // Ensure target_groups is always set to 'all'
+      const publishData = {
+        title: formData.title,
+        content: formData.content,
+        target_groups: ['all'],
+        sms_target_groups: formData.sms_target_groups || [],
+        status: 'published'
+      }
+
+      const response = await ApiClient.request(`/announcements/${announcement.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          status: 'published'
-        })
+        body: JSON.stringify(publishData)
       })
 
-      const result = await response.json()
-
-      if (response.ok) {
+      if (response.success) {
+        // If SMS is enabled, fetch SMS status
         if (formData.sms_target_groups && formData.sms_target_groups.length > 0) {
-          toastRef.current?.show('Announcement published and SMS notifications sent!', 'success')
+          try {
+            const smsResponse = await ApiClient.request(`/announcements/${announcement.id}/sms-status`)
+            if (smsResponse.success && smsResponse.data) {
+              setSmsStatus({
+                total: smsResponse.data.total_recipients || 0,
+                sent: smsResponse.data.successful_sends || 0,
+                failed: smsResponse.data.failed_sends || 0
+              })
+            }
+          } catch (smsError) {
+            console.error('Error fetching SMS status:', smsError)
+          }
+          onToast?.('Announcement published and SMS notifications sent!', 'success')
         } else {
-          toastRef.current?.show('Announcement published successfully', 'success')
+          onToast?.('Announcement published successfully', 'success')
         }
+        
+        setShowPublishModal(false)
         onUpdate()
       } else {
-        toastRef.current?.show(result.message || 'Failed to publish announcement', 'error')
+        console.error('Publish failed:', response)
+        onToast?.(response.error || 'Failed to publish announcement', 'error')
       }
     } catch (error) {
       console.error('Error publishing announcement:', error)
-      toastRef.current?.show('Failed to publish announcement', 'error')
+      onToast?.('Failed to publish announcement', 'error')
     } finally {
-      setIsSaving(false)
+      setIsPublishing(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!announcement?.id) return
+
+    try {
+      const response = await ApiClient.request(`/announcements/${announcement.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.success) {
+        onToast?.('Announcement deleted successfully', 'success')
+        setShowDeleteModal(false)
+        onClose()
+        onUpdate()
+      } else {
+        onToast?.(response.error || 'Failed to delete announcement', 'error')
+      }
+    } catch (error) {
+      console.error('Error deleting announcement:', error)
+      onToast?.('Failed to delete announcement', 'error')
     }
   }
 
@@ -155,28 +259,16 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
     }
   }
 
-  const handleSMSTargetChange = (e) => {
-    const { value, checked } = e.target
-    
-    setFormData(prev => {
-      let newSMSGroups = [...(prev.sms_target_groups || [])]
-      
-      if (value === 'all') {
-        newSMSGroups = checked ? ['all'] : []
-      } else {
-        newSMSGroups = newSMSGroups.filter(group => group !== 'all')
-        
-        if (checked) {
-          if (!newSMSGroups.includes(value)) {
-            newSMSGroups.push(value)
-          }
-        } else {
-          newSMSGroups = newSMSGroups.filter(group => group !== value)
-        }
-      }
-      
-      return { ...prev, sms_target_groups: newSMSGroups }
-    })
+  const handleSMSTargetChange = (newTargetGroups) => {
+    setFormData(prev => ({ ...prev, sms_target_groups: newTargetGroups }))
+  }
+
+  const handleSendSMSChange = (sendSMS) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      send_sms: sendSMS,
+      sms_target_groups: sendSMS ? (prev.sms_target_groups || []) : []
+    }))
   }
 
   const formatDate = (dateString) => {
@@ -195,7 +287,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
   const announcementData = announcement || {
     title: '',
     content: '',
-    status: 'draft',
+    status: 'unpublished',
     is_urgent: false,
     type: 1,
     target_groups: ['all'],
@@ -256,7 +348,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
       <div
         className={`relative ml-auto h-full w-full sm:w-[520px] lg:w-[650px] xl:w-[750px] bg-gray-50 shadow-2xl transition-transform duration-300 ease-out transform ${
           open ? 'translate-x-0' : 'translate-x-full'
-        } overflow-hidden`}
+        } overflow-hidden flex flex-col`}
       >
         {/* Panel Header */}
         <div className="flex items-center shadow-sm justify-between p-3 px-6 border-b border-gray-200 bg-white">
@@ -276,7 +368,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         </div>
 
         {/* Panel Content - Scrollable */}
-        <div className="h-full overflow-y-auto pb-12">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-4">
             {!isEditing ? (
               // View Mode - Blog Article Style
@@ -289,13 +381,24 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                       {announcementData.title}
                     </h1>
                     {!isPublished && (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9 flex-shrink-0"
-                      >
-                        <i className="bi bi-pencil mr-1" />
-                        Edit
-                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 focus:ring-2 focus:ring-orange-500 transition-colors cursor-pointer text-sm font-medium"
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil text-xs" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteModal(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-100 text-red-700 hover:bg-red-200 focus:ring-2 focus:ring-red-500 transition-colors cursor-pointer text-sm font-medium"
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash text-xs" />
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -315,23 +418,90 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                   </div>
 
                   {/* Metadata */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-1.5">
-                      <i className="bi bi-calendar3 text-gray-400" />
-                      <span className="text-xs">Created: {formatDate(announcementData.created_at)}</span>
-                      {announcementData.created_by && (
-                        <span className="text-xs text-gray-500">by {announcementData.created_by}</span>
-                      )}
-                    </div>
-                    {announcementData.published_at && (
+                  <div className="space-y-3">
+                    {/* First Row - Created and Published */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1.5">
-                        <i className="bi bi-send-check text-gray-400" />
-                        <span className="text-xs">Published: {formatDate(announcementData.published_at)}</span>
-                        {announcementData.published_by && (
-                          <span className="text-xs text-gray-500">by {announcementData.published_by}</span>
+                        <i className="bi bi-calendar3 text-gray-400" />
+                        <span className="text-xs">Created: {formatDate(announcementData.created_at)}</span>
+                        {announcementData.created_by && (
+                          <span className="text-xs text-gray-500">by {announcementData.created_by}</span>
                         )}
                       </div>
-                    )}
+                      <div className="flex items-center gap-1.5">
+                        {announcementData.published_at ? (
+                          <>
+                            <i className="bi bi-send-check text-gray-400" />
+                            <span className="text-xs">Published: {formatDate(announcementData.published_at)}</span>
+                            {announcementData.published_by && (
+                              <span className="text-xs text-gray-500">by {announcementData.published_by}</span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-clock text-gray-400" />
+                            <span className="text-xs text-gray-500">Unpublished</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Second Row - SMS and Type in 2 columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                      {/* SMS Notification Status */}
+                      <div className="flex items-center gap-1.5 text-left">
+                        {announcementData.target_type !== null && announcementData.sms_target_groups && announcementData.sms_target_groups.length > 0 ? (
+                          <>
+                            <i className="bi bi-phone-vibrate text-amber-600" />
+                            <span className="text-xs">
+                              {announcementData.status === 'published' ? 'SMS sent to:' : 'SMS will be sent to:'}
+                            </span>
+                            <div className="flex gap-1">
+                              {announcementData.sms_target_groups.length <= 2 ? (
+                                // Show all groups if 2 or fewer
+                                announcementData.sms_target_groups.map((group, index) => (
+                                  <span key={index} className="text-xs text-amber-700 font-medium">
+                                    {group === 'all' ? 'All Residents' : 
+                                     group === 'special_category:PWD' ? 'PWD' :
+                                     group === 'special_category:SENIOR_CITIZEN' ? 'Senior Citizens' :
+                                     group === 'special_category:SOLO_PARENT' ? 'Solo Parents' :
+                                     group === 'special_category:INDIGENT' ? 'Indigent Families' :
+                                     group}
+                                    {index < announcementData.sms_target_groups.length - 1 && ', '}
+                                  </span>
+                                ))
+                              ) : (
+                                // Show count if 3 or more
+                                <span className="text-xs text-amber-700 font-medium">
+                                  {announcementData.sms_target_groups.length} groups
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-telephone-x text-gray-400" />
+                            <span className="text-xs text-gray-500">No SMS notifications</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Announcement Type */}
+                      <div className="flex items-center gap-1.5 text-left">
+                        <i className="bi bi-tag text-gray-400" />
+                        <span className="text-xs">Type:</span>
+                        <span className="text-xs text-blue-700 font-medium">{getTypeName(announcementData.type)}</span>
+                        {announcementData.is_urgent && (
+                          <>
+                            <span className="text-xs text-gray-500">•</span>
+                            <span className="text-xs text-red-700 font-medium">
+                              <i className="bi bi-exclamation-triangle-fill mr-1" />
+                              Urgent
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -344,67 +514,34 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                   </div>
                 </div>
 
-                {/* Article Footer - Tags and Categories */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                  <div className="flex flex-wrap items-start gap-4">
-                    {/* Target Audience */}
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-0.5">Audience:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {announcementData.target_groups?.map((group, index) => (
-                          <span key={index} className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700 border border-gray-200">
-                            {group === 'all' ? 'All Residents' : 
-                             group === 'special_category:PWD' ? 'PWD' :
-                             group === 'special_category:SENIOR_CITIZEN' ? 'Senior Citizens' :
-                             group === 'special_category:SOLO_PARENT' ? 'Solo Parents' :
-                             group === 'special_category:INDIGENT' ? 'Indigent Families' :
-                             group}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Announcement Type */}
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-0.5">Type:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${getTypeBadgeColor(announcementData.type)}`}>
-                          {getTypeName(announcementData.type)}
-                        </span>
-                        {announcementData.is_urgent && (
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded bg-red-100 text-red-800 border border-red-200">
-                            <i className="bi bi-exclamation-triangle-fill mr-1" />
-                            Urgent
-                          </span>
+                {/* Article Footer - SMS Delivery Status (only when available) */}
+                {smsStatus && (
+                  <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                    <div>
+                      <h4 className="text-xs font-medium text-gray-700 mb-2">SMS Delivery Status</h4>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total Recipients:</span>
+                          <span className="font-medium text-gray-800">{smsStatus.total}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Successfully Sent:</span>
+                          <span className="font-medium text-green-600">{smsStatus.sent}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Failed:</span>
+                          <span className="font-medium text-red-600">{smsStatus.failed}</span>
+                        </div>
+                        {smsStatus.total > 0 && (
+                          <div className="flex justify-between pt-1 border-t border-gray-200">
+                            <span className="text-gray-600">Success Rate:</span>
+                            <span className="font-medium text-gray-800">{((smsStatus.sent / smsStatus.total) * 100).toFixed(1)}%</span>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {/* SMS Notifications Info */}
-                  {announcementData.sms_target_groups && announcementData.sms_target_groups.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-start gap-2">
-                        <i className="bi bi-phone-vibrate text-amber-600 mt-0.5" />
-                        <div>
-                          <span className="text-xs font-medium text-gray-700">SMS notifications sent to:</span>
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {announcementData.sms_target_groups.map((group, index) => (
-                              <span key={index} className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-amber-50 text-amber-800 border border-amber-200">
-                                {group === 'all' ? 'All Residents' : 
-                                 group === 'special_category:PWD' ? 'PWD' :
-                                 group === 'special_category:SENIOR_CITIZEN' ? 'Senior Citizens' :
-                                 group === 'special_category:SOLO_PARENT' ? 'Solo Parents' :
-                                 group === 'special_category:INDIGENT' ? 'Indigent Families' :
-                                 group}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             ) : (
               // Edit Mode
@@ -430,7 +567,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                     {/* Title Field */}
                     <div>
                       <label htmlFor="edit-title" className="block text-sm font-medium text-gray-700 mb-1">
-                        Title *
+                        Title <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -450,7 +587,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                     {/* Content Field */}
                     <div>
                       <label htmlFor="edit-content" className="block text-sm font-medium text-gray-700 mb-1">
-                        Content *
+                        Content <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         id="edit-content"
@@ -467,153 +604,64 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                       )}
                     </div>
 
-                    {/* Urgent Flag */}
+                    {/* Type Field */}
                     <div>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.is_urgent}
-                          onChange={(e) => setFormData(prev => ({ ...prev, is_urgent: e.target.checked }))}
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">Mark as urgent</span>
+                      <label htmlFor="edit-type" className="block text-sm font-medium text-gray-700 mb-1">
+                        Type <span className="text-red-500">*</span>
                       </label>
+                      <div className="relative">
+                        <select
+                          id="edit-type"
+                          value={formData.type}
+                          onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                          className={`w-full rounded-md px-3 py-1.5 text-sm border focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8 ${
+                            errors.type 
+                              ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value="">Select</option>
+                          {Object.entries(ANNOUNCEMENT_TYPE_NAMES).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                      </div>
+                      {errors.type && (
+                        <p className="text-xs text-red-600 mt-1">{errors.type}</p>
+                      )}
                     </div>
 
-                    {/* Target Groups */}
+                    {/* Target Groups - FYI Only */}
+                    {/* Target Groups - FYI Only */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Visibility *
+                        Visibility
                       </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="all"
-                            checked={formData.target_groups?.includes('all')}
-                            onChange={handleTargetGroupChange}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">All Residents</span>
-                        </label>
-                        
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:PWD"
-                            checked={formData.target_groups?.includes('special_category:PWD')}
-                            onChange={handleTargetGroupChange}
-                            disabled={formData.target_groups?.includes('all')}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">PWD</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:SENIOR_CITIZEN"
-                            checked={formData.target_groups?.includes('special_category:SENIOR_CITIZEN')}
-                            onChange={handleTargetGroupChange}
-                            disabled={formData.target_groups?.includes('all')}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Senior Citizens</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:SOLO_PARENT"
-                            checked={formData.target_groups?.includes('special_category:SOLO_PARENT')}
-                            onChange={handleTargetGroupChange}
-                            disabled={formData.target_groups?.includes('all')}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Solo Parents</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:INDIGENT"
-                            checked={formData.target_groups?.includes('special_category:INDIGENT')}
-                            onChange={handleTargetGroupChange}
-                            disabled={formData.target_groups?.includes('all')}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Indigent Families</span>
-                        </label>
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                        <div className="flex items-start gap-2">
+                          <i className="bi bi-info-circle text-blue-600 mt-0.5"></i>
+                          <div>
+                            <p className="text-sm text-blue-900 font-medium">All Residents</p>
+                            <p className="text-xs text-blue-700 mt-1">
+                              All announcements are visible to all residents by default. This ensures important information reaches everyone in the barangay.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      {errors.target_groups && <p className="text-xs text-red-600 mt-1">{errors.target_groups}</p>}
-                    </div>
-
-                    {/* SMS Notifications */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        SMS Notifications (sent when published)
-                      </label>
-                      <div className="space-y-2 bg-yellow-50 p-3 rounded-md">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:PWD"
-                            checked={formData.sms_target_groups?.includes('special_category:PWD')}
-                            onChange={handleSMSTargetChange}
-                            className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Send SMS to PWD</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:SENIOR_CITIZEN"
-                            checked={formData.sms_target_groups?.includes('special_category:SENIOR_CITIZEN')}
-                            onChange={handleSMSTargetChange}
-                            className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Send SMS to Senior Citizens</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:SOLO_PARENT"
-                            checked={formData.sms_target_groups?.includes('special_category:SOLO_PARENT')}
-                            onChange={handleSMSTargetChange}
-                            className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Send SMS to Solo Parents</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="special_category:INDIGENT"
-                            checked={formData.sms_target_groups?.includes('special_category:INDIGENT')}
-                            onChange={handleSMSTargetChange}
-                            className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">Send SMS to Indigent Families</span>
-                        </label>
-
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            value="all"
-                            checked={formData.sms_target_groups?.includes('all')}
-                            onChange={handleSMSTargetChange}
-                            className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700 font-medium">Send SMS to All Residents</span>
-                        </label>
-                        
-                        <p className="text-xs text-gray-500 mt-2">
-                          Note: SMS will only be sent to residents who have mobile phone numbers in their records.
-                        </p>
-                      </div>
-                    </div>
+                    </div>                    {/* SMS Notifications */}
+                    <SMSTargetSection
+                      sendSMS={formData.send_sms || false}
+                      targetGroups={formData.sms_target_groups || []}
+                      onSendSMSChange={handleSendSMSChange}
+                      onTargetGroupsChange={handleSMSTargetChange}
+                      hasError={!!errors.smsTargets}
+                    />
+                    {errors.smsTargets && (
+                      <p className="text-xs text-red-600 mt-1">{errors.smsTargets}</p>
+                    )}
                   </div>
                 </div>
               </>
@@ -626,23 +674,18 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
           {!isEditing ? (
             // View Mode Buttons
             <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-1 focus:ring-gray-500 transition-colors cursor-pointer h-9"
-              >
-                Close
-              </button>
               {!isPublished && (
                 <button
                   type="button"
-                  onClick={handlePublish}
-                  disabled={isSaving}
+                  onClick={() => setShowPublishModal(true)}
+                  disabled={isPublishing}
                   className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer h-9 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSaving ? (
+                  {isPublishing ? (
                     <>
-                      <i className="bi bi-arrow-clockwise animate-spin mr-1" />
+                      <div className="w-3 h-3 mr-2">
+                        <div className="w-full h-full border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      </div>
                       Publishing...
                     </>
                   ) : (
@@ -667,7 +710,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                     is_urgent: announcementData.is_urgent || false,
                     target_groups: announcementData.target_groups || ['all'],
                     sms_target_groups: announcementData.sms_target_groups || [],
-                    status: announcementData.status || 'draft'
+                    status: announcementData.status || 'unpublished'
                   })
                   setErrors({})
                 }}
@@ -696,7 +739,59 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         </div>
       </div>
 
-      <ToastNotification ref={toastRef} />
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Announcement"
+        type="confirm"
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
+        confirmButtonClass="text-white bg-red-600 hover:bg-red-700"
+      >
+        <p className="text-gray-700">Are you sure you want to delete?</p>
+      </Modal>
+
+      <Modal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        title="Publish Announcement"
+        type="confirm"
+        confirmText={isPublishing ? "Publishing..." : "Yes, Publish"}
+        cancelText="Cancel"
+        onConfirm={handlePublish}
+        confirmButtonClass="text-white bg-green-600 hover:bg-green-700"
+        confirmDisabled={isPublishing}
+      >
+        <div className="space-y-3">
+          <p className="text-gray-700">Are you sure you want to publish this announcement?</p>
+          
+          {formData.sms_target_groups && formData.sms_target_groups.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <i className="bi bi-phone-vibrate text-orange-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800">SMS notifications will be sent to:</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {formData.sms_target_groups.map((group, index) => (
+                      <span key={index} className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800">
+                        {group === 'all' ? 'All Residents' : 
+                         group === 'special_category:PWD' ? 'PWD' :
+                         group === 'special_category:SENIOR_CITIZEN' ? 'Senior Citizens' :
+                         group === 'special_category:SOLO_PARENT' ? 'Solo Parents' :
+                         group === 'special_category:INDIGENT' ? 'Indigent Families' :
+                         group}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-600">Once published, this announcement will be visible to residents and cannot be edited.</p>
+        </div>
+      </Modal>
     </div>
   )
 }

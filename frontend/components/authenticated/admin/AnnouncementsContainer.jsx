@@ -18,6 +18,64 @@ export default function AnnouncementsContainer({
   const statusDropdownRef = useRef(null)
   const scrollContainerRef = useRef(null)
 
+  // Helper function to format target groups for display
+  const formatTargetGroups = (targetGroups) => {
+    if (!targetGroups || targetGroups.length === 0) {
+      return 'All Residents'
+    }
+    
+    if (targetGroups.includes('all')) {
+      return 'All Residents'
+    }
+    
+    const groupLabels = []
+    targetGroups.forEach(group => {
+      if (group.startsWith('special_category:')) {
+        const category = group.split(':')[1]
+        switch (category) {
+          case 'PWD':
+            groupLabels.push('PWD')
+            break
+          case 'SENIOR_CITIZEN':
+            groupLabels.push('Senior Citizens')
+            break
+          case 'SOLO_PARENT':
+            groupLabels.push('Solo Parents')
+            break
+          default:
+            groupLabels.push(category)
+        }
+      } else if (group.startsWith('age_group:')) {
+        const ageRange = group.split(':')[1]
+        switch (ageRange) {
+          case '18-59':
+            groupLabels.push('Adults (18-59)')
+            break
+          case '13-17':
+            groupLabels.push('Youth (13-17)')
+            break
+          case '60+':
+            groupLabels.push('Seniors (60+)')
+            break
+          default:
+            groupLabels.push(`Age ${ageRange}`)
+        }
+      } else {
+        groupLabels.push(group)
+      }
+    })
+    
+    if (groupLabels.length === 1) {
+      return groupLabels[0]
+    } else if (groupLabels.length === 2) {
+      return `${groupLabels[0]} & ${groupLabels[1]}`
+    } else if (groupLabels.length > 2) {
+      return `${groupLabels[0]} & ${groupLabels.length - 1} more`
+    }
+    
+    return 'Selected Groups'
+  }
+
   // Filter announcements based on search term
   const filteredAnnouncements = announcements.filter(announcement => {
     const matchesSearch =
@@ -33,7 +91,7 @@ export default function AnnouncementsContainer({
     return matchesSearch && matchesStatus
   })
 
-  // Get visible announcements for lazy loading
+  // Get visible announcements for lazy loading (max 4 initially)
   const visibleAnnouncements = filteredAnnouncements.slice(0, visibleCount)
   const hasMore = visibleCount < filteredAnnouncements.length
 
@@ -61,14 +119,16 @@ export default function AnnouncementsContainer({
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
       // Load more when scrolled to 80% of the content
-      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+      if (scrollTop + clientHeight >= scrollHeight * 0.8 && hasMore) {
         setVisibleCount(prev => Math.min(prev + 5, filteredAnnouncements.length))
       }
     }
 
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [filteredAnnouncements.length])
+  }, [filteredAnnouncements.length, hasMore])
+
+  // Removed lazy loading scroll handler to fix scroll issues
 
   const formatDate = (dateString) => {
     if (!dateString) return '-'
@@ -100,7 +160,7 @@ export default function AnnouncementsContainer({
     }
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500 text-white shadow-sm">
-        Draft
+        Unpublished
       </span>
     )
   }
@@ -118,32 +178,9 @@ export default function AnnouncementsContainer({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manage Announcements</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Create and manage barangay announcements</p>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          {onAdd && (
-            <button
-              onClick={onAdd}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors cursor-pointer"
-            >
-              <i className="bi bi-megaphone mr-2"></i>
-              Add Announcement
-            </button>
-          )}
-         
-        </div>
-      </div>
-
       {/* Announcements List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100">
+      <div className="bg-slate-50 rounded-lg shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-100 bg-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">All Announcements</h3>
@@ -152,16 +189,28 @@ export default function AnnouncementsContainer({
                 {searchTerm && ` matching "${searchTerm}"`}
               </p>
             </div>
-             {onRefresh && (
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="inline-flex items-center justify-center w-9 h-9 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              title="Refresh announcements"
-            >
-              <i className="bi bi-arrow-clockwise text-md"></i>
-            </button>
-          )}
+            <div className="flex gap-2">
+              {onAdd && (
+                <button
+                  onClick={onAdd}
+                  className="inline-flex items-center px-2.5 py-1 bg-green-600 text-white text-sm font-medium tracking-normal rounded-md hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer"
+                  title="Add new announcement"
+                >
+                  <i className="bi bi-plus mr-1 text-xl"></i>
+                  Add Announcement
+                </button>
+              )}
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  disabled={loading}
+                  className="inline-flex items-center justify-center w-9 h-9 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Refresh announcements"
+                >
+                  <i className="bi bi-arrow-clockwise text-md"></i>
+                </button>
+              )}
+            </div>
           </div>
           
           {/* Search Bar - 50% width */}
@@ -273,9 +322,9 @@ export default function AnnouncementsContainer({
                 <div key={i} className="animate-pulse">
                   <div className="flex gap-3 p-3 rounded-lg border border-gray-100">
                     {/* Date Column Skeleton */}
-                    <div className="flex-shrink-0 w-14 text-center space-y-1">
+                    <div className="flex-shrink-0 w-20 text-center flex flex-col justify-center space-y-1">
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto"></div>
                       <div className="h-3 bg-gray-200 rounded w-12 mx-auto"></div>
-                      <div className="h-3 bg-gray-200 rounded w-10 mx-auto"></div>
                     </div>
 
                     {/* Content Skeleton */}
@@ -344,9 +393,9 @@ export default function AnnouncementsContainer({
                   key={announcement.id}
                   className="group"
                 >
-                  <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200">
+                  <div className="flex gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm">
                     {/* Date Column */}
-                    <div className="flex-shrink-0 w-14 text-center">
+                    <div className="flex-shrink-0 w-20 text-center flex flex-col justify-center">
                       <div className="text-xs text-gray-500 font-medium">
                         {formatDate(announcement.created_at)}
                       </div>
@@ -381,15 +430,38 @@ export default function AnnouncementsContainer({
                             {announcement.content}
                           </p>
                           
-                          {/* Target groups indicator */}
-                          {announcement.target_groups && announcement.target_groups.length > 0 && (
-                            <div className="flex items-center gap-1 mt-2">
-                              <i className="bi bi-people text-xs text-gray-400"></i>
-                              <span className="text-xs text-gray-500">
-                                {announcement.target_groups.includes('all') 
-                                  ? 'All Residents' 
-                                  : `${announcement.target_groups.length} target group${announcement.target_groups.length > 1 ? 's' : ''}`
-                                }
+                          {/* SMS Recipients Hint - Enhanced */}
+                          {announcement.status === 'published' && announcement.target_type !== null && announcement.sms_target_groups && announcement.sms_target_groups.length > 0 ? (
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <i className="bi bi-phone-vibrate text-xs text-green-600"></i>
+                              <span className="text-xs text-gray-600">
+                                <span className="font-medium text-green-700">SMS sent to:</span> {formatTargetGroups(announcement.sms_target_groups)}
+                              </span>
+                            </div>
+                          ) : announcement.status === 'published' ? (
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <i className="bi bi-telephone-x text-xs text-gray-400"></i>
+                              <span className="text-xs text-gray-500">No SMS notifications</span>
+                            </div>
+                          ) : null}
+                          
+                          {/* Draft/Unpublished SMS Target Groups Preview */}
+                          {announcement.status !== 'published' && announcement.target_type !== null && announcement.sms_target_groups && announcement.sms_target_groups.length > 0 && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <i className="bi bi-phone text-xs text-orange-600"></i>
+                              <span className="text-xs text-gray-600">
+                                <span className="font-medium text-orange-700">SMS will be sent to:</span> {formatTargetGroups(announcement.sms_target_groups)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Draft/Unpublished Regular Target Groups Preview (when no SMS) */}
+                          {announcement.status !== 'published' && announcement.target_groups && !announcement.target_groups.includes('all') && 
+                           (announcement.target_type === null || !announcement.sms_target_groups || announcement.sms_target_groups.length === 0) && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <i className="bi bi-people text-xs text-blue-600"></i>
+                              <span className="text-xs text-gray-600">
+                                <span className="font-medium text-blue-700">Target:</span> {formatTargetGroups(announcement.target_groups)}
                               </span>
                             </div>
                           )}
@@ -397,35 +469,30 @@ export default function AnnouncementsContainer({
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex-shrink-0 flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Full Height Action Container */}
+                    <div className="flex-shrink-0 w-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           onView?.(announcement)
                         }}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="View details"
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                        title="Manage announcement"
                       >
-                        <i className="bi bi-eye text-sm"></i>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDelete?.(announcement)
-                        }}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete"
-                      >
-                        <i className="bi bi-trash text-sm"></i>
+                        <i className="bi bi-gear text-lg"></i>
                       </button>
                     </div>
                   </div>
                 </div>
               ))}
               {hasMore && (
-                <div className="text-center py-4 text-xs text-gray-500">
-                  Scroll to load more...
+                <div className="text-center py-4">
+                  <button
+                    onClick={() => setVisibleCount(prev => Math.min(prev + 5, filteredAnnouncements.length))}
+                    className="text-sm font-medium text-gray-600 hover:text-blue-600 underline decoration-gray-600 hover:decoration-blue-600 underline-offset-2 transition-colors cursor-pointer bg-transparent border-none"
+                  >
+                    Load More
+                  </button>
                 </div>
               )}
             </div>

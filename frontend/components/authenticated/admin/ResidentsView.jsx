@@ -246,8 +246,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                         <span className="text-xs text-gray-900 font-mono">{children.email || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-xs text-gray-500">Phone</span>
-                        <span className="text-xs text-gray-900">{children.phone || '-'}</span>
+                        <span className="text-xs text-gray-500">Home Phone</span>
+                        <span className="text-xs text-gray-900">{children.home_number || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-500">Mobile</span>
+                        <span className="text-xs text-gray-900">{children.mobile_number || '-'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-xs text-gray-500">Address</span>

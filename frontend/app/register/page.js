@@ -33,7 +33,8 @@ export default function RegisterPage() {
     
     // Contact info
     email: '',
-    contactNumber: '',
+    homeNumber: '',
+    mobileNumber: '',
     address: '',
     purok: '',
     
@@ -193,7 +194,8 @@ export default function RegisterPage() {
         middleName: sanitizeInput(formData.middleName),
         lastName: sanitizeInput(formData.lastName),
         email: sanitizeInput(formData.email),
-        contactNumber: sanitizeInput(formData.contactNumber),
+        homeNumber: sanitizeInput(formData.homeNumber),
+        mobileNumber: sanitizeInput(formData.mobileNumber),
         address: sanitizeInput(formData.address),
         pin: formData.pin
       }

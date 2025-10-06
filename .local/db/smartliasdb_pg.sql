@@ -3,8 +3,7 @@
 -- Generation Date: September 18, 2025
 -- Compatible with PostgreSQL 12+
 
--- Drop existing database if exists (optional)
-DROP DATABASE IF EXISTS smartliasdb;
+-- Drop existing database if exists (optionATABASE IF EXISTS smartliasdb;
 
 -- Create database (run this separately if needed)
 CREATE DATABASE smartliasdb WITH ENCODING 'UTF8';
@@ -81,7 +80,7 @@ CREATE TABLE residents (
     -- Address Information
     address TEXT, -- Optional - some residents may not want to provide address
     purok INTEGER,
-    street 
+    street VARCHAR(20),
     
     -- Family Information
     family_group_id INTEGER REFERENCES family_groups(id) ON DELETE SET NULL, -- Links to family group
@@ -187,12 +186,13 @@ CREATE TABLE announcements (
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     type INTEGER DEFAULT 1, -- Announcement type: 1=General, 2=Health, 3=Activities, 4=Assistance, 5=Advisory
-    is_active INTEGER DEFAULT 1, -- 0 = archived/deleted, 1 = active
+    target_type VARCHAR(20) DEFAULT NULL, -- NULL = SMS OFF, 'all' = SMS to all, 'special_category' = specific group
+    target_value VARCHAR(100) DEFAULT NULL -- target value (e.g., 'PWD' for special_category, '18-65' for age_group)
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     published_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    published_at TIMESTAMP DEFAULT NULL, -- NULL = draft, NOT NULL = published
+    published_at TIMESTAMP DEFAULT NULL, -- NULL = unpublished, NOT NULL = published
 );
 
 -- Announcement Type Constants:
@@ -202,45 +202,28 @@ CREATE TABLE announcements (
 -- 4 = Assistance (Financial aid, PWD support, social services)
 -- 5 = Advisory (Important notices, alerts, warnings)
 
--- Announcement Target Groups Table (for group-based publishing)
-DROP TABLE IF EXISTS announcement_target_groups CASCADE;
+-- SMS Logging Table (simplified - tracks at announcement level, not per-recipient)
+DROP TABLE IF EXISTS announcement_sms_logs CASCADE;
 
-CREATE TABLE announcement_target_groups (
+CREATE TABLE announcement_sms_logs (
     id SERIAL PRIMARY KEY,
     announcement_id INTEGER REFERENCES announcements(id) ON DELETE CASCADE,
-    target_type VARCHAR(20) NOT NULL, -- 'all', 'role', 'purok', 'special_category', 'age_group', 'specific'
-    target_value VARCHAR(100) DEFAULT NULL, -- role number, purok number, special_category code, age range, or specific user IDs (comma-separated)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- SMS Notifications Table (tracking SMS sent for announcements)
-DROP TABLE IF EXISTS sms_notifications CASCADE;
-
-CREATE TABLE sms_notifications (
-    id SERIAL PRIMARY KEY,
-    announcement_id INTEGER REFERENCES announcements(id) ON DELETE CASCADE,
-    recipient_phone VARCHAR(20) NOT NULL, -- Phone number (mobile_number or home_number)
-    recipient_name VARCHAR(255) NOT NULL, -- Resident name for tracking
-    resident_id INTEGER REFERENCES residents(id) ON DELETE SET NULL, -- NULL if resident deleted
-    sms_content TEXT NOT NULL, -- Actual SMS message sent
+    target_groups JSONB NOT NULL, -- Store which groups SMS was sent to: ["all"] or ["special_category:PWD", "age_group:18-65"]
+    total_recipients INTEGER NOT NULL, -- How many people received SMS
+    successful_sends INTEGER DEFAULT 0, -- How many were successful
+    failed_sends INTEGER DEFAULT 0, -- How many failed
+    sms_content TEXT NOT NULL, -- The actual message sent
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    delivery_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'sent', 'delivered', 'failed'
-    provider_message_id VARCHAR(100) DEFAULT NULL, -- SMS provider's message ID for tracking
-    error_message TEXT DEFAULT NULL, -- Error details if delivery failed
+    provider_response JSONB DEFAULT NULL, -- Batch response from SMS provider (Semaphore API response)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_announcements_type ON announcements(type);
-CREATE INDEX idx_announcements_is_active ON announcements(is_active);
 CREATE INDEX idx_announcements_created_at ON announcements(created_at);
 CREATE INDEX idx_announcements_published_at ON announcements(published_at);
-CREATE INDEX idx_announcement_target_groups_announcement_id ON announcement_target_groups(announcement_id);
-CREATE INDEX idx_announcement_target_groups_target_type ON announcement_target_groups(target_type);
-CREATE INDEX idx_sms_notifications_announcement_id ON sms_notifications(announcement_id);
-CREATE INDEX idx_sms_notifications_recipient_phone ON sms_notifications(recipient_phone);
-CREATE INDEX idx_sms_notifications_resident_id ON sms_notifications(resident_id);
-CREATE INDEX idx_sms_notifications_sent_at ON sms_notifications(sent_at);
-CREATE INDEX idx_sms_notifications_delivery_status ON sms_notifications(delivery_status);
+CREATE INDEX idx_announcements_target ON announcements(target_type, target_value);
+CREATE INDEX idx_announcement_sms_logs_announcement_id ON announcement_sms_logs(announcement_id);
+CREATE INDEX idx_announcement_sms_logs_sent_at ON announcement_sms_logs(sent_at);
 
 -- Audit Log Table (for tracking changes)
 DROP TABLE IF EXISTS audit_logs CASCADE;
@@ -288,7 +271,7 @@ INSERT INTO family_groups (family_name) VALUES
 -- Insert sample residents (detailed resident information)
 INSERT INTO residents (
     user_id, first_name, last_name, middle_name, birth_date, gender, civil_status,
-    contact_number, email, address, purok, family_group_id, family_role, religion, occupation,
+    mobile_number, email, address, purok, family_group_id, family_role, religion, occupation,
     special_category_id, notes
 ) VALUES
 -- Macariola Family (family_group_id = 1)
@@ -343,29 +326,18 @@ INSERT INTO announcements (title, content, type, created_by, published_by, publi
 ('Basketball Tournament 2025', 'Annual inter-purok basketball tournament registration is now open. Registration fee is ₱500 per team.', 3, 1, NULL, NULL),
 ('Health Program Announcement', 'Free medical check-up and consultation available every Wednesday from 9:00 AM to 3:00 PM.', 2, 1, NULL, NULL);
 
--- Insert sample announcement target groups
--- Sample SMS notifications (showing sent SMS for published announcements)
-INSERT INTO sms_notifications (announcement_id, recipient_phone, recipient_name, resident_id, sms_content, delivery_status) VALUES
+-- Sample data now uses direct target columns in announcements table
+
+-- Sample SMS logs (showing sent SMS for published announcements - simplified)
+INSERT INTO announcement_sms_logs (announcement_id, target_groups, total_recipients, successful_sends, failed_sends, sms_content) VALUES
 -- SMS sent for Barangay Assembly Meeting (all residents with mobile numbers)
-(1, '09123456789', 'Juan Cruz', 1, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall. Your attendance is appreciated.', 'delivered'),
-(1, '09447697875', 'Maria Santos', 2, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall. Your attendance is appreciated.', 'delivered'),
+(1, '["all"]', 45, 43, 2, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall. Your attendance is appreciated.'),
 
 -- SMS sent for COVID-19 Vaccination (senior citizens and PWDs only)
-(2, '09447697875', 'Leoncio Ong', 5, 'BARANGAY LIAS: Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025. Priority for senior citizens. Visit barangay hall.', 'delivered'),
+(2, '["special_category:SENIOR_CITIZEN", "special_category:PWD"]', 18, 16, 2, 'BARANGAY LIAS: Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025. Priority for senior citizens and PWDs.'),
 
--- SMS sent for Waste Collection (specific puroks)
-(3, '09123456789', 'Juan Cruz', 1, 'BARANGAY LIAS: New waste collection schedule: Mondays and Thursdays for biodegradable, Tuesdays and Fridays for non-biodegradable. Purok 1-3 affected.', 'sent');
--- Barangay Assembly Meeting - for all residents
-(1, 'all', NULL),
--- COVID-19 Vaccination - for senior citizens and PWDs (SMS to these groups)
-(2, 'special_category', 'SENIOR_CITIZEN'),
-(2, 'special_category', 'PWD'),
--- Waste Collection - for specific puroks
-(3, 'purok', '1,2,3'),
--- Basketball Tournament - for adults (when published)
-(4, 'age_group', '18-65'),
--- Health Program - for senior citizens (when published)
-(5, 'special_category', 'SENIOR_CITIZEN');
+-- SMS sent for Waste Collection (all residents)
+(3, '["all"]', 45, 45, 0, 'BARANGAY LIAS: New waste collection schedule: Mondays and Thursdays for biodegradable, Tuesdays and Fridays for non-biodegradable.');
 
 -- ============================================
 -- COMMENTS AND DOCUMENTATION
@@ -376,16 +348,17 @@ COMMENT ON TABLE residents IS 'Comprehensive resident information and records - 
 COMMENT ON TABLE family_groups IS 'Family grouping table - groups residents into family units for tree display';
 COMMENT ON TABLE special_categories IS 'Lookup table for special resident categories (government programs, roles, etc.)';
 COMMENT ON TABLE service_requests IS 'Resident service requests and applications';
-COMMENT ON TABLE announcements IS 'Stores barangay announcements with draft/publish workflow and soft delete via is_active';
-COMMENT ON COLUMN announcements.is_active IS 'Archive/delete flag: 0 = archived/deleted, 1 = active';
+COMMENT ON TABLE announcements IS 'Stores barangay announcements with draft/publish workflow. Status managed by published_at: NULL = unpublished, NOT NULL = published';
 COMMENT ON COLUMN announcements.published_at IS 'Publication timestamp: NULL = draft, NOT NULL = published';
 COMMENT ON COLUMN announcements.published_by IS 'User who published the announcement: NULL = not published yet';
 COMMENT ON COLUMN announcements.published_at IS 'NULL = draft/unpublished, timestamp = published and cannot be unpublished';
-COMMENT ON TABLE announcement_target_groups IS 'Defines which user groups can see specific announcements and receive SMS notifications (all, role-based, purok-based, special categories, age groups, or specific users)';
-COMMENT ON COLUMN announcement_target_groups.target_type IS 'Type of targeting: all, role, purok, special_category, age_group, specific';
-COMMENT ON COLUMN announcement_target_groups.target_value IS 'Target value: role number, purok numbers, special category codes, age ranges (18-65), or specific user IDs';
-COMMENT ON TABLE sms_notifications IS 'SMS notifications sent for announcements with delivery tracking and status monitoring';
-COMMENT ON COLUMN sms_notifications.delivery_status IS 'SMS delivery status: pending, sent, delivered, failed';
+COMMENT ON COLUMN announcements.target_type IS 'SMS indicator: NULL = SMS OFF, "all" = SMS to all residents, "special_category" = specific group, etc.';
+COMMENT ON COLUMN announcements.target_value IS 'SMS target value (e.g., "PWD" for special_category, "18-65" for age_group, NULL for "all")';
+COMMENT ON TABLE announcement_sms_logs IS 'SMS logs for announcements - tracks summary statistics per announcement instead of individual SMS records';
+COMMENT ON COLUMN announcement_sms_logs.target_groups IS 'JSON array of target groups that received SMS: ["all"] or ["special_category:PWD", "age_group:18-65"]';
+COMMENT ON COLUMN announcement_sms_logs.total_recipients IS 'Total number of residents who received SMS (regardless of success/failure)';
+COMMENT ON COLUMN announcement_sms_logs.successful_sends IS 'Number of SMS successfully sent';
+COMMENT ON COLUMN announcement_sms_logs.failed_sends IS 'Number of SMS that failed to send';
 COMMENT ON TABLE audit_logs IS 'System audit trail for data changes';
 
 COMMENT ON COLUMN users.role IS '1=Admin, 2=Staff, 3=Resident (default for resident registration)';

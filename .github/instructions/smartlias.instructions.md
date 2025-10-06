@@ -878,7 +878,7 @@ CREATE TABLE residents (
   birth_date DATE,
   civil_status VARCHAR(20),
   address TEXT,
-  contact_number VARCHAR(20),
+  mobile_number VARCHAR(20),
   email VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

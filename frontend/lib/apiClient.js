@@ -307,6 +307,27 @@ class ApiClient {
       body: JSON.stringify({ username }),
     })
   }
+
+  // ============================================
+  // ANNOUNCEMENTS ENDPOINTS
+  // ============================================
+
+  /**
+   * Create announcement (admin only)
+   */
+  static async createAnnouncement(announcementData) {
+    return await ApiClient.request('/announcements', {
+      method: 'POST',
+      body: JSON.stringify(announcementData),
+    })
+  }
+
+  /**
+   * Get all announcements (admin only)
+   */
+  static async getAnnouncements() {
+    return await ApiClient.request('/announcements')
+  }
 }
 
 export default ApiClient
