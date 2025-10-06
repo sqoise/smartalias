@@ -328,6 +328,14 @@ class ApiClient {
   static async getAnnouncements() {
     return await ApiClient.request('/announcements')
   }
+
+  /**
+   * Get published announcements with pagination support
+   */
+  static async getPublishedAnnouncements(limit = 5, offset = 0) {
+    const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() })
+    return await ApiClient.request(`/announcements?${params.toString()}`)
+  }
 }
 
 export default ApiClient

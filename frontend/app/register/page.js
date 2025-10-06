@@ -66,9 +66,36 @@ export default function RegisterPage() {
     
     if (currentStep === 1) {
       // Step 1: Name fields
-      if (!sanitizeInput(formData.lastName)) newErrors.lastName = 'Last name is required'
-      if (!sanitizeInput(formData.firstName)) newErrors.firstName = 'First name is required'
-      if (!sanitizeInput(formData.middleName)) newErrors.middleName = 'Middle name is required'
+      const lastName = sanitizeInput(formData.lastName)
+      const firstName = sanitizeInput(formData.firstName) 
+      const middleName = sanitizeInput(formData.middleName)
+      
+      // Last Name validation
+      if (!lastName) {
+        newErrors.lastName = 'Last name is required'
+      } else if (lastName.length > 32) {
+        newErrors.lastName = 'Last name must be 32 characters or less'
+      } else if (!/^[a-zA-Z\s]+$/.test(lastName)) {
+        newErrors.lastName = 'Last name can only contain letters and spaces'
+      }
+      
+      // First Name validation
+      if (!firstName) {
+        newErrors.firstName = 'First name is required'
+      } else if (firstName.length > 32) {
+        newErrors.firstName = 'First name must be 32 characters or less'
+      } else if (!/^[a-zA-Z\s]+$/.test(firstName)) {
+        newErrors.firstName = 'First name can only contain letters and spaces'
+      }
+      
+      // Middle Name validation (required in this form)
+      if (!middleName) {
+        newErrors.middleName = 'Middle name is required'
+      } else if (middleName.length > 32) {
+        newErrors.middleName = 'Middle name must be 32 characters or less'
+      } else if (!/^[a-zA-Z\s]+$/.test(middleName)) {
+        newErrors.middleName = 'Middle name can only contain letters and spaces'
+      }
     } else if (currentStep === 2) {
       // Step 2: Personal & Contact Info
       if (!formData.birthDate) newErrors.birthDate = 'Birth date is required'
@@ -84,14 +111,19 @@ export default function RegisterPage() {
       if (!formData.purok) newErrors.purok = 'Purok is required'
       if (!sanitizeInput(formData.religion)) newErrors.religion = 'Religion is required'
       if (!formData.occupation) newErrors.occupation = 'Occupation is required'
-      if (!formData.specialCategory) newErrors.specialCategory = 'Special category is required'
+      // Special category is optional - no validation needed
     } else if (currentStep === 4) {
       // Step 4: Account Setup
       const sanitizedUsername = sanitizeInput(formData.username)
-      if (!sanitizedUsername) newErrors.username = 'Username is required'
-      else if (sanitizedUsername.length < 6) newErrors.username = 'Username must be at least 6 characters'
-      else if (sanitizedUsername.length > 32) newErrors.username = 'Username must be less than 32 characters'
-      else if (!/^[a-z0-9_.]+$/.test(sanitizedUsername)) newErrors.username = 'Username can only contain lowercase letters, numbers, dots, and underscores'
+      if (!sanitizedUsername) {
+        newErrors.username = 'Username is required'
+      } else if (!/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/.test(sanitizedUsername)) {
+        newErrors.username = 'Username must follow format: name.name (only letters, numbers and one period)'
+      } else if (sanitizedUsername.length < 6) {
+        newErrors.username = 'Username must be at least 6 characters'
+      } else if (sanitizedUsername.length > 32) {
+        newErrors.username = 'Username must be less than 32 characters'
+      }
       
       // PIN validation
       if (!formData.pin) newErrors.pin = 'PIN is required'

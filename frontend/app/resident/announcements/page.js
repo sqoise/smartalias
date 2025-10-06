@@ -1,80 +1,113 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import ApiClient from '../../../lib/apiClient'
+import ToastNotification from '../../../components/common/ToastNotification'
+import { ANNOUNCEMENT_TYPE_NAMES } from '../../../lib/constants'
 
 export default function Announcements() {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [error, setError] = useState(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const toastRef = useRef()
 
-  // Demo: Sample announcements data
-  const announcements = [
-    {
-      id: 1,
-      title: 'New Online Document Request System',
-      content: 'We are pleased to announce the launch of our new online document request system. Residents can now apply for barangay clearances, certificates, and permits online. Visit our website to get started.',
-      fullDescription: 'We are excited to announce the launch of our comprehensive online document request system, designed to make your interactions with the barangay more convenient and efficient. This new digital platform allows residents to apply for various documents including barangay clearances, certificates of residency, business permits, and indigency certificates from the comfort of their homes. The system features a user-friendly interface, secure document upload capabilities, and real-time status tracking. To get started, simply visit our website and create your account using your valid identification. Processing times remain the same, but you can now track your applications 24/7 and receive notifications when your documents are ready for pickup.',
-      category: 'news',
-      date: '2024-09-17',
-      time: '09:00',
-      isNew: true,
-      image: '/images/barangay_logo.png'
-    },
-    {
-      id: 2,
-      title: 'Community Clean-Up Drive',
-      content: 'Join us for our monthly community clean-up drive this Saturday, September 21st at 7:00 AM. Meeting point is at the barangay hall. Bring your own cleaning materials.',
-      fullDescription: 'Our monthly community clean-up drive is a vital initiative that brings our neighborhood together while keeping our environment clean and healthy. This Saturday, September 21st, we invite all residents to participate in this meaningful activity starting at 7:00 AM. The meeting point will be at the barangay hall where we will distribute cleaning supplies and assign areas to different groups. Please bring your own gloves, face masks, and water bottles. We will provide garbage bags, brooms, and other cleaning equipment. The clean-up will cover all major streets, parks, and common areas within our barangay. Light refreshments will be served to all volunteers after the activity. Together, we can make our community a cleaner and more beautiful place to live.',
-      category: 'activities',
-      date: '2024-09-15',
-      time: '14:30',
-      isNew: true,
-      image: '/images/bg.jpg'
-    },
-    {
-      id: 3,
-      title: 'Health and Wellness Program',
-      content: 'Free medical check-up and consultation will be available every Wednesday from 9:00 AM to 3:00 PM at the barangay health center. Senior citizens and PWDs are prioritized.',
-      fullDescription: 'The barangay is proud to announce our ongoing Health and Wellness Program, providing free medical services to all residents. Every Wednesday, our qualified medical professionals will be available at the barangay health center from 9:00 AM to 3:00 PM for free check-ups and consultations. This program covers basic health screenings, blood pressure monitoring, blood sugar testing, and general health consultations. Senior citizens aged 60 and above, as well as Persons with Disabilities (PWDs), will be given priority in our service queue. We also offer health education sessions covering topics such as nutrition, exercise, and disease prevention. Please bring a valid ID and your health records if available. Our goal is to ensure that every resident has access to basic healthcare services regardless of their financial situation.',
-      category: 'news',
-      date: '2024-09-14',
-      time: '11:15',
-      isNew: false,
-      image: '/images/barangay_logo.png'
-    },
-    {
-      id: 4,
-      title: 'Basketball Tournament Registration',
-      content: 'Registration for the annual inter-purok basketball tournament is now open. Registration fee is ₱500 per team. Deadline for registration is September 30, 2024.',
-      fullDescription: 'Get ready for the most exciting sporting event of the year! The annual inter-purok basketball tournament is back, and registration is now officially open. This tournament brings together teams from all puroks within our barangay for friendly competition and community bonding. The registration fee is ₱500 per team, which covers tournament supplies, referees, and prizes for the winners. Teams must have a minimum of 8 players and a maximum of 12 players, with all players being verified residents of the barangay. The tournament will be held at the barangay basketball court starting October 15, 2024, with games scheduled on weekends. Prizes will be awarded for 1st, 2nd, and 3rd place teams, along with individual awards for MVP and Best Player. Registration deadline is September 30, 2024. Contact the barangay office for registration forms and more details.',
-      category: 'activities',
-      date: '2024-09-12',
-      time: '16:45',
-      isNew: false,
-      image: '/images/bg.jpg'
-    },
-    {
-      id: 5,
-      title: 'Updated Office Hours',
-      content: 'Please be informed that barangay office hours have been updated. We are now open Monday to Friday, 8:00 AM to 5:00 PM, and Saturday 8:00 AM to 12:00 PM.',
-      fullDescription: 'We would like to inform all residents about the updated barangay office hours to better serve our community. Effective immediately, our office will be open Monday through Friday from 8:00 AM to 5:00 PM, and Saturday from 8:00 AM to 12:00 PM. We will be closed on Sundays and national holidays. These extended hours are designed to accommodate residents who work during regular business hours and need access to barangay services. All document processing, certificate issuance, and other administrative services will be available during these times. For urgent matters outside of office hours, please contact our emergency hotline. We appreciate your understanding and look forward to serving you better with these improved operating hours.',
-      category: 'news',
-      date: '2024-09-10',
-      time: '13:20',
-      isNew: false,
-      image: '/images/barangay_logo.png'
-    },
-    {
-      id: 6,
-      title: 'Disaster Preparedness Seminar',
-      content: 'All residents are invited to attend the disaster preparedness seminar on September 25th at 2:00 PM at the barangay hall. Learn about emergency procedures and safety measures.',
-      fullDescription: 'In line with our commitment to community safety and preparedness, we are organizing a comprehensive disaster preparedness seminar for all residents. This important event will be held on September 25th at 2:00 PM at the barangay hall. The seminar will cover essential topics including earthquake safety, flood preparedness, fire prevention, basic first aid, and emergency evacuation procedures. Expert speakers from the local disaster risk reduction office will conduct the training sessions. Participants will receive emergency preparedness kits and informational materials to take home. We will also demonstrate proper use of emergency equipment and conduct evacuation drills. This seminar is crucial for ensuring our community is well-prepared for any emergency situation. Light refreshments will be provided. Space is limited, so please register at the barangay office in advance.',
-      category: 'activities',
-      date: '2024-09-08',
-      time: '10:30',
-      isNew: false,
-      image: '/images/bg.jpg'
+  const ITEMS_PER_LOAD = 5
+
+  // Helper functions for announcement types
+  const getTypeName = (typeId) => {
+    return ANNOUNCEMENT_TYPE_NAMES[typeId] || 'General'
+  }
+
+  const getTypeIcon = (typeId) => {
+    const icons = {
+      1: 'bi bi-megaphone text-gray-500',      // General
+      2: 'bi bi-heart-pulse text-red-500',    // Health
+      3: 'bi bi-calendar-event text-green-500', // Activities
+      4: 'bi bi-hand-thumbs-up text-blue-500', // Assistance
+      5: 'bi bi-info-circle text-amber-500'   // Advisory
     }
-  ]
+    return icons[typeId] || icons[1]
+  }
+
+  const getTypeBadgeColor = (typeId) => {
+    const colors = {
+      1: 'bg-gray-100 text-gray-700 border-gray-200',      // General
+      2: 'bg-red-100 text-red-700 border-red-200',        // Health
+      3: 'bg-green-100 text-green-700 border-green-200',  // Activities
+      4: 'bg-blue-100 text-blue-700 border-blue-200',     // Assistance
+      5: 'bg-amber-100 text-amber-700 border-amber-200'   // Advisory
+    }
+    return colors[typeId] || colors[1]
+  }
+
+  // Initial fetch of announcements
+  useEffect(() => {
+    fetchAnnouncements(0, true)
+  }, [])
+
+  const fetchAnnouncements = async (currentOffset = 0, isInitial = false) => {
+    try {
+      if (isInitial) {
+        setIsLoading(true)
+      } else {
+        setIsLoadingMore(true)
+      }
+      
+      const response = await ApiClient.getPublishedAnnouncements(ITEMS_PER_LOAD, currentOffset)
+      
+      if (response.success) {
+        const data = response.data
+        
+        // Transform API data to match the expected format
+        const transformedData = data.announcements.map(announcement => ({
+          id: announcement.id,
+          title: announcement.title,
+          content: announcement.content,
+          fullDescription: announcement.content, // Use content as full description for now
+          type: announcement.type, // Keep original type number
+          is_urgent: announcement.is_urgent,
+          created_at: announcement.created_at,
+          published_at: announcement.published_at,
+          date: announcement.published_at ? new Date(announcement.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          time: announcement.published_at ? new Date(announcement.published_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '00:00',
+          isNew: announcement.published_at ? (new Date() - new Date(announcement.published_at)) < 3 * 24 * 60 * 60 * 1000 : false, // New if published within 3 days
+          image: '/images/barangay_logo.png' // Default image
+        }))
+        
+        if (isInitial) {
+          setAnnouncements(transformedData)
+        } else {
+          setAnnouncements(prev => [...prev, ...transformedData])
+        }
+        
+        // Update pagination state
+        setHasMore(data.pagination.hasMore)
+        setOffset(currentOffset + ITEMS_PER_LOAD)
+        
+      } else {
+        setError(response.error || 'Failed to fetch announcements')
+        toastRef.current?.show('Failed to load announcements', 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching announcements:', error)
+      setError('Network error. Please try again.')
+      toastRef.current?.show('Network error. Please try again.', 'error')
+    } finally {
+      setIsLoading(false)
+      setIsLoadingMore(false)
+    }
+  }
+
+  const loadMoreAnnouncements = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchAnnouncements(offset, false)
+    }
+  }
 
   const openAnnouncementModal = (announcement) => {
     setSelectedAnnouncement(announcement)
@@ -103,15 +136,6 @@ export default function Announcements() {
   return (
     <>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
-              <p className="text-sm text-gray-600 mt-0.5">Stay updated with barangay news and activities</p>
-            </div>
-          </div>
-        </div>
 
         {/* Announcements List */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -121,59 +145,142 @@ export default function Announcements() {
           </div>
           
           <div className="p-6">
-            {announcements.length === 0 ? (
-              <div className="text-center py-8">
-                <i className="bi bi-megaphone text-3xl text-gray-300 mb-3 block"></i>
-                <p className="text-gray-500 text-sm">No announcements found</p>
-              </div>
-            ) : (
+            {isLoading ? (
               <div className="space-y-3">
-                {announcements.map((announcement) => (
-                  <div
-                    key={announcement.id}
-                    className="group cursor-pointer"
-                    onClick={() => openAnnouncementModal(announcement)}
-                  >
-                    <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200">
-                      {/* Date Column */}
-                      <div className="flex-shrink-0 w-14 text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          {formatDate(announcement.date)}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {announcement.time}
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors leading-tight">
-                                {announcement.title}
-                              </h3>
-                              {announcement.isNew && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 flex-shrink-0">
-                                  New
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
-                              {announcement.content}
-                            </p>
-                          </div>
-                          
-                          {/* Arrow */}
-                          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i className="bi bi-chevron-right text-gray-300 text-sm"></i>
+                {/* Skeleton placeholders for initial load */}
+                {[...Array(5)].map((_, index) => (
+                  <div key={index} className="flex gap-3 p-3 rounded-lg border border-gray-100 animate-pulse">
+                    {/* Date Column Skeleton */}
+                    <div className="flex-shrink-0 w-16 text-center space-y-1">
+                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 rounded w-8 mx-auto"></div>
+                    </div>
+                    
+                    {/* Content Skeleton */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-full"></div>
+                          <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                          <div className="flex items-center gap-1 mt-2">
+                            <div className="w-3 h-3 bg-gray-200 rounded"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16"></div>
                           </div>
                         </div>
+                        <div className="w-4 h-4 bg-gray-200 rounded"></div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+            ) : announcements.length === 0 ? (
+              <div className="text-center py-8">
+                <i className="bi bi-megaphone text-3xl text-gray-300 mb-3 block"></i>
+                <p className="text-gray-500 text-sm">No announcements found</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {announcements.map((announcement) => (
+                    <div
+                      key={announcement.id}
+                      className="group cursor-pointer"
+                      onClick={() => openAnnouncementModal(announcement)}
+                    >
+                      <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200">
+                        {/* Published Date Column */}
+                        <div className="flex-shrink-0 w-16 text-center">
+                          <div className="text-xs text-gray-500 font-medium">
+                            {formatDate(announcement.date)}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {announcement.time}
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors leading-tight">
+                                  {announcement.title}
+                                </h3>
+                                {announcement.isNew && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 flex-shrink-0">
+                                    New
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 mb-2">
+                                {announcement.content}
+                              </p>
+
+                              {/* Announcement Type */}
+                              <div className="flex items-center gap-1">
+                                <i className={`${getTypeIcon(announcement.type)} text-xs`}></i>
+                                <span className="text-xs text-gray-500">
+                                  {getTypeName(announcement.type)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Arrow */}
+                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <i className="bi bi-chevron-right text-gray-300 text-sm"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Load More Skeleton Placeholders */}
+                {isLoadingMore && (
+                  <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
+                    {[...Array(5)].map((_, index) => (
+                      <div key={`loading-${index}`} className="flex gap-3 p-3 rounded-lg border border-gray-100 animate-pulse">
+                        {/* Date Column Skeleton */}
+                        <div className="flex-shrink-0 w-16 text-center space-y-1">
+                          <div className="h-3 bg-gray-200 rounded w-full"></div>
+                          <div className="h-3 bg-gray-200 rounded w-8 mx-auto"></div>
+                        </div>
+                        
+                        {/* Content Skeleton */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-3 bg-gray-200 rounded w-full"></div>
+                              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                              <div className="flex items-center gap-1 mt-2">
+                                <div className="w-3 h-3 bg-gray-200 rounded"></div>
+                                <div className="h-3 bg-gray-200 rounded w-16"></div>
+                              </div>
+                            </div>
+                            <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Load More Button */}
+                {hasMore && !isLoadingMore && (
+                  <div className="text-center pt-4 border-t border-gray-100 mt-4">
+                    <button
+                      onClick={loadMoreAnnouncements}
+                      className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                    >
+                      Load More
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -186,7 +293,7 @@ export default function Announcements() {
             {/* Modal Header with Image */}
             <div className="relative">
               <img 
-                src={selectedAnnouncement.image} 
+                src={selectedAnnouncement.image || '/images/barangay_logo.png'} 
                 alt={selectedAnnouncement.title}
                 className="w-full h-32 object-cover"
                 onError={(e) => {
@@ -194,42 +301,71 @@ export default function Announcements() {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              {selectedAnnouncement.isNew && (
-                <div className="absolute top-3 left-3">
+              
+              {/* Status Badges */}
+              <div className="absolute top-3 left-3 flex gap-2">
+                {selectedAnnouncement.isNew && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
                     New
                   </span>
-                </div>
-              )}
+                )}
+                {selectedAnnouncement.is_urgent && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white shadow-sm">
+                    <i className="bi bi-exclamation-triangle-fill mr-1"></i>
+                    Urgent
+                  </span>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowAnnouncementModal(false)}
+                className="absolute top-3 right-3 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-colors"
+              >
+                <i className="bi bi-x text-xl"></i>
+              </button>
             </div>
 
             {/* Modal Content */}
             <div className="p-4 overflow-y-auto max-h-[calc(85vh-8rem)]">
-              {/* Date and Time */}
-              <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                <div className="flex items-center gap-1">
-                  <i className="bi bi-calendar3"></i>
-                  <span>{formatDate(selectedAnnouncement.date)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <i className="bi bi-clock"></i>
-                  <span>{selectedAnnouncement.time}</span>
-                </div>
-              </div>
-
               {/* Title */}
-              <h2 className="text-lg font-semibold text-gray-900 mb-3 leading-tight">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 leading-tight">
                 {selectedAnnouncement.title}
               </h2>
 
-              {/* Full Description */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {selectedAnnouncement.fullDescription}
-                </p>
+              {/* Metadata */}
+              <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                {/* Published Date */}
+                <div className="flex items-center gap-2 text-sm">
+                  <i className="bi bi-calendar3 text-gray-400"></i>
+                  <span className="text-gray-600">Published:</span>
+                  <span className="text-gray-900 font-medium">
+                    {formatDate(selectedAnnouncement.date)} at {selectedAnnouncement.time}
+                  </span>
+                </div>
+
+                {/* Type */}
+                <div className="flex items-center gap-2 text-sm">
+                  <i className="bi bi-tag text-gray-400"></i>
+                  <span className="text-gray-600">Type:</span>
+                  <div className="flex items-center gap-1">
+                    <i className={`${getTypeIcon(selectedAnnouncement.type)} text-xs`}></i>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${getTypeBadgeColor(selectedAnnouncement.type)}`}>
+                      {getTypeName(selectedAnnouncement.type)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Close Button */}
+              {/* Full Description */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Details</h3>
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {selectedAnnouncement.fullDescription}
+                </div>
+              </div>
+
+              {/* Action Button */}
               <div className="flex justify-end">
                 <button
                   onClick={() => setShowAnnouncementModal(false)}
@@ -242,6 +378,9 @@ export default function Announcements() {
           </div>
         </div>
       )}
+
+      {/* Toast Notification */}
+      <ToastNotification ref={toastRef} />
     </>
   )
 }

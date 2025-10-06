@@ -927,11 +927,36 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
 // GET /api/announcements - List announcements (filtered by user role/targeting)
 router.get('/announcements', authenticateToken, async (req, res) => {
   try {
+    // Parse pagination parameters
+    const limit = parseInt(req.query.limit) || 20 // Default to 20 if not specified
+    const offset = parseInt(req.query.offset) || 0 // Default to 0 if not specified
+    
     // Get announcements from database
     const announcements = await AnnouncementRepository.findAll()
     
+    // Filter announcements based on user role
+    let filteredAnnouncements = announcements
+    
+    // For residents, only show published announcements
+    if (req.user.role === 3) { // Resident role
+      filteredAnnouncements = announcements.filter(announcement => 
+        announcement.published_at !== null
+      )
+    }
+    
+    // Sort by published_at (newest first) for proper pagination
+    filteredAnnouncements.sort((a, b) => {
+      const dateA = new Date(a.published_at || a.created_at)
+      const dateB = new Date(b.published_at || b.created_at)
+      return dateB - dateA
+    })
+    
+    // Apply pagination
+    const totalCount = filteredAnnouncements.length
+    const paginatedAnnouncements = filteredAnnouncements.slice(offset, offset + limit)
+    
     // Transform database format to API format
-    const transformedAnnouncements = announcements.map(announcement => ({
+    const transformedAnnouncements = paginatedAnnouncements.map(announcement => ({
       id: announcement.id,
       title: announcement.title,
       content: announcement.content,
@@ -947,7 +972,36 @@ router.get('/announcements', authenticateToken, async (req, res) => {
       published_at: announcement.published_at
     }))
 
-    return ApiResponse.success(res, transformedAnnouncements, 'Announcements retrieved successfully')
+    // Return appropriate format based on whether pagination is requested
+    if (req.query.limit || req.query.offset) {
+      // Paginated response for residents
+      return ApiResponse.success(res, {
+        announcements: transformedAnnouncements,
+        pagination: {
+          total: totalCount,
+          limit: limit,
+          offset: offset,
+          hasMore: offset + limit < totalCount
+        }
+      }, 'Announcements retrieved successfully')
+    } else {
+      // Simple array response for admin (backward compatibility)
+      return ApiResponse.success(res, filteredAnnouncements.map(announcement => ({
+        id: announcement.id,
+        title: announcement.title,
+        content: announcement.content,
+        type: announcement.type,
+        is_urgent: announcement.type === 5, // Advisory type
+        status: announcement.published_at ? 'published' : 'draft',
+        target_groups: announcement.target_groups || ['all'],
+        sms_target_groups: announcement.sms_target_groups || [],
+        created_by: announcement.created_by,
+        created_at: announcement.created_at,
+        updated_at: announcement.updated_at,
+        published_by: announcement.published_by,
+        published_at: announcement.published_at
+      })), 'Announcements retrieved successfully')
+    }
   } catch (error) {
     logger.error('Error fetching announcements', error)
     return ApiResponse.error(res, 'Failed to fetch announcements', 500)
