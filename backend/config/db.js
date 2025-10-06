@@ -14,14 +14,6 @@ class Database {
   }
 
   async connect() {
-    // If using mock data, skip database connection
-    if (config.USE_MOCK_DATA) {
-      this.type = 'mock'
-      logger.info('Using mock data (JSON files)')
-      console.log('Database: Using JSON files (mock data)')
-      return true
-    }
-
     // Development: Use local PostgreSQL (Docker)
     if (config.isDevelopment && config.DATABASE_URL) {
       return await this.connectPostgreSQL()
@@ -35,7 +27,7 @@ class Database {
     // No database configured
     logger.error('No database configured. Set DATABASE_URL or SUPABASE_URL in .env')
     console.error('Database: No connection configured!')
-    throw new Error('Database configuration required')
+    throw new Error('Database configuration required. Please configure DATABASE_URL in your .env file.')
   }
 
   async connectPostgreSQL() {
@@ -63,8 +55,29 @@ class Database {
       return true
 
     } catch (error) {
-      logger.error('PostgreSQL connection failed', error)
-      console.error('Database connection failed:', error.message)
+      logger.error('PostgreSQL connection failed', { 
+        error: error.message,
+        host: config.POSTGRES_HOST,
+        database: config.POSTGRES_DB,
+        port: config.POSTGRES_PORT
+      })
+      console.error(`PostgreSQL connection failed: ${error.message}`)
+      console.error(`Host: ${config.POSTGRES_HOST}:${config.POSTGRES_PORT}`)
+      console.error(`Database: ${config.POSTGRES_DB}`)
+      console.error(`User: ${config.POSTGRES_USER}`)
+      
+      // Provide specific error guidance
+      if (error.message.includes('password authentication failed')) {
+        console.error('Issue: Incorrect username or password')
+        console.error('Solution: Check POSTGRES_USER and POSTGRES_PASSWORD in .env file')
+      } else if (error.message.includes('database') && error.message.includes('does not exist')) {
+        console.error('Issue: Database does not exist')
+        console.error('Solution: Create the database or check POSTGRES_DB in .env file')
+      } else if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
+        console.error('Issue: Cannot connect to PostgreSQL server')
+        console.error('Solution: Make sure PostgreSQL is running on the specified host and port')
+      }
+      
       throw error
     }
   }
@@ -88,8 +101,12 @@ class Database {
       return true
 
     } catch (error) {
-      logger.error('Supabase connection failed', error)
-      console.error('Supabase connection failed:', error.message)
+      logger.error('Supabase connection failed', {
+        error: error.message,
+        url: config.SUPABASE_URL?.substring(0, 50) + '...'
+      })
+      console.error(`❌ Supabase connection failed: ${error.message}`)
+      console.error('   💡 Check your Supabase URL and API keys')
       throw error
     }
   }

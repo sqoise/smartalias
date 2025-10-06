@@ -7,7 +7,7 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "jest",
-    "pm2:start": "pm2 start server.js --name smartlias-api --watch --ignore-watch 'logs node_modules'",
+    "pm2:start": "pm2 start server.js --name smartlias-api --watch --ignore-watch logs --ignore-watch node_modules",
     "pm2:stop": "pm2 stop smartlias-api",
     "pm2:restart": "pm2 restart smartlias-api",
     "pm2:delete": "pm2 delete smartlias-api",

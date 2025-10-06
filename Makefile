@@ -30,7 +30,6 @@ dev:
 	@echo "  Health:   http://localhost:9000/api/health"
 	@echo ""
 	@trap 'echo "Stopping..."; kill %1 %2 2>/dev/null' INT; \
-	cd $(BACKEND_DIR) && npm run dev & \
 	cd $(FRONTEND_DIR) && npm run dev & \
 	wait
 

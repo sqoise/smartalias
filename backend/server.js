@@ -21,7 +21,7 @@ const database = require('./config/db')
 
 async function startServer() {
   try {
-    // Initialize database connection (if available)
+    // Initialize database connection (required)
     await database.connect()
     
     // Start the server
