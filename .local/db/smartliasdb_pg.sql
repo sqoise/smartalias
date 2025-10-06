@@ -433,7 +433,7 @@ COMMENT ON COLUMN document_requests.attachment_path IS 'File path to supporting 
 -- Create application user (adjust credentials as needed)
 -- CREATE USER smartlias_app WITH PASSWORD 'your_secure_password';
 
--- Grant necessary permissions
+-- -- Grant necessary permissions
 -- GRANT CONNECT ON DATABASE smartliasdb TO smartlias_app;
 -- GRANT USAGE ON SCHEMA public TO smartlias_app;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO smartlias_app;

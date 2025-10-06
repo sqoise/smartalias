@@ -302,6 +302,15 @@ export default function DocumentsContainer({
     return buttons
   }
 
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) {
+      return <i className="bi bi-arrow-down-up text-gray-400 ml-1"></i>
+    }
+    return sortDirection === 'asc' 
+      ? <i className="bi bi-arrow-up text-blue-600 ml-1"></i>
+      : <i className="bi bi-arrow-down text-blue-600 ml-1"></i>
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters Section */}
@@ -645,28 +654,19 @@ export default function DocumentsContainer({
                       onClick={() => handleSort('id')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-20"
                     >
-                      App ID
-                      {sortField === 'id' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      App ID <SortIcon field="id" />
                     </th>
                     <th 
                       onClick={() => handleSort('residentName')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-52"
                     >
-                      Resident Name
-                      {sortField === 'residentName' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      Resident Name <SortIcon field="residentName" />
                     </th>
                     <th 
                       onClick={() => handleSort('documentType')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-48"
                     >
-                      Document Type
-                      {sortField === 'documentType' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      Document Type <SortIcon field="documentType" />
                     </th>
                     <th className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase w-40">
                       Purpose
@@ -675,28 +675,19 @@ export default function DocumentsContainer({
                       onClick={() => handleSort('requestDate')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-20"
                     >
-                      Date
-                      {sortField === 'requestDate' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      Date <SortIcon field="requestDate" />
                     </th>
                     <th 
                       onClick={() => handleSort('status')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-24"
                     >
-                      Status
-                      {sortField === 'status' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      Status <SortIcon field="status" />
                     </th>
                     <th 
                       onClick={() => handleSort('priority')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-20"
                     >
-                      Priority
-                      {sortField === 'priority' && (
-                        <i className={`bi bi-chevron-${sortDirection === 'asc' ? 'up' : 'down'} text-xs ml-1`}></i>
-                      )}
+                      Priority <SortIcon field="priority" />
                     </th>
                     <th className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase w-16">
                       Actions
@@ -706,7 +697,7 @@ export default function DocumentsContainer({
                 <tbody className="bg-white">
                   {currentData.map((doc, index) => (
                     <tr 
-                      key={doc.id} 
+                      key={`${doc.id}-${index}`} 
                       onClick={(e) => {
                         onView?.(doc);
                       }}

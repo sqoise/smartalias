@@ -32,17 +32,17 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
 
   const menus = {
     resident: [
-      { name: 'Document Requests', href: '/resident', icon: 'bi-file-earmark-plus' },
+      { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
       { name: 'My Requests', href: '/resident/requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
-      { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
+      { name: 'Document Requests', href: '/resident', icon: 'bi-clipboard-check' },
     ],
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
       { name: 'Household', href: '/admin/household', icon: 'bi-house' },
-      { name: 'Document Services', href: '/admin/documents', icon: 'bi-file-earmark-text' },
       { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
+      { name: 'Document Services', href: '/admin/documents', icon: 'bi-file-earmark-text' },
       { name: 'Maintenance', href: '/admin/settings', icon: 'bi-gear' },
     ],
   }
