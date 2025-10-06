@@ -23,7 +23,6 @@ export default function ResidentsContainer({
     // Filter values for additional filters
   const [civilStatusFilter, setCivilStatusFilter] = useState('all')
   const [purokFilter, setPurokFilter] = useState('all')
-  const [householdRoleFilter, setHouseholdRoleFilter] = useState('all')
   const [ageGroupFilter, setAgeGroupFilter] = useState('all')
   const [specialCategoryFilter, setSpecialCategoryFilter] = useState('all')
 
@@ -38,7 +37,6 @@ export default function ResidentsContainer({
   // Check if any filters are active (excluding default 'active' status)
   const isAnyFilterActive = searchQuery !== '' || 
     (statusFilter !== 'all' && statusFilter !== 'active') || 
-    householdRoleFilter !== 'all' || 
     ageGroupFilter !== 'all' || 
     civilStatusFilter !== 'all' || 
     specialCategoryFilter !== 'all'
@@ -82,10 +80,6 @@ export default function ResidentsContainer({
         (statusFilter === 'active' && resident.is_active === 1) ||
         (statusFilter === 'inactive' && resident.is_active === 0)
       
-      // Household Role Filter
-      const matchesHouseholdRole = householdRoleFilter === 'all' || 
-        (resident.family_relationship && resident.family_relationship.toLowerCase() === householdRoleFilter.toLowerCase())
-      
       // Age Group Filter
       const matchesAgeGroup = ageGroupFilter === 'all' || (() => {
         if (!resident.age) return false
@@ -104,12 +98,21 @@ export default function ResidentsContainer({
       
       // Special Category Filter
       const matchesSpecialCategory = specialCategoryFilter === 'all' || (() => {
-        if (!resident.specialCategories) return false
-        const categories = Array.isArray(resident.specialCategories) ? resident.specialCategories : [resident.specialCategories]
-        return categories.some(category => category && typeof category === 'string' && category.toLowerCase() === specialCategoryFilter.toLowerCase())
+        // Handle "Regular" case - residents without special_category_id
+        if (specialCategoryFilter === 'Regular') {
+          return !resident.special_category_id || resident.special_category_id === null
+        }
+        
+        // Handle specific special categories - check against the category name from backend
+        if (resident.special_category_name) {
+          return resident.special_category_name.toLowerCase() === specialCategoryFilter.toLowerCase()
+        }
+        
+        // Fallback: if no special_category_name, this is not the selected category
+        return false
       })()
       
-      return matchesSearch && matchesStatus && matchesHouseholdRole && 
+      return matchesSearch && matchesStatus && 
              matchesAgeGroup && matchesCivilStatus && matchesSpecialCategory
     })
 
@@ -129,7 +132,7 @@ export default function ResidentsContainer({
     })
 
     return filtered
-  }, [residents, searchQuery, statusFilter, householdRoleFilter, ageGroupFilter, civilStatusFilter, specialCategoryFilter, sortField, sortDirection])
+  }, [residents, searchQuery, statusFilter, ageGroupFilter, civilStatusFilter, specialCategoryFilter, sortField, sortDirection])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
@@ -153,17 +156,11 @@ export default function ResidentsContainer({
   setPurokFilter(value)
   setSearchQuery('')
   setStatusFilter('active')
-  setHouseholdRoleFilter('all')
   setAgeGroupFilter('all')
   setCivilStatusFilter('all')
   setSpecialCategoryFilter('all')
   setCurrentPage(1)
   }
-  const handleHouseholdRoleFilterChange = (value) => {
-    setHouseholdRoleFilter(value)
-    setCurrentPage(1)
-  }
-
   const handleAgeGroupFilterChange = (value) => {
     setAgeGroupFilter(value)
     setCurrentPage(1)
@@ -198,22 +195,6 @@ export default function ResidentsContainer({
   { value: '7', label: '7' }
       ]
     },
-    householdRole: {
-      key: 'householdRole',
-      label: 'Household Role',
-      value: householdRoleFilter,
-      setter: setHouseholdRoleFilter,
-      handler: handleHouseholdRoleFilterChange,
-      options: [
-        { value: 'all', label: 'Any' },
-        { value: 'father', label: 'Father' },
-        { value: 'mother', label: 'Mother' },
-        { value: 'child', label: 'Child' },
-        { value: 'grandfather', label: 'Grandfather' },
-        { value: 'grandmother', label: 'Grandmother' },
-        { value: 'sibling', label: 'Sibling' }
-      ]
-    },
     ageGroup: {
       key: 'ageGroup',
       label: 'Age Group',
@@ -245,18 +226,17 @@ export default function ResidentsContainer({
     },
     specialCategory: {
       key: 'specialCategory',
-  label: 'Resident Type',
+      label: 'Special Category',
       value: specialCategoryFilter,
       setter: setSpecialCategoryFilter,
       handler: handleSpecialCategoryFilterChange,
       options: [
-  { value: 'all', label: 'Any' },
-        { value: 'pwd', label: 'Persons with Disability (PWD)' },
-        { value: 'solo-parent', label: 'Solo Parent' },
-        { value: 'indigent', label: 'Indigent/Low-income' },
-        { value: 'ofw', label: 'OFW Family Member' },
-        { value: 'voter', label: 'Voter' },
-        { value: 'non-voter', label: 'Non-Voter' }
+        { value: 'all', label: 'Any' },
+        { value: 'Regular', label: 'Regular' },
+        { value: 'PWD', label: 'PWD' },
+        { value: 'Solo Parent', label: 'Solo Parent' },
+        { value: 'Indigent', label: 'Indigent' },
+        { value: 'Student', label: 'Student' }
       ]
     }
   }
@@ -680,7 +660,6 @@ export default function ResidentsContainer({
                   onClick={() => {
                     setSearchQuery('')
                     // Keep status filter as 'active' by default, don't reset it
-                    setHouseholdRoleFilter('all')
                     setAgeGroupFilter('all')
                     setCivilStatusFilter('all')
                     setSpecialCategoryFilter('all')
@@ -702,7 +681,7 @@ export default function ResidentsContainer({
             Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedData.length)} of{' '}
             {filteredAndSortedData.length} residents
             {(searchQuery || statusFilter !== 'all' || 
-              householdRoleFilter !== 'all' || ageGroupFilter !== 'all' || 
+              ageGroupFilter !== 'all' || 
               civilStatusFilter !== 'all' || specialCategoryFilter !== 'all') && (
               <span className="text-blue-600">
                 {' '}(filtered from {residents.length} total)
@@ -914,7 +893,7 @@ export default function ResidentsContainer({
                       </td>
                       <td className="px-3 py-1 whitespace-nowrap w-28">
                         <span className="text-xs font-medium tracking-normal antialiased text-gray-900">
-                          {displayValue(resident.resident_type, 'Regular')}
+                          {displayValue(resident.specialCategoryDisplay, 'Regular')}
                         </span>
                       </td>
                       <td className="px-3 py-1 whitespace-nowrap w-24">

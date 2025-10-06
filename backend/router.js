@@ -23,6 +23,7 @@ const UserRepository = require('./repositories/UserRepository')
 const uploadRoutes = require('./routes/uploadRoutes')
 const ResidentRepository = require('./repositories/ResidentRepository')
 const AnnouncementRepository = require('./repositories/AnnouncementRepository')
+const DashboardRepository = require('./repositories/DashboardRepository')
 const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireResident } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
@@ -571,6 +572,170 @@ router.get('/residents/stats', generalLimiter, authenticateToken, requireAdmin, 
 })
 
 // ==========================================================================
+// DASHBOARD ENDPOINTS (Optimized for Admin Dashboard with Lazy Loading)
+// ==========================================================================
+
+// GET /api/dashboard/lightweight - Get essential stats for initial load (admin only)
+router.get('/dashboard/lightweight', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const stats = await DashboardRepository.getLightweightStats()
+
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Lightweight dashboard statistics retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting lightweight dashboard stats', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve lightweight dashboard statistics'
+    })
+  }
+})
+
+// GET /api/dashboard/categories - Get resident categories breakdown (admin only)
+router.get('/dashboard/categories', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const categories = await DashboardRepository.getResidentCategories()
+
+    res.json({
+      success: true,
+      data: categories,
+      message: 'Resident categories retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting resident categories', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve resident categories'
+    })
+  }
+})
+
+// GET /api/dashboard/sms - Get SMS statistics (admin only)
+router.get('/dashboard/sms', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const smsStats = await DashboardRepository.getSMSStats()
+
+    res.json({
+      success: true,
+      data: smsStats,
+      message: 'SMS statistics retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting SMS stats', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve SMS statistics'
+    })
+  }
+})
+
+// GET /api/dashboard/stats - Get comprehensive dashboard statistics (admin only)
+router.get('/dashboard/stats', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const stats = await DashboardRepository.getDashboardStats()
+
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Dashboard statistics retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting dashboard stats', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve dashboard statistics'
+    })
+  }
+})
+
+// GET /api/dashboard/activity - Get recent activity (admin only)
+router.get('/dashboard/activity', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const activity = await DashboardRepository.getRecentActivity()
+
+    res.json({
+      success: true,
+      data: activity,
+      message: 'Recent activity retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting recent activity', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve recent activity'
+    })
+  }
+})
+
+// GET /api/dashboard/health - Get system health status (admin only)
+router.get('/dashboard/health', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const health = await DashboardRepository.getSystemHealth()
+
+    res.json({
+      success: true,
+      data: health,
+      message: 'System health retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting system health', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve system health'
+    })
+  }
+})
+
+// GET /api/dashboard/trends - Get growth trends for charts (admin only)
+router.get('/dashboard/trends', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const trends = await DashboardRepository.getGrowthTrends()
+
+    res.json({
+      success: true,
+      data: trends,
+      message: 'Growth trends retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting growth trends', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve growth trends'
+    })
+  }
+})
+
+// GET /api/dashboard/announcements/top - Get top performing announcements (admin only)
+router.get('/dashboard/announcements/top', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const topAnnouncements = await DashboardRepository.getTopAnnouncements()
+
+    res.json({
+      success: true,
+      data: topAnnouncements,
+      message: 'Top announcements retrieved successfully'
+    })
+
+  } catch (error) {
+    logger.error('Error getting top announcements', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve top announcements'
+    })
+  }
+})
+
+// ==========================================================================
 // ADMIN ENDPOINTS (Logs Management)
 // ==========================================================================
 
@@ -836,6 +1001,14 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
       }, 'Missing required fields')
     }
 
+    // Validate content length
+    const contentValidation = Validator.validateContent(content)
+    if (!contentValidation.isValid) {
+      return ApiResponse.validationError(res, {
+        content: contentValidation.errors
+      }, 'Content validation failed')
+    }
+
     // Validate target groups (use default if not provided)
     const finalTargetGroups = target_groups && Array.isArray(target_groups) && target_groups.length > 0 
       ? target_groups 
@@ -872,7 +1045,7 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
     // Create announcement in database
     const announcementData = {
       title: Validator.sanitizeInput(title),
-      content: Validator.sanitizeInput(content),
+      content: Validator.sanitizeContent(content),
       type: type || 1, // Use provided type or default to 1 (General)
       status: status || 'unpublished',
       target_type: target_type,
@@ -943,6 +1116,9 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
     // Debug logging
     logger.info('Update announcement request data', {
       announcementId,
+      title,
+      content,
+      type,
       send_sms,
       sms_target_groups,
       sms_target_groups_type: typeof sms_target_groups,
@@ -957,6 +1133,14 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
       }, 'Missing required fields')
     }
 
+    // Validate content length
+    const contentValidation = Validator.validateContent(content)
+    if (!contentValidation.isValid) {
+      return ApiResponse.validationError(res, {
+        content: contentValidation.errors
+      }, 'Content validation failed')
+    }
+
     // Check if announcement exists
     const existing = await AnnouncementRepository.findById(announcementId)
     if (!existing) {
@@ -966,9 +1150,16 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
     // Prepare update data
     const updateData = {
       title: Validator.sanitizeInput(title),
-      content: Validator.sanitizeInput(content),
+      content: Validator.sanitizeContent(content),
       type: type ? parseInt(type) : existing.type // Use the actual type from frontend, fallback to existing
     }
+
+    logger.info('Prepared update data for repository', {
+      updateData,
+      originalTitle: title,
+      originalContent: content,
+      originalType: type
+    })
 
     // Parse SMS target groups to target_type and target_value
     if (send_sms && sms_target_groups && sms_target_groups.length > 0) {
@@ -1003,9 +1194,16 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
     if (status && status !== existingStatus) {
       updateData.status = status
       if (status === 'published' && existingStatus === 'draft') {
-        updateData.published_by = req.user.userId // Track who published it
+        updateData.published_by = req.user.id // Track who published it (use id not userId)
       }
     }
+
+    logger.info('Final update data before repository call', {
+      updateData,
+      existingStatus,
+      newStatus: status,
+      userId: req.user.id
+    })
 
     // Update announcement in database (simplified - no separate target groups parameter)
     const updatedAnnouncement = await AnnouncementRepository.update(
@@ -1014,8 +1212,36 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
     )
 
     // If publishing and SMS enabled (target_type is not null), send SMS notifications
+    logger.info('Checking SMS conditions', {
+      status,
+      target_type: updateData.target_type,
+      target_value: updateData.target_value,
+      shouldSendSMS: status === 'published' && updateData.target_type !== null
+    })
+    
     if (status === 'published' && updateData.target_type !== null) {
-      const smsTargetGroups = [`${updateData.target_type}:${updateData.target_value}`]
+      let smsTargetGroups
+      
+      if (updateData.target_type === 'all') {
+        smsTargetGroups = ['all']
+      } else if (updateData.target_type === 'multiple') {
+        // Parse JSON array for multiple target groups
+        try {
+          smsTargetGroups = JSON.parse(updateData.target_value || '[]')
+        } catch (error) {
+          logger.error('Error parsing multiple target groups', { target_value: updateData.target_value, error })
+          smsTargetGroups = []
+        }
+      } else {
+        smsTargetGroups = [`${updateData.target_type}:${updateData.target_value}`]
+      }
+      
+      logger.info('SMS target groups prepared', {
+        announcementId,
+        smsTargetGroups,
+        target_type: updateData.target_type,
+        target_value: updateData.target_value
+      })
       
       // Send SMS in background (don't wait for completion)
       SMSService.getRecipients(smsTargetGroups)
@@ -1023,11 +1249,17 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
           logger.info('SMS recipients retrieved for update', {
             announcementId: announcementId,
             recipientCount: recipients.length,
-            targetGroups: sms_target_groups
+            targetGroups: smsTargetGroups,
+            recipients: recipients.map(r => ({ name: `${r.first_name} ${r.last_name}`, phone: r.mobile_number }))
           })
           
+          if (recipients.length === 0) {
+            logger.warn('No SMS recipients found', { announcementId, smsTargetGroups })
+            return { total: 0, sent: 0, failed: 0 }
+          }
+          
           // Add id to updatedAnnouncement for SMS sending
-          return SMSService.sendSMS({ ...updatedAnnouncement, id: announcementId }, recipients, sms_target_groups)
+          return SMSService.sendSMS({ ...updatedAnnouncement, id: announcementId }, recipients, smsTargetGroups)
         })
         .then(results => {
           logger.info('SMS notifications sent for update', {
@@ -1068,7 +1300,7 @@ router.delete('/announcements/:id', authenticateToken, requireAdmin, async (req,
     // Delete from database (CASCADE will remove target groups and SMS records)
     await AnnouncementRepository.delete(announcementId)
     
-    logger.info('Announcement deleted', { announcementId, deletedBy: req.user.userId })
+    logger.info('Announcement deleted', { announcementId, deletedBy: req.user.id })
 
     return ApiResponse.success(res, null, 'Announcement deleted successfully')
   } catch (error) {

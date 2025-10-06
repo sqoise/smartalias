@@ -4,9 +4,10 @@ import { ANNOUNCEMENT_TYPE_NAMES } from '../../../lib/constants'
 import ApiClient from '../../../lib/apiClient'
 import SMSTargetSection from './SMSTargetSection'
 
-export default function AnnouncementDetailView({ open, onClose, announcement, onUpdate, onToast }) {
+export default function AnnouncementDetailView({ open, onClose, announcement, onUpdate, onUpdateKeepOpen, onToast }) {
   const [isEditing, setIsEditing] = React.useState(false)
   const [formData, setFormData] = React.useState({})
+  const [originalData, setOriginalData] = React.useState({}) // Track original data for change detection
   const [errors, setErrors] = React.useState({})
   const [isSaving, setIsSaving] = React.useState(false)
   const [isPublishing, setIsPublishing] = React.useState(false)
@@ -34,7 +35,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         smsTargetGroups
       })
       
-      setFormData({
+      const initialData = {
         title: announcement.title || '',
         content: announcement.content || '',
         type: announcement.type || 1,
@@ -43,7 +44,10 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         sms_target_groups: smsTargetGroups,
         send_sms: isSmsEnabled,
         status: status
-      })
+      }
+      
+      setFormData(initialData)
+      setOriginalData(initialData) // Store original data for comparison
       setIsEditing(false)
       setErrors({})
       setSmsStatus(null) // Reset SMS status when loading new announcement
@@ -53,19 +57,24 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
   // Fetch SMS status for published announcements with SMS enabled
   React.useEffect(() => {
     const fetchSmsStatus = async () => {
-      if (open && announcement && announcement.published_at && 
-          announcement.target_type !== null) {
-        try {
-          const smsResponse = await ApiClient.request(`/announcements/${announcement.id}/sms-status`)
-          if (smsResponse.success && smsResponse.data) {
-            setSmsStatus({
-              total: smsResponse.data.total_recipients || 0,
-              sent: smsResponse.data.successful_sends || 0,
-              failed: smsResponse.data.failed_sends || 0
-            })
+      if (open && announcement && announcement.published_at) {
+        // Check if SMS was enabled (has SMS target groups)
+        const hasSmsTargetGroups = announcement.sms_target_groups && 
+                                   announcement.sms_target_groups.length > 0
+        
+        if (hasSmsTargetGroups) {
+          try {
+            const smsResponse = await ApiClient.request(`/announcements/${announcement.id}/sms-status`)
+            if (smsResponse.success && smsResponse.data) {
+              setSmsStatus({
+                total: smsResponse.data.total_recipients || 0,
+                sent: smsResponse.data.successful_sends || 0,
+                failed: smsResponse.data.failed_sends || 0
+              })
+            }
+          } catch (smsError) {
+            console.error('Error fetching SMS status on load:', smsError)
           }
-        } catch (smsError) {
-          console.error('Error fetching SMS status on load:', smsError)
         }
       }
     }
@@ -102,6 +111,8 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
       newErrors.content = 'Content must be at least 30 characters'
     } else if (formData.content.length > 1000) {
       newErrors.content = 'Content must be 1000 characters or less'
+    } else if (formData.content.toLowerCase().includes('test')) {
+      newErrors.content = 'Content cannot contain the word "TEST" as it may be blocked by SMS providers'
     }
 
     if (!formData.type) {
@@ -117,9 +128,42 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
     return Object.keys(newErrors).length === 0
   }
 
+  // Check if form data has actually changed from original
+  const hasChanges = () => {
+    if (!originalData || Object.keys(originalData).length === 0) return true
+    
+    // Compare key fields that matter for updates
+    const fieldsToCompare = ['title', 'content', 'type', 'send_sms', 'sms_target_groups']
+    
+    for (const field of fieldsToCompare) {
+      if (field === 'sms_target_groups') {
+        // Special handling for arrays - compare as JSON strings
+        const originalSmsGroups = JSON.stringify(originalData[field] || [])
+        const currentSmsGroups = JSON.stringify(formData[field] || [])
+        if (originalSmsGroups !== currentSmsGroups) {
+          return true
+        }
+      } else {
+        // Regular field comparison
+        if (originalData[field] !== formData[field]) {
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+
   const handleSave = async () => {
     if (!validateForm() || !announcement?.id) {
       return // Just return without toast - validation errors are shown inline
+    }
+
+    // Check if there are actual changes
+    if (!hasChanges()) {
+      onToast?.('No changes to save', 'info')
+      setIsEditing(false) // Exit edit mode since no changes were made
+      return
     }
 
     setIsSaving(true)
@@ -135,6 +179,9 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         status: 'draft' // Use 'draft' instead of 'unpublished'
       }
 
+      console.log('Sending update data:', updateData)
+      console.log('Form data before update:', formData)
+
       const response = await ApiClient.request(`/announcements/${announcement.id}`, {
         method: 'PUT',
         body: JSON.stringify(updateData)
@@ -142,6 +189,10 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
 
       if (response.success) {
         onToast?.('Announcement updated successfully', 'success')
+        
+        // Update original data to current form data for future change detection
+        setOriginalData({ ...formData })
+        
         setIsEditing(false)
         onUpdate()
       } else {
@@ -172,6 +223,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         content: formData.content,
         target_groups: ['all'],
         sms_target_groups: formData.sms_target_groups || [],
+        send_sms: formData.send_sms || false, // Include send_sms flag
         status: 'published'
       }
 
@@ -201,7 +253,39 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
         }
         
         setShowPublishModal(false)
-        onUpdate()
+        
+        // Refresh the current announcement data instead of closing the panel
+        // This allows user to see updated SMS delivery status immediately
+        try {
+          const refreshResponse = await ApiClient.request(`/announcements/${announcement.id}`)
+          if (refreshResponse.success && refreshResponse.data) {
+            // Update local announcement data to reflect published status
+            const refreshedAnnouncement = refreshResponse.data
+            
+            // Update form data with refreshed announcement
+            const status = refreshedAnnouncement.published_at ? 'published' : 'draft'
+            const smsTargetGroups = refreshedAnnouncement.sms_target_groups || []
+            const isSmsEnabled = smsTargetGroups.length > 0
+            
+            const updatedFormData = {
+              title: refreshedAnnouncement.title || '',
+              content: refreshedAnnouncement.content || '',
+              type: refreshedAnnouncement.type || 1,
+              is_urgent: refreshedAnnouncement.is_urgent || false,
+              target_groups: refreshedAnnouncement.target_groups || ['all'],
+              sms_target_groups: smsTargetGroups,
+              send_sms: isSmsEnabled,
+              status: status
+            }
+            
+            setFormData(updatedFormData)
+            setOriginalData(updatedFormData)
+          }
+        } catch (refreshError) {
+          console.error('Error refreshing announcement data:', refreshError)
+        }
+        
+        onUpdateKeepOpen?.() // Use the keep-open handler for publish operations
       } else {
         console.error('Publish failed:', response)
         onToast?.(response.error || 'Failed to publish announcement', 'error')
@@ -514,8 +598,8 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                   </div>
                 </div>
 
-                {/* Article Footer - SMS Delivery Status (only when available) */}
-                {smsStatus && (
+                {/* Article Footer - SMS Delivery Status (only when SMS is enabled and status exists) */}
+                {smsStatus && announcement?.sms_target_groups?.length > 0 && (
                   <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
                     <div>
                       <h4 className="text-xs font-medium text-gray-700 mb-2">SMS Delivery Status</h4>
@@ -691,7 +775,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                   ) : (
                     <>
                       <i className="bi bi-send mr-1" />
-                      Publish Now
+                      Publish
                     </>
                   )}
                 </button>
@@ -722,16 +806,28 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving}
-                className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSaving || !hasChanges()}
+                className={`inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer h-9 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  hasChanges() 
+                    ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-1 focus:ring-green-500' 
+                    : 'bg-gray-300 text-gray-500'
+                }`}
               >
                 {isSaving ? (
                   <>
                     <i className="bi bi-arrow-clockwise animate-spin mr-1" />
                     Saving...
                   </>
+                ) : hasChanges() ? (
+                  <>
+                    <i className="bi bi-check text-lg mr-1" />
+                    Submit
+                  </>
                 ) : (
-                  'Save Changes'
+                  <>
+                    <i className="bi bi-check text-lg mr-1" />
+                    No Changes
+                  </>
                 )}
               </button>
             </>

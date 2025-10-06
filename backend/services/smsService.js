@@ -15,6 +15,8 @@ class SMSService {
    * @returns {Array} Array of residents with phone numbers
    */
   static async getRecipients(targetGroups = ['all']) {
+    logger.info('Getting SMS recipients', { targetGroups })
+    
     try {
       let query
       let params = []
@@ -82,6 +84,14 @@ class SMSService {
       }
 
       const result = await db.query(query, params)
+      
+      logger.info('SMS recipients query result', {
+        targetGroups,
+        recipientCount: result.rows.length,
+        query: query.replace(/\s+/g, ' ').trim(),
+        params
+      })
+      
       return result.rows
     } catch (error) {
       logger.error('Error getting SMS recipients', error)
@@ -97,6 +107,13 @@ class SMSService {
    * @returns {Object} Send results
    */
   static async sendSMS(announcement, recipients, targetGroups = ['all']) {
+    logger.info('SMS sendSMS called', {
+      announcementId: announcement?.id,
+      recipientCount: recipients?.length,
+      targetGroups,
+      hasRecipients: recipients && recipients.length > 0
+    })
+    
     const results = {
       total: recipients.length,
       sent: 0,
@@ -104,62 +121,126 @@ class SMSService {
       errors: []
     }
 
+    if (!recipients || recipients.length === 0) {
+      logger.warn('No recipients provided for SMS sending', { announcementId: announcement?.id })
+      return results
+    }
+
     // Format SMS message
     const message = this.formatSMSMessage(announcement)
-    const providerResponses = []
 
-    logger.info('Preparing to send SMS notifications', {
+    logger.info('Preparing to send SMS notifications via bulk API', {
       announcementId: announcement.id,
       recipientCount: recipients.length,
-      targetGroups
+      targetGroups,
+      messageLength: message?.length || 0
     })
 
-    // Send SMS to each recipient
+    // Filter and normalize valid phone numbers
+    const validRecipients = []
     for (const recipient of recipients) {
-      try {
-        // Validate phone number
-        if (!this.validatePhoneNumber(recipient.mobile_number)) {
-          logger.warn('Invalid phone number', {
+      if (this.validatePhoneNumber(recipient.mobile_number)) {
+        const normalizedPhone = this.normalizePhoneNumber(recipient.mobile_number)
+        if (normalizedPhone) {
+          validRecipients.push({
+            ...recipient,
+            normalizedPhone
+          })
+        } else {
+          logger.warn('Phone normalization failed', {
             residentId: recipient.id,
             phone: recipient.mobile_number
           })
           results.failed++
-          continue
         }
-
-        // Send SMS via provider
-        const sendResult = await this.sendViaSemaphore(
-          recipient.mobile_number,
-          message
-        )
-
-        // Collect provider response for batch logging
-        providerResponses.push({
-          phone: recipient.mobile_number,
-          success: sendResult.success,
-          messageId: sendResult.messageId,
-          error: sendResult.error
-        })
-
-        if (sendResult.success) {
-          results.sent++
-        } else {
-          results.failed++
-          results.errors.push({
-            recipient: `${recipient.first_name} ${recipient.last_name}`,
-            error: sendResult.error
-          })
-        }
-      } catch (error) {
-        logger.error('Error sending SMS to recipient', {
+      } else {
+        logger.warn('Invalid phone number', {
           residentId: recipient.id,
-          error: error.message
+          phone: recipient.mobile_number
         })
         results.failed++
-        results.errors.push({
-          recipient: `${recipient.first_name} ${recipient.last_name}`,
-          error: error.message
+      }
+    }
+
+    // Send in batches of 1000 (Semaphore limit)
+    const BATCH_SIZE = 1000
+    const batches = []
+    for (let i = 0; i < validRecipients.length; i += BATCH_SIZE) {
+      batches.push(validRecipients.slice(i, i + BATCH_SIZE))
+    }
+
+    logger.info('Sending SMS in batches', {
+      totalBatches: batches.length,
+      batchSize: BATCH_SIZE,
+      validRecipients: validRecipients.length
+    })
+
+    const providerResponses = []
+
+    // Send each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      const phoneNumbers = batch.map(r => r.normalizedPhone).join(',')
+      
+      try {
+        logger.info(`Sending SMS batch ${batchIndex + 1}/${batches.length}`, {
+          recipientsInBatch: batch.length,
+          phoneNumbers: phoneNumbers.substring(0, 100) + '...' // Log first 100 chars
         })
+
+        const sendResult = await this.sendBulkViaSemaphore(phoneNumbers, message)
+
+        if (sendResult.success) {
+          // If bulk send successful, mark all in batch as sent
+          results.sent += batch.length
+          
+          // Log each recipient as successful
+          for (const recipient of batch) {
+            providerResponses.push({
+              phone: recipient.normalizedPhone,
+              success: true,
+              messageId: sendResult.messageId || `BULK-${Date.now()}-${batchIndex}`,
+              error: null
+            })
+          }
+        } else {
+          // If bulk send failed, mark all in batch as failed
+          results.failed += batch.length
+          
+          // Log each recipient as failed
+          for (const recipient of batch) {
+            providerResponses.push({
+              phone: recipient.normalizedPhone,
+              success: false,
+              messageId: null,
+              error: sendResult.error
+            })
+            
+            results.errors.push({
+              recipient: `${recipient.first_name} ${recipient.last_name}`,
+              error: sendResult.error
+            })
+          }
+        }
+      } catch (error) {
+        logger.error(`Error sending SMS batch ${batchIndex + 1}`, {
+          error: error.message,
+          batchSize: batch.length
+        })
+        
+        results.failed += batch.length
+        
+        for (const recipient of batch) {
+          results.errors.push({
+            recipient: `${recipient.first_name} ${recipient.last_name}`,
+            error: error.message
+          })
+        }
+      }
+
+      // Rate limiting: Small delay between batches to respect API limits
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500)) // 500ms delay
       }
     }
 
@@ -174,7 +255,7 @@ class SMSService {
       providerResponses
     })
 
-    logger.info('SMS sending completed', {
+    logger.info('SMS bulk sending completed', {
       announcementId: announcement.id,
       total: results.total,
       sent: results.sent,
@@ -295,18 +376,27 @@ class SMSService {
       // Normalize phone number
       const normalizedPhone = this.normalizePhoneNumber(phone)
 
-      // Send actual SMS via Semaphore API
+      // Send actual SMS via Semaphore API using form data (as per documentation)
+      const formParams = {
+        apikey: apiKey,
+        number: normalizedPhone,
+        message: message
+      }
+      
+      // Only include sendername if it's configured (not empty)
+      const senderName = config.SEMAPHORE_SENDER_NAME?.trim()
+      if (senderName) {
+        formParams.sendername = senderName
+      }
+      
+      const formData = new URLSearchParams(formParams)
+      
       const response = await fetch('https://api.semaphore.co/api/v4/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: JSON.stringify({
-          apikey: apiKey,
-          number: normalizedPhone,
-          message: message,
-          sendername: config.SEMAPHORE_SENDER_NAME || 'BARANGAY LIAS'
-        })
+        body: formData
       })
 
       // Check content type before parsing
@@ -352,6 +442,133 @@ class SMSService {
       }
     } catch (error) {
       logger.error('Error sending SMS via Semaphore', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * Send SMS to multiple recipients via Semaphore bulk API
+   * @param {String} phoneNumbers - Comma-separated phone numbers (up to 1000)
+   * @param {String} message - SMS message content
+   * @returns {Object} Send result
+   */
+  static async sendBulkViaSemaphore(phoneNumbers, message) {
+    try {
+      const apiKey = config.SEMAPHORE_API_KEY
+      
+      if (!apiKey) {
+        // Development mode - simulate bulk SMS
+        if (config.NODE_ENV === 'development') {
+          logger.info('Simulating bulk SMS in development mode', {
+            phoneCount: phoneNumbers.split(',').length,
+            message: message.substring(0, 50) + '...'
+          })
+          
+          return {
+            success: true,
+            messageId: `BULK-SIM-${Date.now()}`,
+            message: 'Bulk SMS simulated in development mode'
+          }
+        }
+        
+        // Production without API key - error
+        return {
+          success: false,
+          error: 'Semaphore API key not configured'
+        }
+      }
+
+      // Send bulk SMS via Semaphore API using form data
+      const formParams = {
+        apikey: apiKey,
+        number: phoneNumbers, // Comma-separated list
+        message: message
+      }
+      
+      // Only include sendername if it's configured (not empty)
+      const senderName = config.SEMAPHORE_SENDER_NAME?.trim()
+      if (senderName) {
+        formParams.sendername = senderName
+      }
+      
+      const formData = new URLSearchParams(formParams)
+      
+      const response = await fetch('https://api.semaphore.co/api/v4/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formData
+      })
+
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type')
+      let result
+      
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json()
+      } else {
+        // Handle non-JSON responses (likely error messages)
+        const textResponse = await response.text()
+        logger.error('Semaphore bulk API returned non-JSON response', { 
+          status: response.status, 
+          statusText: response.statusText,
+          response: textResponse,
+          phoneCount: phoneNumbers.split(',').length
+        })
+        
+        return {
+          success: false,
+          error: `Bulk API Error: ${textResponse || response.statusText || 'Unknown error'}`
+        }
+      }
+
+      // Handle bulk response - could be array or single object
+      if (response.ok && result) {
+        const messages = Array.isArray(result) ? result : [result]
+        const successCount = messages.filter(msg => msg.message_id).length
+        
+        logger.info('Bulk SMS response received', {
+          totalMessages: messages.length,
+          successCount,
+          phoneCount: phoneNumbers.split(',').length
+        })
+        
+        if (successCount > 0) {
+          return {
+            success: true,
+            messageId: messages[0]?.message_id || `BULK-${Date.now()}`,
+            message: `Bulk SMS sent successfully to ${successCount} recipients`
+          }
+        } else {
+          const errorMessage = messages[0]?.error || 'No successful sends in bulk'
+          return {
+            success: false,
+            error: errorMessage
+          }
+        }
+      } else {
+        const errorMessage = result?.message || result?.error || 'Failed to send bulk SMS'
+        logger.error('Failed to send bulk SMS via Semaphore', { 
+          phoneCount: phoneNumbers.split(',').length,
+          error: errorMessage,
+          status: response.status,
+          result 
+        })
+        
+        return {
+          success: false,
+          error: errorMessage
+        }
+      }
+    } catch (error) {
+      logger.error('Error sending bulk SMS via Semaphore', {
+        error: error.message,
+        phoneCount: phoneNumbers.split(',').length
+      })
       return {
         success: false,
         error: error.message

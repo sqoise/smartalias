@@ -111,23 +111,6 @@ export default function AnnouncementsContainer({
     setVisibleCount(5)
   }, [searchTerm, statusFilter])
 
-  // Lazy loading scroll handler
-  useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container
-      // Load more when scrolled to 80% of the content
-      if (scrollTop + clientHeight >= scrollHeight * 0.8 && hasMore) {
-        setVisibleCount(prev => Math.min(prev + 5, filteredAnnouncements.length))
-      }
-    }
-
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [filteredAnnouncements.length, hasMore])
-
   // Removed lazy loading scroll handler to fix scroll issues
 
   const formatDate = (dateString) => {
@@ -314,7 +297,7 @@ export default function AnnouncementsContainer({
           </div>
         </div>
         
-        <div className={`p-6 ${filteredAnnouncements.length > 5 ? 'max-h-[calc(100vh-400px)] overflow-y-auto' : ''}`} ref={scrollContainerRef}>
+        <div className={`p-6 ${filteredAnnouncements.length > 5 ? 'max-h-[calc(100vh-275px)] overflow-y-auto' : ''}`} ref={scrollContainerRef}>
           {loading ? (
             // Skeleton Loading
             <div className="space-y-3">

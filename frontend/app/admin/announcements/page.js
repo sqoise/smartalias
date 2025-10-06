@@ -92,6 +92,33 @@ export default function AnnouncementsPage() {
     await loadAnnouncements()
   }
 
+  const handleUpdateAnnouncementKeepOpen = async () => {
+    const currentAnnouncementId = selectedAnnouncement?.id
+    
+    // Refresh announcements list first
+    await loadAnnouncements()
+    
+    // Toggle panel off and back on with fresh announcement data
+    if (currentAnnouncementId) {
+      // Close panel briefly
+      setShowView(false)
+      setSelectedAnnouncement(null)
+      
+      // Small delay to ensure clean state reset, then fetch fresh data
+      setTimeout(async () => {
+        try {
+          const response = await ApiClient.request(`/announcements/${currentAnnouncementId}`)
+          if (response.success && response.data) {
+            setSelectedAnnouncement(response.data)
+            setShowView(true)
+          }
+        } catch (error) {
+          console.error('Error fetching updated announcement:', error)
+        }
+      }, 100)
+    }
+  }
+
   const showToast = (message, type = 'success') => {
     console.log('showToast called:', { message, type })
     setToast({ show: true, message, type })
@@ -128,6 +155,7 @@ export default function AnnouncementsPage() {
         onClose={() => setShowView(false)}
         announcement={selectedAnnouncement}
         onUpdate={handleUpdateAnnouncement}
+        onUpdateKeepOpen={handleUpdateAnnouncementKeepOpen}
         onToast={showToast}
       />
 

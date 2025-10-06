@@ -9,6 +9,7 @@ const config = require('../config/config')
 const db = require('../config/db')
 const logger = require('../config/logger')
 const IDUtils = require('../utils/idUtils')
+const Resident = require('../models/Resident')
 
 class ResidentRepository {
   /**
@@ -172,11 +173,21 @@ class ResidentRepository {
     const result = await db.query(query, params)
     const countResult = await db.query('SELECT COUNT(*) as total FROM residents WHERE is_active = 1')
     
-    // Add calculated age to each resident
-    const residentsWithAge = result.rows.map(resident => this.enrichWithAge(resident))
+    // Use Resident model's batch processing with special categories
+    const processedResidents = await Resident.batchProcessWithSpecialCategories(result.rows, db)
+    
+    // Convert to API format and add calculated age with formatted ID
+    const residentsForApi = processedResidents.map(resident => {
+      const apiData = resident.toApiFormat()
+      return {
+        ...apiData,
+        id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+        age: resident.calculateAge() // Ensure age is calculated
+      }
+    })
     
     return {
-      residents: residentsWithAge,
+      residents: residentsForApi,
       total: parseInt(countResult.rows[0].total),
       page,
       limit
@@ -184,7 +195,7 @@ class ResidentRepository {
   }
 
   static async _findByIdDB(id) {
-    // First get the resident
+    // Get the resident
     const residentQuery = `SELECT * FROM residents WHERE id = $1`
     const residentResult = await db.query(residentQuery, [id])
     
@@ -192,27 +203,34 @@ class ResidentRepository {
       return null
     }
     
-    const resident = residentResult.rows[0]
+    const residentData = residentResult.rows[0]
+    
+    // Use Resident model's single processing with special category
+    const resident = await Resident.processWithSpecialCategory(residentData, db)
     
     // If resident has a user_id, fetch user credentials for lazy loading
-    if (resident.user_id) {
+    if (resident.userId) {
       try {
         const userQuery = `SELECT username, is_password_changed, created_at FROM users WHERE id = $1`
-        const userResult = await db.query(userQuery, [resident.user_id])
+        const userResult = await db.query(userQuery, [resident.userId])
         
         if (userResult.rows.length > 0) {
           const user = userResult.rows[0]
-          // Add user info to resident
-          resident.username = user.username
-          resident.is_password_changed = user.is_password_changed
-          resident.user_created_at = user.created_at
+          // Add user info to resident API data
+          const apiData = resident.toApiFormat()
+          apiData.username = user.username
+          apiData.is_password_changed = user.is_password_changed
+          apiData.user_created_at = user.created_at
           
-          // For users who haven't changed password, we'll need the actual password
-          // Let's check if they have a stored plain password or if we need to generate one
+          // For users who haven't changed password, add temp password
           if (user.is_password_changed === 0) {
-            // For demo purposes, we'll show the username as the temp password
-            // In production, you'd want to have a separate temp_password field or generate one
-            resident.temp_password = user.username.split('.').pop() // Extract the last part as demo PIN
+            apiData.temp_password = user.username.split('.').pop() // Extract the last part as demo PIN
+          }
+          
+          return {
+            ...apiData,
+            id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+            age: resident.calculateAge() // Ensure age is calculated
           }
         }
       } catch (error) {
@@ -221,7 +239,13 @@ class ResidentRepository {
       }
     }
     
-    return this.enrichWithAge(resident)
+    // Return resident API data with formatted ID and age
+    const apiData = resident.toApiFormat()
+    return {
+      ...apiData,
+      id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+      age: resident.calculateAge() // Ensure age is calculated
+    }
   }
 
   static async _createDB(data) {
@@ -438,15 +462,47 @@ class ResidentRepository {
   }
 
   static async _getStatsDB() {
+    // Get total residents
     const totalResult = await db.query('SELECT COUNT(*) as count FROM residents WHERE is_active = 1')
+    
+    // Get recent registrations (last 30 days)
     const recentResult = await db.query(`
       SELECT COUNT(*) as count FROM residents 
       WHERE is_active = 1 AND created_at >= NOW() - INTERVAL '30 days'
     `)
     
+    // Get special categories breakdown
+    const categoriesResult = await db.query(`
+      SELECT 
+        sc.category_name,
+        COUNT(r.id) as count
+      FROM special_categories sc
+      LEFT JOIN residents r ON sc.id = r.special_category_id AND r.is_active = 1
+      GROUP BY sc.id, sc.category_name
+      ORDER BY sc.id
+    `)
+    
+    // Get regular residents (no special category)
+    const regularResult = await db.query(`
+      SELECT COUNT(*) as count FROM residents 
+      WHERE is_active = 1 AND (special_category_id IS NULL OR special_category_id = 0)
+    `)
+    
+    // Format categories data
+    const categories = {
+      regular: parseInt(regularResult.rows[0]?.count || 0)
+    }
+    
+    // Add special categories
+    categoriesResult.rows.forEach(row => {
+      const categoryKey = row.category_name.toLowerCase().replace(' ', '_')
+      categories[categoryKey] = parseInt(row.count || 0)
+    })
+    
     return {
       total: parseInt(totalResult.rows[0].count),
-      recentCount: parseInt(recentResult.rows[0].count)
+      recentCount: parseInt(recentResult.rows[0].count),
+      categories
     }
   }
 

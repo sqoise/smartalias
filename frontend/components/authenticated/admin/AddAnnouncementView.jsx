@@ -43,6 +43,26 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
     }
   }, [open])
 
+  // Reset form to default state when panel closes (unless draft is saved)
+  React.useEffect(() => {
+    if (!open) {
+      // Only reset if no draft is saved in localStorage
+      const savedDraft = localStorage.getItem(STORAGE_KEY)
+      if (!savedDraft) {
+        setFormData({
+          title: '',
+          content: '',
+          type: '',
+          visibility: 'all_residents',
+          targetGroups: [],
+          sendSMS: false  // Reset SMS toggle to default OFF
+        })
+        setErrors({})
+        setIsDraft(false)
+      }
+    }
+  }, [open])
+
   // Save form data to localStorage whenever it changes
   React.useEffect(() => {
     if (open) {
@@ -118,6 +138,8 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
       newErrors.content = 'Content must be at least 30 characters'
     } else if (formData.content.length > 1000) {
       newErrors.content = 'Content must be 1000 characters or less'
+    } else if (formData.content.toLowerCase().includes('test')) {
+      newErrors.content = 'Content cannot contain the word "TEST" as it may be blocked by SMS providers'
     }
 
     if (!formData.type) {

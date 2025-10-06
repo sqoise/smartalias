@@ -31,23 +31,17 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
   }
 
   const menus = {
-    // user: [
-    //   { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
-    //   { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
-    //   { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
-    //   { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
-    // ],
     resident: [
-      { name: 'Online Application', href: '/resident', icon: 'bi-file-earmark-plus' },
-      { name: 'Request History', href: '/resident/requests', icon: 'bi-clock-history' },
+      { name: 'Document Requests', href: '/resident', icon: 'bi-file-earmark-plus' },
+      { name: 'My Requests', href: '/resident/requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
-      { name: 'Profile', href: '/resident/profile', icon: 'bi-person' },
+      { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
     ],
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
       { name: 'Household', href: '/admin/household', icon: 'bi-house' },
-      { name: 'Documents', href: '/admin/documents', icon: 'bi-file-earmark-text' },
+      { name: 'Document Services', href: '/admin/documents', icon: 'bi-file-earmark-text' },
       { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
       { name: 'Maintenance', href: '/admin/settings', icon: 'bi-gear' },
     ],
@@ -104,18 +98,27 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
           const active = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/resident' && item.href !== '/admin')
           return (
             <div key={item.href} className="relative group">
-              <Link 
-                href={item.href} 
-                className={`flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-4 py-2.5 text-sm ${
-                  active ? 'bg-gray-100 text-gray-900 font-medium' : ''
-                }`}
-                onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
-              >
-                <div className="flex justify-center flex-shrink-0 w-6">
-                  <i className={`bi ${item.icon} text-base`}></i>
+              {active ? (
+                <div 
+                  className={`flex items-center text-gray-900 bg-gray-100 rounded-md px-4 py-2.5 text-sm font-medium cursor-default`}
+                >
+                  <div className="flex justify-center flex-shrink-0 w-6">
+                    <i className={`bi ${item.icon} text-base`}></i>
+                  </div>
+                  {!isCollapsed && <span className="ml-3">{item.name}</span>}
                 </div>
-                {!isCollapsed && <span className="ml-3">{item.name}</span>}
-              </Link>
+              ) : (
+                <Link 
+                  href={item.href} 
+                  className={`flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-4 py-2.5 text-sm cursor-pointer`}
+                  onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
+                >
+                  <div className="flex justify-center flex-shrink-0 w-6">
+                    <i className={`bi ${item.icon} text-base`}></i>
+                  </div>
+                  {!isCollapsed && <span className="ml-3">{item.name}</span>}
+                </Link>
+              )}
               {isCollapsed && (
                 <div className="hidden lg:block absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
                   {item.name}

@@ -53,8 +53,8 @@ const config = {
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX) || 100, // requests per window
   
   // SMS Configuration (Semaphore - Philippine SMS Provider)
-  SEMAPHORE_API_KEY: process.env.SEMAPHORE_API_KEY || 'your-semaphore-api-key-here',
-  SEMAPHORE_SENDER_NAME: process.env.SEMAPHORE_SENDER_NAME || 'BARANGAY',
+  SEMAPHORE_API_KEY: process.env.SEMAPHORE_API_KEY,
+  SEMAPHORE_SENDER_NAME: process.env.SEMAPHORE_SENDER_NAME,
   
   // Development flags
   isDevelopment: process.env.NODE_ENV === 'development',

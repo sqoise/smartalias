@@ -16,6 +16,16 @@ class Validator {
       .slice(0, 100) // Limit length to prevent buffer overflow
   }
 
+  // Sanitize longer content (like announcements) with higher character limit
+  static sanitizeContent(input, maxLength = 2000) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .slice(0, maxLength) // Allow longer content up to 2000 characters
+  }
+
   // Format text to proper Title Case (CamelCase for names and addresses)
   static formatTitleCase(input) {
     if (!input || typeof input !== 'string') return ''
@@ -75,6 +85,33 @@ class Validator {
         errors.push('PIN must be exactly 6 digits')
       } else if (!/^\d{6}$/.test(pinStr)) {
         errors.push('PIN must contain only numbers')
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate content (for announcements, descriptions, etc.)
+  static validateContent(content, minLength = 30, maxLength = 2000) {
+    const errors = []
+    
+    if (!content || typeof content !== 'string') {
+      errors.push('Content is required')
+    } else {
+      const trimmed = content.trim()
+      if (trimmed.length < minLength) {
+        errors.push(`Content must be at least ${minLength} characters`)
+      } else if (trimmed.length > maxLength) {
+        errors.push(`Content must not exceed ${maxLength} characters`)
+      }
+      
+      // Check for prohibited test content (SMS providers often block these)
+      const lowerContent = trimmed.toLowerCase()
+      if (lowerContent.includes('test')) {
+        errors.push('Content cannot contain the word "TEST" as it may be blocked by SMS providers')
       }
     }
     

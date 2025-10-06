@@ -26,6 +26,7 @@ class Resident {
     this.religion = data.religion
     this.occupation = data.occupation
     this.specialCategoryId = data.special_category_id || data.specialCategoryId
+    this.specialCategoryName = data.special_category_name || data.specialCategoryName
     this.notes = data.notes
     this.isActive = data.is_active || data.isActive
     this.createdAt = data.created_at || data.createdAt
@@ -100,6 +101,14 @@ class Resident {
       case 2: return 'Female'
       default: return 'Not specified'
     }
+  }
+
+  /**
+   * Get special category display
+   * @returns {string} Special category display name or 'Regular'
+   */
+  getSpecialCategoryDisplay() {
+    return this.specialCategoryName || 'Regular'
   }
 
   /**
@@ -365,41 +374,114 @@ class Resident {
   }
 
   /**
-   * Convert to API response format
+   * Convert to API response format (keeping database field names for frontend compatibility)
    * @returns {Object} API-formatted object
    */
   toApiFormat() {
     return {
       id: this.id,
-      userId: this.userId,
-      firstName: this.firstName,
-      lastName: this.lastName,
-      middleName: this.middleName,
+      user_id: this.userId,
+      first_name: this.firstName,
+      last_name: this.lastName,
+      middle_name: this.middleName,
       suffix: this.suffix,
       fullName: this.getFullName(),
       displayName: this.getDisplayName(),
-      birthDate: this.birthDate,
+      birth_date: this.birthDate,
       age: this.calculateAge(),
       gender: this.gender,
       genderDisplay: this.getGenderDisplay(),
-      civilStatus: this.civilStatus,
-      homeNumber: this.homeNumber,
-      mobileNumber: this.mobileNumber,
+      civil_status: this.civilStatus,
+      home_number: this.homeNumber,
+      mobile_number: this.mobileNumber,
       email: this.email,
       address: this.address,
       purok: this.purok,
-      familyGroupId: this.familyGroupId,
-      familyRole: this.familyRole,
+      family_group_id: this.familyGroupId,
+      family_role: this.familyRole,
       familyRoleDisplay: this.getFamilyRoleDisplay(),
       religion: this.religion,
       occupation: this.occupation,
-      specialCategoryId: this.specialCategoryId,
+      special_category_id: this.specialCategoryId,
+      special_category_name: this.specialCategoryName,
+      specialCategoryDisplay: this.getSpecialCategoryDisplay(),
       notes: this.notes,
-      isActive: this.isActive,
+      is_active: this.isActive,
       isActiveResident: this.isActiveResident(),
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      created_at: this.createdAt,
+      updated_at: this.updatedAt
     }
+  }
+
+  /**
+   * Batch process residents with special categories (static method)
+   * @param {Array} residentsData - Raw resident data from database
+   * @param {Object} db - Database connection
+   * @returns {Array} - Array of Resident instances with special categories
+   */
+  static async batchProcessWithSpecialCategories(residentsData, db) {
+    if (!residentsData || residentsData.length === 0) {
+      return []
+    }
+
+    // Get all special category IDs from residents
+    const categoryIds = [...new Set(
+      residentsData
+        .map(r => r.special_category_id)
+        .filter(id => id !== null && id !== undefined)
+    )]
+
+    let categoryMap = {}
+    
+    if (categoryIds.length > 0) {
+      // Fetch special categories in one query
+      const categoriesQuery = `
+        SELECT id, category_name 
+        FROM special_categories 
+        WHERE id = ANY($1)
+      `
+      const categoriesResult = await db.query(categoriesQuery, [categoryIds])
+      
+      // Create a lookup map for fast access
+      categoriesResult.rows.forEach(cat => {
+        categoryMap[cat.id] = cat.category_name
+      })
+    }
+
+    // Create Resident instances with enriched data
+    return residentsData.map(residentData => {
+      const enrichedData = {
+        ...residentData,
+        special_category_name: residentData.special_category_id ? categoryMap[residentData.special_category_id] || null : null
+      }
+      return new Resident(enrichedData)
+    })
+  }
+
+  /**
+   * Process single resident with special category (static method)
+   * @param {Object} residentData - Raw resident data from database
+   * @param {Object} db - Database connection
+   * @returns {Resident} - Resident instance with special category
+   */
+  static async processWithSpecialCategory(residentData, db) {
+    if (!residentData) return null
+
+    if (residentData.special_category_id) {
+      // Fetch special category name
+      const categoryQuery = `
+        SELECT category_name 
+        FROM special_categories 
+        WHERE id = $1
+      `
+      const categoryResult = await db.query(categoryQuery, [residentData.special_category_id])
+      
+      if (categoryResult.rows.length > 0) {
+        residentData.special_category_name = categoryResult.rows[0].category_name
+      }
+    }
+
+    return new Resident(residentData)
   }
 }
 

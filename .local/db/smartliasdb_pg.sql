@@ -80,7 +80,7 @@ CREATE TABLE residents (
     -- Address Information
     address TEXT, -- Optional - some residents may not want to provide address
     purok INTEGER,
-    street VARCHAR(20),
+    street VARCHAR(20), -- STREET_ID
     
     -- Family Information
     family_group_id INTEGER REFERENCES family_groups(id) ON DELETE SET NULL, -- Links to family group
@@ -96,6 +96,7 @@ CREATE TABLE residents (
     
     -- System fields
     is_active INTEGER DEFAULT 1, -- 0=inactive, 1=active
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- NULL=system_generated (registration), user_id=admin created
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -111,6 +112,7 @@ CREATE INDEX idx_residents_gender ON residents(gender);
 CREATE INDEX idx_residents_civil_status ON residents(civil_status);
 CREATE INDEX idx_residents_special_category ON residents(special_category_id);
 CREATE INDEX idx_residents_is_active ON residents(is_active);
+CREATE INDEX idx_residents_created_by ON residents(created_by);
 CREATE INDEX idx_residents_full_name ON residents(first_name, last_name);
 
 -- ============================================
@@ -156,27 +158,49 @@ CREATE INDEX idx_special_categories_code ON special_categories(category_code);
 -- ADDITIONAL TABLES FOR EXTENDED FUNCTIONALITY
 -- ============================================
 
--- Service Requests Table (for barangay services)
-DROP TABLE IF EXISTS service_requests CASCADE;
+-- Document Catalog Table (master/lookup table for available documents)
+DROP TABLE IF EXISTS document_catalog CASCADE;
 
-CREATE TABLE service_requests (
+CREATE TABLE document_catalog (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL, -- "Barangay Certificate", "Certificate of Indigency", etc.
+    description TEXT, -- Detailed description of the document and requirements
+    filename VARCHAR(255), -- Template filename if any (e.g., "barangay_certificate_template.pdf")
+    fee DECIMAL(10,2) DEFAULT 0.00, -- Document processing fee in PHP
+    is_active INTEGER DEFAULT 1, -- 0=inactive, 1=active (for enabling/disabling document types)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_document_catalog_active ON document_catalog(is_active);
+CREATE INDEX idx_document_catalog_title ON document_catalog(title);
+
+-- Document Requests Table (for barangay document applications)
+DROP TABLE IF EXISTS document_requests CASCADE;
+
+CREATE TABLE document_requests (
     id SERIAL PRIMARY KEY,
     resident_id INTEGER REFERENCES residents(id) ON DELETE CASCADE,
-    request_type VARCHAR(100) NOT NULL,
-    description TEXT,
-    status VARCHAR(20) DEFAULT 'pending',
-    priority VARCHAR(20) DEFAULT 'normal',
+    document_id INTEGER REFERENCES document_catalog(id) ON DELETE RESTRICT, -- Reference to document catalog
+    purpose TEXT, -- Purpose of the document request
+    status VARCHAR(20) DEFAULT 'pending', -- pending, processing, ready, completed, rejected
+    priority VARCHAR(20) DEFAULT NULL, -- NULL initially, admin sets: low, normal, high, urgent
+    priority_set_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Admin/staff who set the priority
+    priority_set_at TIMESTAMP DEFAULT NULL, -- When priority was set
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     processed_at TIMESTAMP DEFAULT NULL,
-    notes TEXT
+    notes TEXT, -- Internal notes from staff/admin
+    attachment_path VARCHAR(500) DEFAULT NULL -- File path for supporting documents
 );
 
-CREATE INDEX idx_service_requests_resident_id ON service_requests(resident_id);
-CREATE INDEX idx_service_requests_status ON service_requests(status);
-CREATE INDEX idx_service_requests_type ON service_requests(request_type);
-CREATE INDEX idx_service_requests_created_at ON service_requests(created_at);
+CREATE INDEX idx_document_requests_resident_id ON document_requests(resident_id);
+CREATE INDEX idx_document_requests_status ON document_requests(status);
+CREATE INDEX idx_document_requests_document_id ON document_requests(document_id);
+CREATE INDEX idx_document_requests_created_at ON document_requests(created_at);
+CREATE INDEX idx_document_requests_priority ON document_requests(priority);
+CREATE INDEX idx_document_requests_priority_set_by ON document_requests(priority_set_by);
 
 -- Announcements Table
 DROP TABLE IF EXISTS announcements CASCADE;
@@ -299,20 +323,39 @@ INSERT INTO residents (
 -- Leoncio Ong (Father) - linked to user account
 (3, 'LEONCIO', 'ONG', 'TAN', '1942-12-05', 1, 'Married',
  '09447697875', 'leoncio.ong@email.com', 'B4 L1 BURGOS ST', 1, 2, 1, 'Islam', 'Pensioner',
- (SELECT id FROM special_categories WHERE category_code = 'SENIOR_CITIZEN'), 'War veteran with pension'),
+ NULL, 'War veteran with pension - Senior citizen (age calculated dynamically)'),
 
 -- Alicia Ong (Mother) - no user account
 (NULL, 'ALICIA', 'ONG', 'MEDIOLA', '1956-03-14', 2, 'Married',
  '09447697875', NULL, 'B4 L1 BURGOS ST', 1, 2, 1, 'Others', 'Pensioner',
  (SELECT id FROM special_categories WHERE category_code = 'INDIGENT'), 'Qualified for social assistance programs');
 
--- Insert sample service requests
-INSERT INTO service_requests (resident_id, request_type, description, status, priority) VALUES
-(1, 'Barangay Certificate', 'Need certificate for employment requirement', 'pending', 'normal'),
-(2, 'Barangay Clearance', 'For business permit application', 'completed', 'high'),
-(5, 'Senior Citizen ID', 'Application for senior citizen benefits', 'processing', 'normal'),
-(1, 'Certificate of Residency', 'For school enrollment of child', 'completed', 'normal'),
-(2, 'Indigency Certificate', 'For medical assistance application', 'pending', 'urgent');
+-- Insert sample document catalog (available document types)
+INSERT INTO document_catalog (title, description, filename, fee, is_active) VALUES
+('Electrical Permit', 'Permit required for electrical installations and repairs in residential or commercial properties.', 'electrical_permit_template.pdf', 100.00, 1),
+('Fence Permit', 'Authorization to construct fences around residential or commercial properties within barangay jurisdiction.', 'fence_permit_template.pdf', 75.00, 1),
+('Excavation Permit', 'Permit for excavation activities including digging, construction foundations, and land development.', 'excavation_permit_template.pdf', 150.00, 1),
+('Barangay Clearance', 'Certificate indicating no pending cases or issues in the barangay. Required for employment and various transactions.', 'barangay_clearance_template.pdf', 50.00, 1),
+('Certificate of Residency', 'Official certificate proving residency within the barangay. Required for school enrollment and government transactions.', 'certificate_of_residency_template.pdf', 40.00, 1),
+('Certificate of Good Moral', 'Character reference certificate from barangay officials attesting to good moral standing in the community.', 'good_moral_template.pdf', 30.00, 1),
+('Certificate of Indigency (Medical)', 'Document certifying indigent status specifically for medical assistance and healthcare support programs.', 'indigency_medical_template.pdf', 0.00, 1),
+('Certificate of Indigency (Financial)', 'Document certifying indigent status for financial assistance and social services programs.', 'indigency_financial_template.pdf', 0.00, 1),
+('Business Permit Clearance', 'Barangay clearance required for small business operations and business permit applications.', 'business_permit_template.pdf', 100.00, 1);
+
+-- Insert sample document requests
+INSERT INTO document_requests (resident_id, document_id, purpose, status, priority, priority_set_by, priority_set_at) VALUES
+-- New requests without priority (as submitted by residents)
+(1, 1, 'Home electrical wiring installation', 'pending', NULL, NULL, NULL),
+(3, 2, 'Property boundary fence construction', 'pending', NULL, NULL, NULL),
+(1, 6, 'Character reference for job application', 'pending', NULL, NULL, NULL),
+(5, 9, 'Small sari-sari store business permit', 'pending', NULL, NULL, NULL),
+
+-- Requests with admin-assigned priorities (processed by staff)
+(2, 4, 'Employment requirement at ABC Company', 'ready', 'high', 1, CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(1, 5, 'School enrollment of child', 'completed', 'normal', 1, CURRENT_TIMESTAMP - INTERVAL '5 days'),
+(2, 7, 'Medical assistance application for surgery', 'processing', 'urgent', 1, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+(3, 4, 'Travel abroad document requirements', 'processing', 'normal', 1, CURRENT_TIMESTAMP - INTERVAL '3 days'),
+(2, 8, 'Financial assistance for family emergency', 'completed', 'high', 1, CURRENT_TIMESTAMP - INTERVAL '4 days');
 
 -- Insert sample announcements (some published, some drafts)
 -- Type values: 1=General, 2=Health, 3=Activities, 4=Assistance, 5=Advisory
@@ -334,7 +377,7 @@ INSERT INTO announcement_sms_logs (announcement_id, target_groups, total_recipie
 (1, '["all"]', 45, 43, 2, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall. Your attendance is appreciated.'),
 
 -- SMS sent for COVID-19 Vaccination (senior citizens and PWDs only)
-(2, '["special_category:SENIOR_CITIZEN", "special_category:PWD"]', 18, 16, 2, 'BARANGAY LIAS: Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025. Priority for senior citizens and PWDs.'),
+(2, '["age_group:60+", "special_category:PWD"]', 18, 16, 2, 'BARANGAY LIAS: Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025. Priority for senior citizens and PWDs.'),
 
 -- SMS sent for Waste Collection (all residents)
 (3, '["all"]', 45, 45, 0, 'BARANGAY LIAS: New waste collection schedule: Mondays and Thursdays for biodegradable, Tuesdays and Fridays for non-biodegradable.');
@@ -347,7 +390,8 @@ COMMENT ON TABLE users IS 'Authentication and registration table - contains logi
 COMMENT ON TABLE residents IS 'Comprehensive resident information and records - contains all detailed resident data';
 COMMENT ON TABLE family_groups IS 'Family grouping table - groups residents into family units for tree display';
 COMMENT ON TABLE special_categories IS 'Lookup table for special resident categories (government programs, roles, etc.)';
-COMMENT ON TABLE service_requests IS 'Resident service requests and applications';
+COMMENT ON TABLE document_catalog IS 'Master catalog of available document types with fees and requirements';
+COMMENT ON TABLE document_requests IS 'Resident document requests and applications for barangay certificates and clearances';
 COMMENT ON TABLE announcements IS 'Stores barangay announcements with draft/publish workflow. Status managed by published_at: NULL = unpublished, NOT NULL = published';
 COMMENT ON COLUMN announcements.published_at IS 'Publication timestamp: NULL = draft, NOT NULL = published';
 COMMENT ON COLUMN announcements.published_by IS 'User who published the announcement: NULL = not published yet';
@@ -372,8 +416,15 @@ COMMENT ON COLUMN residents.special_category_id IS 'Single special category per 
 COMMENT ON COLUMN residents.notes IS 'Additional details about the resident (PWD type, specific conditions, etc.)';
 COMMENT ON COLUMN residents.purok IS 'Purok number (1-7)';
 
-COMMENT ON COLUMN service_requests.status IS 'pending/processing/completed/rejected';
-COMMENT ON COLUMN service_requests.priority IS 'low/normal/high/urgent';
+COMMENT ON COLUMN document_catalog.title IS 'Document name: Electrical Permit, Fence Permit, Excavation Permit, Barangay Clearance, Certificate of Residency, Certificate of Good Moral, Certificate of Indigency (Medical), Certificate of Indigency (Financial), Business Permit Clearance';
+COMMENT ON COLUMN document_catalog.fee IS 'Processing fee in PHP - 0.00 for indigency certificates, varies for other documents';
+COMMENT ON COLUMN document_catalog.is_active IS '1=available for request, 0=temporarily unavailable';
+COMMENT ON COLUMN document_requests.status IS 'pending/processing/ready/completed/rejected - ready means document is prepared and ready for pickup';
+COMMENT ON COLUMN document_requests.priority IS 'NULL initially (resident submits without priority), admin sets: low/normal/high/urgent - affects processing order';
+COMMENT ON COLUMN document_requests.priority_set_by IS 'Admin/staff user who assigned the priority level';
+COMMENT ON COLUMN document_requests.priority_set_at IS 'Timestamp when priority was assigned by admin/staff';
+COMMENT ON COLUMN document_requests.purpose IS 'Reason or purpose for requesting the document';
+COMMENT ON COLUMN document_requests.attachment_path IS 'File path to supporting documents uploaded by resident';
 
 -- ============================================
 -- GRANT PERMISSIONS (adjust as needed)
