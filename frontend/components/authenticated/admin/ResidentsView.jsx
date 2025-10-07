@@ -269,6 +269,9 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                         })()}
                       </h1>
                       <p className="text-xs text-gray-500">ID: {children.id}</p>
+                      {children.username && (
+                        <p className="text-xs text-gray-500">Username: <span className="font-mono">@{children.username}</span></p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
