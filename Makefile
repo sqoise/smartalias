@@ -21,7 +21,7 @@ install:
 	@echo "Installing dependencies..."
 	@cd $(FRONTEND_DIR) && npm install
 	@cd $(BACKEND_DIR) && npm install
-	@echo "✅ Install complete"
+	@echo "Install complete"
 
 dev:
 	@echo "Starting development mode..."
@@ -37,7 +37,7 @@ start:
 	@echo "Starting backend with PM2..."
 	@cd $(BACKEND_DIR) && npm run pm2:start
 	@echo ""
-	@echo "✅ Backend started"
+	@echo "Backend started"
 	@echo "  Backend:  http://localhost:9000"
 	@echo "  Health:   http://localhost:9000/api/health"
 	@echo ""
@@ -48,12 +48,12 @@ stop:
 	@echo "Stopping backend..."
 	@cd $(BACKEND_DIR) && npm run pm2:stop || true
 	@cd $(BACKEND_DIR) && npm run pm2:delete || true
-	@echo "✅ Backend stopped"
+	@echo "Backend stopped"
 
 restart:
 	@echo "Restarting backend..."
 	@cd $(BACKEND_DIR) && npm run pm2:restart
-	@echo "✅ Backend restarted"
+	@echo "Backend restarted"
 
 status:
 	@cd $(BACKEND_DIR) && npm run pm2:status
@@ -66,7 +66,7 @@ clean:
 	@echo "Cleaning node_modules..."
 	@rm -rf $(FRONTEND_DIR)/node_modules $(FRONTEND_DIR)/.next
 	@rm -rf $(BACKEND_DIR)/node_modules
-	@echo "✅ Clean complete"
+	@echo "Clean complete"
 
 db-migrate:
 	@echo "Running database migration..."

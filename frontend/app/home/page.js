@@ -79,7 +79,7 @@ function NavigationHeader() {
         const sessionResponse = await ApiClient.getSession()
         if (sessionResponse.success) {
           setIsAuthenticated(true)
-          setUserRole(sessionResponse.user.role)
+          setUserRole(sessionResponse.data.role) // Fixed: Use .data instead of .user
         }
       } catch (error) {
         // User is not authenticated, which is fine for home page

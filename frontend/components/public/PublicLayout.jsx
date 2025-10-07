@@ -33,7 +33,7 @@ export default function PublicLayout({
         const sessionResponse = await ApiClient.getSession()
         if (sessionResponse.success) {
           // User is already authenticated, redirect to appropriate dashboard
-          const userRole = sessionResponse.user.role
+          const userRole = sessionResponse.data.role // Fixed: Use .data instead of .user
           const redirectPath = userRole === USER_ROLES.ADMIN ? '/admin' : '/resident'
           router.replace(redirectPath)
           return

@@ -148,9 +148,9 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
       
       {/* Slide Panel from Right */}
       <div
-        className={`relative ml-auto h-full w-full sm:w-[520px] lg:w-[650px] xl:w-[750px] bg-gray-50 shadow-2xl transition-transform duration-300 ease-out transform ${
+        className={`fixed right-0 top-0 h-full w-full sm:w-[520px] lg:w-[650px] xl:w-[750px] bg-gray-50 shadow-2xl transition-transform duration-300 ease-out transform ${
           open ? 'translate-x-0' : 'translate-x-full'
-        } overflow-hidden`}
+        } overflow-hidden flex flex-col z-10`}
       >
         {/* Panel Header - No close button */}
         <div className="flex items-center shadow-sm justify-between p-3 px-6 border-b border-gray-200 bg-white">
@@ -169,7 +169,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
         </div>
 
         {/* Panel Content - Scrollable */}
-        <div className="h-full overflow-y-auto pb-12">
+        <div className="h-full overflow-y-auto">
           <div className="p-4">
             {/* Sectioned resident details layout */}
             {children && typeof children === 'object' && children.id ? (
@@ -279,7 +279,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                 </div>
 
                 {/* Temporary Credentials Section - Only show if password hasn't been changed */}
-                {children.is_password_changed === 0 && children.username && children.temp_password && (
+                {children.is_password_changed === 0 && children.username && (
                   <div className="pt-2 border-t border-gray-200">
                     <div className="flex items-center mb-2">
                       <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mr-2">Temporary Login Credentials</div>
@@ -299,7 +299,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                         <div>
                           <div className="text-xs text-amber-700 mb-1 font-medium">Temporary PIN</div>
                           <div className="text-xs font-mono text-amber-900 bg-white px-2 py-1 rounded border border-amber-200">
-                            {children.temp_password}
+                            {children.temp_password || '******'}
                           </div>
                         </div>
                       </div>

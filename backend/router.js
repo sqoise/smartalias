@@ -113,8 +113,25 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     logger.info('Successful login', { username, role: user.role })
 
-    // Determine redirect URL based on role constants
-    const redirectTo = user.role === USER_ROLES.ADMIN ? '/admin' : '/resident'
+    // Determine redirect URL - force password change if needed
+    let redirectTo
+    if (user.is_password_changed === 0) {
+      // Generate a temporary single-use token for password change
+      // This token is different from the JWT and expires in 24 hours
+      const changePasswordToken = jwt.sign(
+        {
+          userId: user.id,
+          username: user.username,
+          purpose: 'change-password',
+          timestamp: Date.now()
+        },
+        config.JWT_SECRET,
+        { expiresIn: '24h' }
+      )
+      redirectTo = `/change-pin?token=${changePasswordToken}`
+    } else {
+      redirectTo = user.role === USER_ROLES.ADMIN ? '/admin' : '/resident'
+    }
 
     return ApiResponse.success(res, {
       token,
@@ -169,16 +186,25 @@ router.post('/auth/check-user', authLimiter, async (req, res) => {
 })
 
 // GET /api/auth/me - Get current user info
-router.get('/auth/me', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-      role: req.user.role
-    },
-    message: 'User information retrieved'
-  })
+router.get('/auth/me', authenticateToken, async (req, res) => {
+  try {
+    // Get full user info including is_password_changed
+    const user = await UserRepository.findByUsername(req.user.username)
+    
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    return ApiResponse.success(res, {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      passwordChanged: user.is_password_changed !== 0
+    }, 'User information retrieved')
+  } catch (error) {
+    logger.error('Get user info error', error)
+    return ApiResponse.serverError(res, 'Failed to get user info', error)
+  }
 })
 
 // POST /api/auth/logout - User logout
@@ -190,7 +216,7 @@ router.post('/auth/logout', authenticateToken, (req, res) => {
   })
 })
 
-// POST /api/auth/change-password - Change user PIN
+// POST /api/auth/change-password - Change user PIN (requires current PIN)
 router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, async (req, res) => {
   try {
     const { currentPin, newPin } = req.body
@@ -254,6 +280,117 @@ router.post('/auth/change-password', passwordChangeLimiter, authenticateToken, a
       success: false,
       error: 'Failed to change PIN'
     })
+  }
+})
+
+// POST /api/auth/validate-change-token - Validate change password token
+router.post('/auth/validate-change-token', async (req, res) => {
+  try {
+    const { token } = req.body
+
+    if (!token) {
+      return ApiResponse.error(res, 'Token is required', 400)
+    }
+
+    // Verify token
+    let decoded
+    try {
+      decoded = jwt.verify(token, config.JWT_SECRET)
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return ApiResponse.error(res, 'Token has expired. Please login again.', 401)
+      }
+      return ApiResponse.error(res, 'Invalid token', 401)
+    }
+
+    // Check if token is for password change purpose
+    if (decoded.purpose !== 'change-password') {
+      return ApiResponse.error(res, 'Invalid token purpose', 401)
+    }
+
+    // Get user to check if password has already been changed
+    const user = await UserRepository.findByUsername(decoded.username)
+    
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    // If password already changed, token is no longer valid
+    if (user.is_password_changed !== 0) {
+      return ApiResponse.error(res, 'Password has already been changed. Please login.', 400)
+    }
+
+    // Token is valid
+    return ApiResponse.success(res, {
+      username: user.username,
+      role: user.role,
+      expiresAt: new Date(decoded.exp * 1000).toISOString()
+    }, 'Token is valid')
+
+  } catch (error) {
+    logger.error('Token validation error', error)
+    return ApiResponse.serverError(res, 'Failed to validate token', error)
+  }
+})
+
+// POST /api/auth/change-password-first-time - Change PIN for first-time users (no current PIN required)
+router.post('/auth/change-password-first-time', passwordChangeLimiter, async (req, res) => {
+  try {
+    const { token, newPin } = req.body
+
+    if (!token) {
+      return ApiResponse.error(res, 'Token is required', 400)
+    }
+
+    // Verify token
+    let decoded
+    try {
+      decoded = jwt.verify(token, config.JWT_SECRET)
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return ApiResponse.error(res, 'Token has expired. Please login again.', 401)
+      }
+      return ApiResponse.error(res, 'Invalid token', 401)
+    }
+
+    // Check if token is for password change purpose
+    if (decoded.purpose !== 'change-password') {
+      return ApiResponse.error(res, 'Invalid token purpose', 401)
+    }
+    // Validate input
+    const newPinValidation = Validator.validatePin(newPin)
+
+    if (!newPinValidation.isValid) {
+      return ApiResponse.validationError(res, {
+        newPin: newPinValidation.errors
+      }, 'Invalid new PIN format')
+    }
+
+    // Get user from token
+    const user = await UserRepository.findByUsername(decoded.username)
+
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    // Check if user has already changed password
+    if (user.is_password_changed !== 0) {
+      return ApiResponse.error(res, 'Password already changed. Please login with your new PIN.', 400)
+    }
+
+    // Hash new PIN
+    const newHashedPin = await bcrypt.hash(newPin.toString(), config.BCRYPT_ROUNDS)
+
+    // Update user password and set is_password_changed to 1
+    await UserRepository.updatePassword(user.id, user.username, newHashedPin)
+
+    logger.info('First-time password changed successfully', { username: req.user.username })
+
+    return ApiResponse.success(res, null, 'PIN changed successfully. You can now use your new PIN to login.')
+
+  } catch (error) {
+    logger.error('First-time password change error', error)
+    return ApiResponse.serverError(res, 'Failed to change PIN', error)
   }
 })
 

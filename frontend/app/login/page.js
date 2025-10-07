@@ -135,15 +135,27 @@ export default function LoginPage() {
       // Handle successful login
       const user = result.data?.user || result.user
       const redirectTo = result.data?.redirectTo || result.redirectTo
+      const token = result.data?.token || result.token
+      
+      // Store token ONLY if password has been changed
+      // For password change flow, token is in the URL
+      if (token && user.passwordChanged) {
+        localStorage.setItem('token', token)
+      }
       
       const message = !user.passwordChanged 
         ? AUTH_MESSAGES.PIN_CHANGE_REQUIRED
-        : `Welcome ${user.firstName}! Redirecting…`
+        : `Welcome ${user.username}! Redirecting…`
       
       handleAlert(message, !user.passwordChanged ? 'info' : 'success')
 
       setTimeout(() => {
-        router.push(redirectTo)
+        // If redirecting to change-pin, append token as query parameter
+        if (redirectTo === '/change-pin' && token) {
+          router.push(`${redirectTo}?token=${token}`)
+        } else {
+          router.push(redirectTo)
+        }
       }, 1500) // Increased delay to see the toast message
 
     } catch (error) {

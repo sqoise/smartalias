@@ -165,14 +165,59 @@ class ApiClient {
     return await ApiClient.request('/auth/me')
   }
 
-    /**
-   * Change user PIN/password
+  /**
+   * Get current user info (for validating token and getting user details)
+   */
+  static async getCurrentUser() {
+    const token = ApiClient.getStoredToken()
+    
+    if (!token) {
+      return {
+        success: false,
+        error: 'No authentication token found',
+      }
+    }
+
+    return await ApiClient.request('/auth/me')
+  }
+
+  /**
+   * Change user PIN/password (requires current PIN)
    */
   static async changePassword(currentPin, newPin) {
     return await ApiClient.request('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({
         currentPin,
+        newPin,
+      }),
+    })
+  }
+
+  /**
+   * Validate change password token
+   * Used to verify token from URL parameter is valid and not expired
+   */
+  static async validateChangePasswordToken(token) {
+    return await ApiClient.request('/auth/validate-change-token', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+      }),
+    })
+  }
+
+  /**
+   * Change PIN for first-time users (no current PIN required)
+   * Used when is_password_changed = 0
+   * @param {string} token - JWT token from URL parameter
+   * @param {string} newPin - New 6-digit PIN
+   */
+  static async changePasswordFirstTime(token, newPin) {
+    return await ApiClient.request('/auth/change-password-first-time', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
         newPin,
       }),
     })

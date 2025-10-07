@@ -17,33 +17,57 @@ export default function ChangePINPage() {
   const toastRef = useRef()
 
   // ==================== STATE MANAGEMENT ====================
+  const [isValidating, setIsValidating] = useState(true)
   const [isValidToken, setIsValidToken] = useState(false)
+  const [tokenExpiry, setTokenExpiry] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState('new-pin') // 'new-pin' or 'confirm-pin'
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [errors, setErrors] = useState({})
   const [showKeypad, setShowKeypad] = useState(false)
+  const [userInfo, setUserInfo] = useState(null)
+
+  // ==================== UI HELPERS ====================
+  const showAlert = (message, type = 'info') => {
+    alertToast(toastRef, message, type)
+  }
 
   // ==================== TOKEN VALIDATION ====================
   useEffect(() => {
-    try {
-      const token = searchParams.get('token')
-      
-      // Demo: Only accept 'qwe123' - REPLACE WITH REAL TOKEN VALIDATION
-      if (token !== 'qwe123') {
-        router.push('/not-found')
-        return
+    const validateToken = async () => {
+      try {
+        // Get token from URL query parameter
+        const tokenFromUrl = searchParams.get('token')
+        
+        if (!tokenFromUrl) {
+          // No token in URL - show error and redirect to login
+          showAlert('No token provided', 'error')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        
+        // Validate token with backend
+        const result = await ApiClient.validateChangePasswordToken(tokenFromUrl)
+        
+        if (result.success && result.data) {
+          setUserInfo(result.data.user)
+          setTokenExpiry(result.data.expiresAt)
+          setIsValidToken(true)
+          setIsValidating(false)
+        } else {
+          // Invalid token
+          showAlert(result.error || 'Invalid or expired token', 'error')
+          setTimeout(() => router.push('/login'), 2000)
+        }
+      } catch (error) {
+        console.error('Token validation error:', error)
+        showAlert('Failed to validate token', 'error')
+        setTimeout(() => router.push('/login'), 2000)
       }
-      
-      // Demo: Show loading spinner for UX - ADJUST TIMING AS NEEDED
-      setTimeout(() => {
-        setIsValidToken(true)
-      }, 500)
-    } catch (error) {
-      console.error('Token validation error:', error)
-      router.push('/not-found')
     }
+    
+    validateToken()
   }, [searchParams, router])
 
   // ==================== KEYBOARD HANDLING ====================
@@ -88,11 +112,6 @@ export default function ChangePINPage() {
     }
   }, [isValidToken, showKeypad])
 
-  // ==================== UI HELPERS ====================
-  const showAlert = (message, type = 'info') => {
-    alertToast(toastRef, message, type)
-  }
-
   // ==================== VALIDATION LOGIC ====================
   const validatePIN = (pin) => {
     if (!pin) return { isValid: false, error: AUTH_MESSAGES.PIN_REQUIRED }
@@ -108,11 +127,14 @@ export default function ChangePINPage() {
     try {
       const token = searchParams.get('token')
       
-      // Call the API to change password
-      const result = await ApiClient.changePin(token, pin)
+      if (!token) {
+        return { success: false, error: 'Token not found' }
+      }
+
+      const result = await ApiClient.changePasswordFirstTime(token, pin)
       
       if (result.success) {
-        return { success: true, message: result.message || 'Password changed successfully' }
+        return { success: true, message: result.message || 'PIN changed successfully' }
       } else {
         return { success: false, error: result.error || AUTH_MESSAGES.PIN_CHANGE_FAILED }
       }
@@ -158,10 +180,14 @@ export default function ChangePINPage() {
       const result = await submitNewPIN(newPin)
       
       if (result.success) {
-        showAlert(AUTH_MESSAGES.PIN_CHANGE_SUCCESS, 'success')
-        setTimeout(() => router.push('/login'), 2000)
+        showAlert('PIN changed successfully! Redirecting to login...', 'success')
+        
+        // Redirect to login page so user can login with new PIN
+        setTimeout(() => {
+          router.push('/login')
+        }, 2000)
       } else {
-        showAlert(AUTH_MESSAGES.PIN_CHANGE_FAILED, 'error')
+        showAlert(result.error || AUTH_MESSAGES.PIN_CHANGE_FAILED, 'error')
       }
     } catch (error) {
       showAlert(AUTH_MESSAGES.PIN_CHANGE_FAILED, 'error')
@@ -214,8 +240,17 @@ export default function ChangePINPage() {
   }
 
   // ==================== RENDER ====================
-  if (!isValidToken) {
+  if (isValidating || !isValidToken) {
     return <PageLoading />
+  }
+
+  // Calculate time remaining for token expiry
+  const getTimeRemaining = () => {
+    if (!tokenExpiry) return null
+    const now = new Date()
+    const expiry = new Date(tokenExpiry)
+    const hoursRemaining = Math.floor((expiry - now) / (1000 * 60 * 60))
+    return hoursRemaining
   }
 
   // Simple Navigation Header
@@ -232,6 +267,16 @@ export default function ChangePINPage() {
     </header>
   )
 
+  // Show loading while validating token
+  if (isValidating) {
+    return <PageLoading message="Validating token..." />
+  }
+
+  // Don't render if token is invalid
+  if (!isValidToken) {
+    return <PageLoading message="Redirecting to login..." />
+  }
+
   return (
     <>
       <ToastNotification ref={toastRef} />
@@ -240,6 +285,26 @@ export default function ChangePINPage() {
         variant="change-pin" 
         hideBackgroundImage={showKeypad}
       >
+        {/* Token Expiry Disclaimer */}
+        {tokenExpiry && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-amber-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm text-amber-800">
+                  <span className="font-medium">Password Change Link Active</span>
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  You have <span className="font-semibold">{getTimeRemaining()} hours</span> before this link expires. 
+                  After setting your PIN, you will be redirected to the login page.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <ChangePINCard
           currentStep={currentStep}
           newPin={newPin}

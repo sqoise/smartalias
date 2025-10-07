@@ -105,8 +105,8 @@ class Database {
         error: error.message,
         url: config.SUPABASE_URL?.substring(0, 50) + '...'
       })
-      console.error(`❌ Supabase connection failed: ${error.message}`)
-      console.error('   💡 Check your Supabase URL and API keys')
+      console.error(`Supabase connection failed: ${error.message}`)
+      console.error('Check your Supabase URL and API keys')
       throw error
     }
   }

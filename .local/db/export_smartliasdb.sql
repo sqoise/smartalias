@@ -30,7 +30,7 @@ SELECT 'Database timezone set to: ' || current_setting('timezone') AS timezone_s
 -- ============================================
 
 -- Create application user for SmartLias
--- NOTE: You need to set a password after running this script
+-- NOTE: Change 'admin123' to a secure password before running in production
 CREATE USER smartlias_app_su WITH
     CREATEDB
     CREATEROLE
@@ -39,26 +39,40 @@ CREATE USER smartlias_app_su WITH
     CONNECTION LIMIT -1
     PASSWORD 'admin123';
 
--- Set password
-ALTER USER smartlias_app_su PASSWORD '';
-
 -- Grant all privileges on the database
 GRANT ALL PRIVILEGES ON DATABASE smartliasdb TO smartlias_app_su;
--- Grant usage on public schema
-GRANT USAGE ON SCHEMA public TO smartlias_app_su;
--- Grant all privileges on all tables in public schema
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO smartlias_app_su;
--- Grant all privileges on all sequences in public schema  
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO smartlias_app_su;
--- Grant privileges on future tables and sequences
-ALTER DEFAULT PRIVILEGES IN SCHEMA public 
-    GRANT ALL PRIVILEGES ON TABLES TO smartlias_app_su;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public 
-    GRANT ALL PRIVILEGES ON SEQUENCES TO smartlias_app_su;
+
 -- Make smartlias_app_su the owner of the database for full control
 ALTER DATABASE smartliasdb OWNER TO smartlias_app_su;
 
-\connect "smartliasdb";
+-- ====================================================================
+-- NOTE: If running this script via psql command line, use:
+--       psql -U postgres -d smartliasdb -f export_smartliasdb.sql
+-- 
+-- If using a SQL client (DBeaver, pgAdmin, etc.), you must:
+--   1. Run the script up to this point in the postgres/template database
+--   2. Then connect to 'smartliasdb' database manually
+--   3. Run the remaining script (from SECTION 1 onwards)
+-- ====================================================================
+
+-- Connect to the database (psql only - comment out if using SQL client)
+-- \c smartliasdb
+
+-- Grant usage on public schema
+GRANT USAGE ON SCHEMA public TO smartlias_app_su;
+
+-- Grant all privileges on all tables in public schema
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO smartlias_app_su;
+
+-- Grant all privileges on all sequences in public schema  
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO smartlias_app_su;
+
+-- Grant privileges on future tables and sequences
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+    GRANT ALL PRIVILEGES ON TABLES TO smartlias_app_su;
+    
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+    GRANT ALL PRIVILEGES ON SEQUENCES TO smartlias_app_su;
 
 -- ====================================================================
 -- SECTION 1: TABLE CREATION
@@ -131,8 +145,7 @@ CREATE TABLE "public"."residents" (
     "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
     "home_number" character varying(20),
     "street" integer,
-    "created_by" integer,
-    CONSTRAINT "residents_family_role_check" CHECK ((family_role = ANY (ARRAY[1, 2])))
+    "created_by" integer
 );
 
 -- Announcements table
@@ -181,7 +194,7 @@ INSERT INTO "special_categories" ("id", "category_code", "category_name", "descr
 (3,	'SOLO_PARENT',	'Solo Parent',	'Single parents raising children alone',	'2025-10-03 23:14:15.805248',	'2025-10-03 23:14:15.805248'),
 (5,	'STUDENT',	'Student',	'Currently enrolled in educational institution',	'2025-10-03 23:14:15.805248',	'2025-10-03 23:14:15.805248'),
 (6,	'INDIGENT',	'Indigent',	'Residents classified as indigent for social services',	'2025-10-06 17:51:07.045482',	'2025-10-06 17:51:07.045482'),
-(2,	'PWD',	'Person with Disability (PWD)',	'Residents with physical, mental, intellectual, or sensory disabilities',	'2025-10-03 23:14:15.805248',	'2025-10-03 23:14:15.805248');
+(2,	'PWD',	'PWD',	'Residents with physical, mental, intellectual, or sensory disabilities',	'2025-10-03 23:14:15.805248',	'2025-10-03 23:14:15.805248');
 
 -- Insert Household
 INSERT INTO "household" ("id", "household_name", "created_at", "updated_at") VALUES
@@ -189,11 +202,11 @@ INSERT INTO "household" ("id", "household_name", "created_at", "updated_at") VAL
 (2,	'Ong Family',	'2025-10-03 23:14:15.806254',	'2025-10-03 23:14:15.806254');
 
 -- Insert Residents
-INSERT INTO "residents" ("id", "user_id", "last_name", "first_name", "middle_name", "suffix", "birth_date", "gender", "civil_status", "mobile_number", "email", "address", "purok", "household_id", "family_role", "religion", "occupation", "special_category_id", "notes", "is_active", "created_at", "updated_at", "home_number", "street", "created_by") VALUES
-(2,	9,	'Manansala',	'Jacob',	'Santos',	NULL,	'2004-01-11',	1,	'Single',	'09294838765',	'mj@example.com',	'12 BLOCK ST. BRGY LIAS, MARILAO BULACAN',	3,	NULL,	NULL,	'OTHERS',	'OTHERS',	NULL,	NULL,	1,	'2025-10-04 03:49:19.864176',	'2025-10-04 03:49:19.864176',	NULL,	NULL,	NULL),
-(6,	13,	'Bernardo',	'Jess',	'Santos',	NULL,	'2022-02-02',	2,	'Married',	'09067268602',	NULL,	'23K Gervacio St Brgy Lias, Marilao Bulacan',	7,	NULL,	NULL,	'ROMAN_CATHOLIC',	'RETIRED',	NULL,	NULL,	1,	'2025-10-05 23:41:57.848304',	'2025-10-05 23:41:57.848304',	NULL,	NULL,	NULL),
-(1,	6,	'Kapitan',	'Juan',	'Dela Cruz',	NULL,	'1980-01-15',	1,	'Married',	NULL,	'admin.kapitan@smartlias.local',	'B1 L1 Burgos Street',	1,	NULL,	NULL,	'Catholic',	'Barangay Captain',	NULL,	NULL,	1,	'2025-10-03 23:39:10.868217',	'2025-10-03 23:39:10.868217',	NULL,	NULL,	NULL),
-(3,	10,	'Manansala',	'John Lloyd',	'Santos',	NULL,	'1998-09-01',	1,	'Single',	'09268939406',	'08.soled.press@icloud.com',	'13 Vidal St. Brgy Ibaba, Malabon City',	1,	NULL,	NULL,	NULL,	NULL,	2,	NULL,	1,	'2025-10-04 04:01:26.109413',	'2025-10-04 04:01:26.109413',	NULL,	NULL,	NULL);
+INSERT INTO "residents" ("id", "user_id", "last_name", "first_name", "middle_name", "suffix", "birth_date", "gender", "civil_status", "mobile_number", "email", "address", "purok", "household_id", "religion", "occupation", "special_category_id", "notes", "is_active", "created_at", "updated_at", "home_number", "street", "created_by") VALUES
+(2,	9,	'Manansala',	'Jacob',	'Santos',	NULL,	'2004-01-11',	1,	'Single',	'09294838765',	'mj@example.com',	'12 BLOCK ST. BRGY LIAS, MARILAO BULACAN',	3,	NULL,	'OTHERS',	'OTHERS',	NULL,	NULL,	1,	'2025-10-04 03:49:19.864176',	'2025-10-04 03:49:19.864176',	NULL,	NULL,	NULL),
+(6,	13,	'Bernardo',	'Jess',	'Santos',	NULL,	'2022-02-02',	2,	'Married',	'09067268602',	NULL,	'23K Gervacio St Brgy Lias, Marilao Bulacan',	7,	NULL,	'ROMAN_CATHOLIC',	'RETIRED',	NULL,	NULL,	1,	'2025-10-05 23:41:57.848304',	'2025-10-05 23:41:57.848304',	NULL,	NULL,	NULL),
+(1,	6,	'Kapitan',	'Juan',	'Dela Cruz',	NULL,	'1980-01-15',	1,	'Married',	NULL,	'admin.kapitan@smartlias.local',	'B1 L1 Burgos Street',	1,	NULL,	'Catholic',	'Barangay Captain',	NULL,	NULL,	1,	'2025-10-03 23:39:10.868217',	'2025-10-03 23:39:10.868217',	NULL,	NULL,	NULL),
+(3,	10,	'Manansala',	'John Lloyd',	'Santos',	NULL,	'1998-09-01',	1,	'Single',	'09268939406',	'08.soled.press@icloud.com',	'13 Vidal St. Brgy Ibaba, Malabon City',	1,	NULL,	NULL,	NULL,	2,	NULL,	1,	'2025-10-04 04:01:26.109413',	'2025-10-04 04:01:26.109413',	NULL,	NULL,	NULL);
 
 -- Insert Announcements
 INSERT INTO "announcements" ("id", "title", "content", "type", "created_by", "created_at", "updated_at", "published_by", "published_at", "target_type", "target_value") VALUES
@@ -215,6 +228,19 @@ INSERT INTO "announcements" ("id", "title", "content", "type", "created_by", "cr
 (64,	'Tax Declaration Reminder',	'Reminder to all property owners: Real property tax declarations are due by December 31st. Visit the municipal treasury office for payment.',	'1',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	NULL,	NULL,	NULL,	NULL),
 (65,	'New Year Celebration Guidelines',	'Guidelines for New Year celebration: No firecrackers allowed. Community fireworks display will be held at the barangay plaza. Let''s celebrate safely!',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	NULL,	NULL,	NULL,	NULL),
 (72,	'Ayuda 2nd Tranche',	'Announcement! Dumating napo ang ayuda para sa mga walang pera. Bumisita po sa ating barangay office upang kumuha ng ayuda. Maraming Salamat po.',	'1',	6,	'2025-10-06 10:29:54.850391',	'2025-10-06 18:13:15.127',	6,	'2025-10-06 18:13:15.127',	NULL,	NULL);
+
+-- ====================================================================
+-- SECTION 2.1: RESET SEQUENCES
+-- ====================================================================
+-- Reset all sequence values to prevent duplicate key errors
+-- This ensures sequences start from the correct value after manual inserts
+
+SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
+SELECT setval('special_categories_id_seq', (SELECT MAX(id) FROM special_categories));
+SELECT setval('household_id_seq', (SELECT MAX(id) FROM household));
+SELECT setval('residents_id_seq', (SELECT MAX(id) FROM residents));
+SELECT setval('announcements_id_seq', (SELECT MAX(id) FROM announcements));
+SELECT setval('announcement_sms_logs_id_seq', COALESCE((SELECT MAX(id) FROM announcement_sms_logs), 1));
 
 -- ====================================================================
 -- SECTION 3: COMMENTS, INDEXES, AND CONSTRAINTS
@@ -253,7 +279,6 @@ CREATE UNIQUE INDEX residents_user_id_key ON public.residents USING btree (user_
 CREATE INDEX idx_residents_user_id ON public.residents USING btree (user_id);
 CREATE INDEX idx_residents_purok ON public.residents USING btree (purok);
 CREATE INDEX idx_residents_household_id ON public.residents USING btree (household_id);
-CREATE INDEX idx_residents_family_role ON public.residents USING btree (family_role);
 CREATE INDEX idx_residents_last_name ON public.residents USING btree (last_name);
 CREATE INDEX idx_residents_first_name ON public.residents USING btree (first_name);
 CREATE INDEX idx_residents_gender ON public.residents USING btree (gender);

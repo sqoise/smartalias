@@ -28,7 +28,7 @@ export default function AdminLayout({ children }) {
           return
         }
 
-        const user = sessionResponse.user
+        const user = sessionResponse.data // Fixed: Use .data instead of .user
         
         // Check if user has admin role
         if (!isAdmin(user.role)) {

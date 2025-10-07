@@ -34,7 +34,7 @@ export default function LoginCard({
         setTimeout(() => onKeypadBackspace(), i * 10) // Small staggered delay
       }
     }
-  }, [showKeypad, pin.length, onKeypadBackspace]) // ✅ Fixed: Added missing dependencies
+  }, [showKeypad, pin.length, onKeypadBackspace]) // Fixed: Added missing dependencies
 
   const handlePINLogin = () => {
     if (!username.trim()) {
