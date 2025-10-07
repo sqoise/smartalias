@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import RegisterCard from '../../components/public/RegisterCard'
+import PageLoading from '../../components/common/PageLoading'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
 import { USER_ROLES } from '../../lib/constants'
@@ -18,7 +19,9 @@ export default function RegisterPage() {
   const router = useRouter()
   const toastRef = useRef()
   
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   const [formData, setFormData] = useState({
     // Name fields
     lastName: '',
@@ -42,6 +45,7 @@ export default function RegisterPage() {
     religion: '',
     occupation: '',
     specialCategory: '',
+    notes: '',
     
     // Account credentials
     username: '',
@@ -55,6 +59,35 @@ export default function RegisterPage() {
 
   // Unified toast helper
   const handleAlert = (message, type = 'info') => alertToast(toastRef, message, type)
+
+  // ============================================
+  // CHECK IF ALREADY AUTHENTICATED
+  // ============================================
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const session = await ApiClient.getSession()
+        
+        if (session.success && session.data) {
+          const user = session.data
+          // User is already authenticated, redirect to their dashboard
+          if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
+            router.push('/admin')
+          } else if (user.role === USER_ROLES.RESIDENT) {
+            router.push('/resident')
+          }
+          return
+        }
+      } catch (error) {
+        // Not authenticated, stay on register page
+        console.log('Not authenticated, showing register page')
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAuth()
+  }, [router])
 
   // ============================================
   // VALIDATION FUNCTIONS
@@ -88,41 +121,110 @@ export default function RegisterPage() {
         newErrors.firstName = 'First name can only contain letters and spaces'
       }
       
-      // Middle Name validation (required in this form)
-      if (!middleName) {
-        newErrors.middleName = 'Middle name is required'
-      } else if (middleName.length > 32) {
-        newErrors.middleName = 'Middle name must be 32 characters or less'
-      } else if (!/^[a-zA-Z\s]+$/.test(middleName)) {
+      // Middle Name validation (optional but must be valid format if provided)
+      if (middleName && !/^[a-zA-Z\s]+$/.test(middleName)) {
         newErrors.middleName = 'Middle name can only contain letters and spaces'
+      }
+      
+      // Suffix validation (optional but must be valid if provided)
+      const validSuffixes = ['', '1', '2', '3', '4', '5', '6']
+      if (formData.suffix && !validSuffixes.includes(formData.suffix)) {
+        newErrors.suffix = 'Invalid suffix selection'
       }
     } else if (currentStep === 2) {
       // Step 2: Personal & Contact Info
       if (!formData.birthDate) newErrors.birthDate = 'Birth date is required'
-      if (!formData.gender) newErrors.gender = 'Gender is required'
-      if (!formData.civilStatus) newErrors.civilStatus = 'Civil status is required'
-      if (!sanitizeInput(formData.address)) newErrors.address = 'Address is required'
       
-      // Email validation (optional)
+      // Gender validation - must be one of the allowed values
+      const validGenders = ['1', '2']
+      if (!formData.gender) {
+        newErrors.gender = 'Gender is required'
+      } else if (!validGenders.includes(formData.gender)) {
+        newErrors.gender = 'Invalid gender selection'
+      }
+      
+      // Civil Status validation - must be one of the allowed values
+      const validCivilStatuses = ['Single', 'Married', 'Widowed', 'Separated']
+      if (!formData.civilStatus) {
+        newErrors.civilStatus = 'Civil status is required'
+      } else if (!validCivilStatuses.includes(formData.civilStatus)) {
+        newErrors.civilStatus = 'Invalid civil status selection'
+      }
+      
+      // Address validation - required with minimum 20 characters
+      const address = sanitizeInput(formData.address)
+      if (!address) {
+        newErrors.address = 'Address is required'
+      } else if (address.length < 20) {
+        newErrors.address = 'Address must be at least 20 characters long'
+      }
+      
+      // Mobile number validation (optional but must be valid if provided)
+      const mobileNumber = sanitizeInput(formData.mobileNumber)
+      if (mobileNumber) {
+        const cleanMobile = mobileNumber.replace(/\s+/g, '')
+        if (!/^09\d{9}$/.test(cleanMobile)) {
+          newErrors.mobileNumber = 'Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)'
+        }
+      }
+      
+      // Home number validation (optional but must be valid if provided)
+      const homeNumber = sanitizeInput(formData.homeNumber)
+      if (homeNumber) {
+        const cleanHome = homeNumber.replace(/\s+/g, '')
+        if (!/^\d{8}$/.test(cleanHome)) {
+          newErrors.homeNumber = 'Enter valid 8-digit landline (e.g., 8000 0000)'
+        }
+      }
+      
+      // Email validation (optional but must be valid if provided)
       const email = sanitizeInput(formData.email)
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Please enter a valid email address'
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = 'Please enter a valid email address'
+      }
     } else if (currentStep === 3) {
       // Step 3: Additional Info
-      if (!formData.purok) newErrors.purok = 'Purok is required'
-      if (!sanitizeInput(formData.religion)) newErrors.religion = 'Religion is required'
-      if (!formData.occupation) newErrors.occupation = 'Occupation is required'
-      // Special category is optional - no validation needed
+      
+      // Purok validation - must be one of the allowed values
+      const validPuroks = ['1', '2', '3', '4', '5', '6', '7']
+      if (!formData.purok) {
+        newErrors.purok = 'Purok is required'
+      } else if (!validPuroks.includes(formData.purok)) {
+        newErrors.purok = 'Invalid purok selection'
+      }
+      
+      // Religion validation - must be one of the allowed values
+      const validReligions = ['ROMAN_CATHOLIC', 'PROTESTANT', 'IGLESIA_NI_CRISTO', 'ISLAM', 'BUDDHIST', 'OTHERS']
+      if (!formData.religion) {
+        newErrors.religion = 'Religion is required'
+      } else if (!validReligions.includes(formData.religion)) {
+        newErrors.religion = 'Invalid religion selection'
+      }
+      
+      // Occupation validation - must be one of the allowed values
+      const validOccupations = ['EMPLOYED', 'SELF_EMPLOYED', 'UNEMPLOYED', 'RETIRED', 'OTHERS']
+      if (!formData.occupation) {
+        newErrors.occupation = 'Occupation is required'
+      } else if (!validOccupations.includes(formData.occupation)) {
+        newErrors.occupation = 'Invalid occupation selection'
+      }
+      
+      // Special Category validation (optional but must be valid if provided)
+      const validSpecialCategories = ['', 'PWD', 'SOLO_PARENT', 'INDIGENT', 'STUDENT']
+      if (formData.specialCategory && !validSpecialCategories.includes(formData.specialCategory)) {
+        newErrors.specialCategory = 'Invalid special category selection'
+      }
     } else if (currentStep === 4) {
       // Step 4: Account Setup
       const sanitizedUsername = sanitizeInput(formData.username)
       if (!sanitizedUsername) {
         newErrors.username = 'Username is required'
-      } else if (!/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/.test(sanitizedUsername)) {
-        newErrors.username = 'Username must follow format: name.name (only letters, numbers and one period)'
-      } else if (sanitizedUsername.length < 6) {
-        newErrors.username = 'Username must be at least 6 characters'
+      } else if (sanitizedUsername.length < 3) {
+        newErrors.username = 'Username must be at least 3 characters'
       } else if (sanitizedUsername.length > 32) {
-        newErrors.username = 'Username must be less than 32 characters'
+        newErrors.username = 'Username must be 32 characters or less'
+      } else if (!/^[a-z0-9]+\.[a-z0-9]+$/.test(sanitizedUsername)) {
+        newErrors.username = 'Username must be in format: name.name (e.g., firstname.lastname, word123.word)'
       }
       
       // PIN validation
@@ -157,6 +259,41 @@ export default function RegisterPage() {
   // ============================================
   // EVENT HANDLERS
   // ============================================
+  
+  // Check username availability
+  const checkUsernameAvailability = async (username) => {
+    // Clear previous username error
+    setErrors(prev => ({ ...prev, username: '' }))
+    
+    // Skip check if username is empty or invalid format
+    const sanitizedUsername = sanitizeInput(username)
+    if (!sanitizedUsername || sanitizedUsername.length < 3 || !/^[a-z0-9]+\.[a-z0-9]+$/.test(sanitizedUsername)) {
+      return
+    }
+    
+    setIsCheckingUsername(true)
+    
+    try {
+      // Check if username exists
+      const response = await ApiClient.checkUser(sanitizedUsername)
+      
+      // If success is true, username exists (user found)
+      if (response.success) {
+        setErrors(prev => ({ ...prev, username: 'This username is already taken' }))
+      } else if (response.status === 404) {
+        // 404 means username not found (available) - this is good!
+        setErrors(prev => ({ ...prev, username: '' }))
+      } else {
+        // Other errors - don't show to user, just log
+        console.error('Username check error:', response.error)
+      }
+    } catch (error) {
+      // Network or unexpected errors - don't show to user, just log
+      console.error('Username check error:', error)
+    } finally {
+      setIsCheckingUsername(false)
+    }
+  }
   
   // Handle input changes
   const handleInputChange = (e) => {
@@ -219,32 +356,77 @@ export default function RegisterPage() {
     setIsLoading(true)
     
     try {
-      // Prepare registration data
+      // Double-check username availability before submitting
+      const sanitizedUsername = sanitizeInput(formData.username)
+      const checkResponse = await ApiClient.checkUser(sanitizedUsername)
+      
+      // If checkUser returns success: true, username exists
+      if (checkResponse.success) {
+        setErrors({ username: 'This username is already taken' })
+        setIsLoading(false)
+        handleAlert('Username is already taken. Please choose a different username.', 'error')
+        return
+      }
+      // If status is not 404, some other error occurred
+      if (checkResponse.status && checkResponse.status !== 404) {
+        console.error('Username check error during submission:', checkResponse.error)
+        // Continue anyway, let the backend handle it
+      }
+      
+      // Prepare registration data with all required fields
       const registrationData = {
-        username: sanitizeInput(formData.username),
+        // Credentials
+        username: sanitizedUsername,
+        pin: formData.pin,
+        
+        // Personal Information (Step 1)
         firstName: sanitizeInput(formData.firstName),
         middleName: sanitizeInput(formData.middleName),
         lastName: sanitizeInput(formData.lastName),
-        email: sanitizeInput(formData.email),
+        suffix: formData.suffix ? parseInt(formData.suffix, 10) : null,
+        
+        // Personal Details (Step 2)
+        birthDate: formData.birthDate,
+        gender: formData.gender ? parseInt(formData.gender, 10) : null,
+        civilStatus: formData.civilStatus,
+        
+        // Contact Information (Step 2)
         homeNumber: sanitizeInput(formData.homeNumber),
         mobileNumber: sanitizeInput(formData.mobileNumber),
+        email: sanitizeInput(formData.email),
         address: sanitizeInput(formData.address),
-        pin: formData.pin
+        purok: formData.purok ? parseInt(formData.purok, 10) : null,
+        
+        // Additional Information (Step 3)
+        religion: formData.religion,
+        occupation: formData.occupation,
+        specialCategory: formData.specialCategory || null,
+        notes: sanitizeInput(formData.notes)
       }
       
-      // Simulate API call for now (replace with actual API call later)
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Call backend API
+      const response = await ApiClient.register(registrationData)
       
-      handleAlert('Registration successful! Redirecting to login...', 'success')
+      // Success - show message and redirect to login
+      handleAlert(response.message || 'Registration successful! Redirecting to login...', 'success')
       
-      // Redirect to login after success
+      // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push('/login')
       }, 2000)
       
     } catch (error) {
       console.error('Registration error:', error)
-      handleAlert('Registration failed. Please try again.', 'error')
+      
+      // Handle specific error messages from backend
+      const errorMessage = error.message || 'Registration failed. Please try again.'
+      handleAlert(errorMessage, 'error')
+      
+      // If username already exists, scroll back to credentials step
+      if (errorMessage.includes('Username already exists')) {
+        setCurrentStep(4)
+        setErrors({ username: 'This username is already taken' })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -272,20 +454,28 @@ export default function RegisterPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      <NavigationHeader />
-      <PublicLayout>
-        <RegisterCard
-          formData={formData}
-          onInputChange={handleInputChange}
-          onSubmit={handleSubmit}
-          onNext={handleNext}
-          onBack={handleBack}
-          currentStep={currentStep}
-          stepTitle={getStepTitle(currentStep)}
-          isLoading={isLoading}
-          errors={errors}
-        />
-      </PublicLayout>
+      {isCheckingAuth ? (
+        <PageLoading />
+      ) : (
+        <>
+          <NavigationHeader />
+          <PublicLayout>
+            <RegisterCard
+              formData={formData}
+              onInputChange={handleInputChange}
+              onSubmit={handleSubmit}
+              onNext={handleNext}
+              onBack={handleBack}
+              currentStep={currentStep}
+              stepTitle={getStepTitle(currentStep)}
+              isLoading={isLoading}
+              errors={errors}
+              onUsernameBlur={checkUsernameAvailability}
+              isCheckingUsername={isCheckingUsername}
+            />
+          </PublicLayout>
+        </>
+      )}
     </>
   )
 }

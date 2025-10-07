@@ -130,8 +130,8 @@ class User {
       return { isValid: false, error: 'Username must be less than 50 characters' }
     }
 
-    if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
-      return { isValid: false, error: 'Username can only contain letters, numbers, dots, underscores, and hyphens' }
+    if (!/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/.test(username)) {
+      return { isValid: false, error: 'Username must be in format: name.name (e.g., firstname.lastname, word123.word)' }
     }
 
     return { isValid: true }

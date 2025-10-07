@@ -9,6 +9,26 @@ const IDUtils = require('../utils/idUtils')
 
 class UserRepository {
   /**
+   * Get user by ID
+   */
+  static async findById(userId) {
+    const result = await db.query(`
+      SELECT 
+        u.id, 
+        u.username, 
+        u.password, 
+        u.role,
+        u.is_password_changed,
+        u.failed_login_attempts,
+        u.locked_until
+      FROM users u 
+      WHERE u.id = $1
+    `, [userId])
+
+    return result.rows.length > 0 ? result.rows[0] : null
+  }
+
+  /**
    * Get user by username
    */
   static async findByUsername(username) {
@@ -80,6 +100,27 @@ class UserRepository {
     `, [hashedPassword, userId])
 
     logger.info('Password updated for user', { userId, username })
+  }
+
+  /**
+   * Reset user password (admin function)
+   * Sets is_password_changed to 0 to force password change on next login
+   * @param {number} userId - User ID
+   * @param {Object} updateData - Update data
+   * @param {string} updateData.passwordHash - New hashed password
+   * @param {boolean} updateData.passwordChanged - Whether password has been changed (false for reset)
+   */
+  static async resetPassword(userId, updateData) {
+    await db.query(`
+      UPDATE users 
+      SET 
+        password = $1,
+        is_password_changed = $2,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `, [updateData.passwordHash, updateData.passwordChanged ? 1 : 0, userId])
+
+    logger.info('Password reset for user', { userId })
   }
 
   /**

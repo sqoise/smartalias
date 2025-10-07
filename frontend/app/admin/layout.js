@@ -7,7 +7,7 @@ import Header from '../../components/authenticated/Header.jsx'
 import Sidebar from '../../components/authenticated/Sidebar.jsx'
 import PageLoading from '../../components/common/PageLoading.jsx'
 import ApiClient from '../../lib/apiClient.js'
-import { isAdmin } from '../../lib/constants.js'
+import { isAdmin, isStaff } from '../../lib/constants.js'
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname()
@@ -16,7 +16,7 @@ export default function AdminLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userInfo, setUserInfo] = useState(null)
 
-  // Check authentication and admin role on mount
+  // Check authentication and admin/staff role on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -30,13 +30,13 @@ export default function AdminLayout({ children }) {
 
         const user = sessionResponse.data // Fixed: Use .data instead of .user
         
-        // Check if user has admin role
-        if (!isAdmin(user.role)) {
-          router.push('/forbidden')
+        // Check if user has admin or staff role
+        if (!isStaff(user.role)) {
+          router.push('/not-found')
           return
         }
 
-        // User is authenticated and is admin
+        // User is authenticated and is admin or staff
         setIsAuthenticated(true)
         setUserInfo(user)
       } catch (error) {

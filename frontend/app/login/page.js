@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import LoginCard from '../../components/public/LoginCard'
+import PageLoading from '../../components/common/PageLoading'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
 import { AUTH_MESSAGES, USER_ROLES } from '../../lib/constants'
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const router = useRouter()
   const toastRef = useRef()
   
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
@@ -27,6 +29,35 @@ export default function LoginPage() {
 
   // Unified toast helper
   const handleAlert = (message, type = 'info') => alertToast(toastRef, message, type)
+
+  // ============================================
+  // CHECK IF ALREADY AUTHENTICATED
+  // ============================================
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const session = await ApiClient.getSession()
+        
+        if (session.success && session.data) {
+          const user = session.data
+          // User is already authenticated, redirect to their dashboard
+          if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
+            router.push('/admin')
+          } else if (user.role === USER_ROLES.RESIDENT) {
+            router.push('/resident')
+          }
+          return
+        }
+      } catch (error) {
+        // Not authenticated, stay on login page
+        console.log('Not authenticated, showing login page')
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAuth()
+  }, [router])
 
   // ============================================
   // VALIDATION FUNCTIONS
@@ -138,7 +169,7 @@ export default function LoginPage() {
       const token = result.data?.token || result.token
       
       // Store token ONLY if password has been changed
-      // For password change flow, token is in the URL
+      // For password change flow, token is in the redirectTo URL
       if (token && user.passwordChanged) {
         localStorage.setItem('token', token)
       }
@@ -150,12 +181,12 @@ export default function LoginPage() {
       handleAlert(message, !user.passwordChanged ? 'info' : 'success')
 
       setTimeout(() => {
-        // If redirecting to change-pin, append token as query parameter
-        if (redirectTo === '/change-pin' && token) {
-          router.push(`${redirectTo}?token=${token}`)
-        } else {
-          router.push(redirectTo)
+        // Clear any old tokens before redirecting to change-password
+        if (!user.passwordChanged) {
+          localStorage.removeItem('token')
         }
+        // Backend already includes token in redirectTo for change-password flow
+        router.push(redirectTo)
       }, 1500) // Increased delay to see the toast message
 
     } catch (error) {
@@ -208,23 +239,29 @@ export default function LoginPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      <NavigationHeader />
-      <PublicLayout hideBackgroundImage={showKeypad}>
-        <LoginCard
-            username={username}
-            setUsername={setUsername}
-            onUsernameSubmit={handleUsernameSubmit}
-            pin={pin}
-            errors={errors}
-            setErrors={setErrors}
-            isLoading={isLoading}
-            onLogin={handleLogin}
-            onKeypadNumber={handleKeypadNumber}
-            onKeypadBackspace={handleKeypadBackspace}
-            showKeypad={showKeypad}
-            setShowKeypad={setShowKeypad}
-          />
-      </PublicLayout>
+      {isCheckingAuth ? (
+        <PageLoading />
+      ) : (
+        <>
+          <NavigationHeader />
+          <PublicLayout hideBackgroundImage={showKeypad}>
+            <LoginCard
+                username={username}
+                setUsername={setUsername}
+                onUsernameSubmit={handleUsernameSubmit}
+                pin={pin}
+                errors={errors}
+                setErrors={setErrors}
+                isLoading={isLoading}
+                onLogin={handleLogin}
+                onKeypadNumber={handleKeypadNumber}
+                onKeypadBackspace={handleKeypadBackspace}
+                showKeypad={showKeypad}
+                setShowKeypad={setShowKeypad}
+              />
+          </PublicLayout>
+        </>
+      )}
     </>
   )
 }

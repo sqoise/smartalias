@@ -1,39 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import ApiClient from '../../../lib/apiClient'
+import PageLoading from '../../../components/common/PageLoading'
 
 export default function Profile() {
+  const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [profileData, setProfileData] = useState({
-    // Personal Information
-    firstName: 'Juan',
-    middleName: 'Santos',
-    lastName: 'Dela Cruz',
-    suffix: 'Jr.',
-    birthDate: '1985-03-15',
-    age: 39,
-    gender: 'Male',
-    civilStatus: 'Married',
-    
-    // Contact Information
-    email: 'juan.delacruz@email.com',
-    homeNumber: '8000-0000',
-    mobileNumber: '09123456789',
-    address: '123 Rizal Street, Barangay Lias',
-    purok: 'Purok 1',
-    
-    // Additional Information
-    religion: 'Roman Catholic',
-    occupation: 'Teacher',
-    specialCategory: 'None',
-    
-    // Account Information
-    username: 'juan.delacruz',
-    dateRegistered: '2024-01-15',
-    lastLogin: '2024-09-28 10:30 AM'
-  })
+  const [profileData, setProfileData] = useState(null)
+  const [editData, setEditData] = useState({})
+  const [errors, setErrors] = useState({})
 
-  const [editData, setEditData] = useState({ ...profileData })
+  // Fetch resident profile on component mount
+  useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const loadProfile = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Get current user session
+      const sessionResponse = await ApiClient.getSession()
+      
+      if (!sessionResponse.success || !sessionResponse.data) {
+        console.error('No session found')
+        return
+      }
+      
+      const user = sessionResponse.data
+      
+      // Fetch resident data by user ID
+      // Note: We need to find the resident by user_id
+      // For now, we'll fetch all residents and filter (you may want to add a backend endpoint)
+      const residentsResponse = await ApiClient.getResidents()
+      
+      if (residentsResponse.success && residentsResponse.data) {
+        // Find resident with matching user_id
+        const resident = residentsResponse.data.find(r => r.user_id === user.id)
+        
+        if (resident) {
+          setProfileData({
+            // Personal Information
+            firstName: resident.first_name || '',
+            middleName: resident.middle_name || '',
+            lastName: resident.last_name || '',
+            suffix: resident.suffix || '',
+            birthDate: resident.birth_date || '',
+            age: resident.age || 0,
+            gender: resident.gender || '',
+            civilStatus: resident.civil_status || '',
+            
+            // Contact Information
+            email: resident.email || '',
+            homeNumber: resident.home_number || '',
+            mobileNumber: resident.mobile_number || '',
+            address: resident.address || '',
+            purok: resident.purok || '',
+            
+            // Additional Information
+            religion: resident.religion || '',
+            occupation: resident.occupation || '',
+            specialCategory: resident.special_category || '',
+            
+            // Account Information
+            username: user.username,
+            dateRegistered: resident.created_at || '',
+            lastLogin: user.last_login || ''
+          })
+        } else {
+          console.error('No resident found for user')
+        }
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleEdit = () => {
     setEditData({ ...profileData })
@@ -45,18 +89,63 @@ export default function Profile() {
     setIsEditing(false)
   }
 
+  const validateFields = () => {
+    const newErrors = {}
+    
+    // Email validation (optional but must be valid if provided)
+    if (editData.email && editData.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email)) {
+        newErrors.email = 'Please enter a valid email address'
+      }
+    }
+    
+    // Mobile number validation (optional but must be valid if provided)
+    if (editData.mobileNumber && editData.mobileNumber.trim()) {
+      const cleanMobile = editData.mobileNumber.replace(/\s+/g, '')
+      if (!/^09\d{9}$/.test(cleanMobile)) {
+        newErrors.mobileNumber = 'Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)'
+      }
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSave = () => {
+    if (!validateFields()) {
+      return
+    }
     setProfileData({ ...editData })
     setIsEditing(false)
-    // Here you would typically make an API call to save the data
+    // TODO: Make API call to save the data
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    
+    // For mobile number, only allow digits and limit to 11
+    let processedValue = value
+    if (name === 'mobileNumber') {
+      processedValue = value.replace(/\D/g, '').slice(0, 11)
+    }
+    
     setEditData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }))
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
+
+  // Show loading state
+  if (isLoading || !profileData) {
+    return <PageLoading />
   }
 
   return (
@@ -255,30 +344,48 @@ export default function Profile() {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-0.5">Email Address</label>
               {isEditing ? (
-                <input
-                  type="email"
-                  name="email"
-                  value={editData.email}
-                  onChange={handleInputChange}
-                  className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none h-9"
-                />
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editData.email}
+                    onChange={handleInputChange}
+                    placeholder="name@example.com"
+                    className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+                      errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
+                    } focus:ring-1 focus:outline-none h-9`}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+                  )}
+                </div>
               ) : (
-                <p className="text-sm text-gray-900 py-1">{profileData.email}</p>
+                <p className="text-sm text-gray-900 py-1">{profileData.email || 'Not provided'}</p>
               )}
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-0.5">Mobile Number</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  name="mobileNumber"
-                  value={editData.mobileNumber}
-                  onChange={handleInputChange}
-                  className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none h-9"
-                />
+                <div>
+                  <input
+                    type="tel"
+                    name="mobileNumber"
+                    value={editData.mobileNumber}
+                    onChange={handleInputChange}
+                    placeholder="09XX XXX XXXX"
+                    inputMode="numeric"
+                    maxLength={11}
+                    className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+                      errors.mobileNumber ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
+                    } focus:ring-1 focus:outline-none h-9`}
+                  />
+                  {errors.mobileNumber && (
+                    <p className="text-xs text-red-600 mt-1">{errors.mobileNumber}</p>
+                  )}
+                </div>
               ) : (
-                <p className="text-sm text-gray-900 py-1">{profileData.mobileNumber}</p>
+                <p className="text-sm text-gray-900 py-1">{profileData.mobileNumber || 'Not provided'}</p>
               )}
             </div>
 

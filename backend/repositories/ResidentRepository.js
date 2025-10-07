@@ -222,10 +222,8 @@ class ResidentRepository {
           apiData.is_password_changed = user.is_password_changed
           apiData.user_created_at = user.created_at
           
-          // For users who haven't changed password, add temp password
-          if (user.is_password_changed === 0) {
-            apiData.temp_password = user.username.split('.').pop() // Extract the last part as demo PIN
-          }
+          // Note: Temporary PIN cannot be retrieved after creation (it's hashed)
+          // Credentials are only shown once during account creation in AddResidentsView
           
           return {
             ...apiData,

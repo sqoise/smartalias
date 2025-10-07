@@ -41,9 +41,26 @@ export default function ResidentsPage() {
     }
   }
 
-  const handleView = (resident) => {
-    setSelectedResident(resident)
-    setShowView(true)
+  const handleView = async (resident) => {
+    try {
+      // Fetch complete resident details including user credentials
+      const response = await ApiClient.getResident(resident.id)
+      
+      if (response.success && response.data) {
+        setSelectedResident(response.data)
+        setShowView(true)
+      } else {
+        console.error('Failed to fetch resident details:', response.error)
+        // Fallback to list data if detail fetch fails
+        setSelectedResident(resident)
+        setShowView(true)
+      }
+    } catch (error) {
+      console.error('Error fetching resident details:', error)
+      // Fallback to list data on error
+      setSelectedResident(resident)
+      setShowView(true)
+    }
   }
 
   const handleEdit = (resident) => {

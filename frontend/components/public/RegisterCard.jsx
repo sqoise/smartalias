@@ -14,7 +14,9 @@ export default function RegisterCard({
   isLoading,
   errors,
   showLogo = false,
-  className = ''
+  className = '',
+  onUsernameBlur,
+  isCheckingUsername = false
 }) {
   
   // Step 1: Name Fields
@@ -95,12 +97,12 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Select</option>
-              <option value="Jr.">Jr.</option>
-              <option value="Sr.">Sr.</option>
-              <option value="II">II</option>
-              <option value="III">III</option>
-              <option value="IV">IV</option>
-              <option value="V">V</option>
+              <option value="1">Jr.</option>
+              <option value="2">Sr.</option>
+              <option value="3">II</option>
+              <option value="4">III</option>
+              <option value="5">IV</option>
+              <option value="6">V</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -156,8 +158,8 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Select</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
+              <option value="1">Male</option>
+              <option value="2">Female</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -184,8 +186,8 @@ export default function RegisterCard({
               <option value="">Select</option>
               <option value="Single">Single</option>
               <option value="Married">Married</option>
-              <option value="Divorced">Divorced</option>
               <option value="Widowed">Widowed</option>
+              <option value="Separated">Separated</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -206,9 +208,14 @@ export default function RegisterCard({
             name="email"
             value={formData.email}
             onChange={onInputChange}
-            className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 transition-all duration-200 h-9"
+            className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+              errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9`}
             placeholder="name@example.com"
           />
+          {errors.email && (
+            <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+          )}
         </div>
 
         {/* Contact Number */}
@@ -232,9 +239,16 @@ export default function RegisterCard({
                 onInputChange(event);
               }
             }}
-            className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 transition-all duration-200 h-9"
+            className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+              errors.mobileNumber ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9`}
             placeholder="09XX XXX XXXX"
+            inputMode="numeric"
+            maxLength={11}
           />
+          {errors.mobileNumber && (
+            <p className="text-xs text-red-600 mt-1">{errors.mobileNumber}</p>
+          )}
         </div>
       </div>
 
@@ -282,13 +296,13 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Select</option>
-              <option value="Purok 1">Purok 1</option>
-              <option value="Purok 2">Purok 2</option>
-              <option value="Purok 3">Purok 3</option>
-              <option value="Purok 4">Purok 4</option>
-              <option value="Purok 5">Purok 5</option>
-              <option value="Purok 6">Purok 6</option>
-              <option value="Purok 7">Purok 7</option>
+              <option value="1">Purok 1</option>
+              <option value="2">Purok 2</option>
+              <option value="3">Purok 3</option>
+              <option value="4">Purok 4</option>
+              <option value="5">Purok 5</option>
+              <option value="6">Purok 6</option>
+              <option value="7">Purok 7</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -313,11 +327,11 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Select</option>
-              <option value="Roman Catholic">Roman Catholic</option>
-              <option value="Protestant">Protestant</option>
-              <option value="Islam">Islam</option>
-              <option value="Buddhism">Buddhism</option>
-              <option value="Others">Others</option>
+              <option value="ROMAN_CATHOLIC">Roman Catholic</option>
+              <option value="PROTESTANT">Protestant</option>
+              <option value="IGLESIA_NI_CRISTO">Iglesia ni Cristo</option>
+              <option value="ISLAM">Islam</option>
+              <option value="OTHERS">Others</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -344,11 +358,11 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Select</option>
-              <option value="Employed">Employed</option>
-              <option value="Self-employed">Self-employed</option>
-              <option value="Unemployed">Unemployed</option>
-              <option value="Retired">Retired</option>
-              <option value="Others">Others</option>
+              <option value="EMPLOYED">Employed</option>
+              <option value="SELF_EMPLOYED">Self-employed</option>
+              <option value="UNEMPLOYED">Unemployed</option>
+              <option value="RETIRED">Retired</option>
+              <option value="OTHERS">Others</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -373,11 +387,10 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Not Applicable</option>
-              <option value="Senior Citizen">Senior Citizen</option>
               <option value="PWD">PWD</option>
-              <option value="Solo Parent">Solo Parent</option>
-              <option value="Indigent">Indigent</option>
-              <option value="Student">Student</option>
+              <option value="SOLO_PARENT">Solo Parent</option>
+              <option value="INDIGENT">Indigent</option>
+              <option value="STUDENT">Student</option>
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -398,18 +411,28 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Username <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={onInputChange}
-            className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
-              errors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9`}
-            placeholder="firstname.lastname"
-          />
-          {errors.username && (
+          <div className="relative">
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={onInputChange}
+              onBlur={(e) => onUsernameBlur && onUsernameBlur(e.target.value)}
+              className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+                errors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9 ${isCheckingUsername ? 'pr-8' : ''}`}
+              placeholder="firstname.lastname"
+            />
+            {isCheckingUsername && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Spinner size="sm" />
+              </div>
+            )}
+          </div>
+          {errors.username ? (
             <p className="text-xs text-red-600 mt-1">{errors.username}</p>
+          ) : (
+            <p className="text-xs text-gray-500 mt-1">Format: name.name (lowercase letters and numbers only)</p>
           )}
         </div>
 
@@ -536,7 +559,7 @@ export default function RegisterCard({
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center px-4 py-2.5 sm:py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] sm:min-h-[36px]"
+            className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] sm:min-h-[36px]"
           >
             {isLoading ? (
               <Spinner size="sm" />

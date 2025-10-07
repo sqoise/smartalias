@@ -61,8 +61,8 @@ class Validator {
       errors.push('Username must be at least 3 characters')
     } else if (username.length > 50) {
       errors.push('Username must be less than 50 characters')
-    } else if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
-      errors.push('Username can only contain letters, numbers, dots, dashes, and underscores')
+    } else if (!/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/.test(username)) {
+      errors.push('Username must be in format: name.name (e.g., firstname.lastname, word123.word)')
     }
     
     return {

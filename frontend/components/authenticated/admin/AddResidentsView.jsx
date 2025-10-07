@@ -746,7 +746,6 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                         <option value="PROTESTANT">Protestant</option>
                         <option value="IGLESIA_NI_CRISTO">Iglesia ni Cristo</option>
                         <option value="ISLAM">Islam</option>
-                        <option value="BUDDHIST">Buddhist</option>
                         <option value="OTHERS">Others</option>
                       </select>
                       <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>

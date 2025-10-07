@@ -32,10 +32,10 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
 
   const menus = {
     resident: [
-      { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
+      { name: 'Document Requests', href: '/resident', icon: 'bi-clipboard-check' },
       { name: 'My Requests', href: '/resident/requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
-      { name: 'Document Requests', href: '/resident', icon: 'bi-clipboard-check' },
+      { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
     ],
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },

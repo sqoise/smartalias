@@ -2,7 +2,7 @@
 
 import { forwardRef, useImperativeHandle, useState, useEffect } from 'react'
 
-const ToastNotification = forwardRef((props, ref) => {
+const ToastNotification = forwardRef(function ToastNotificationComponent(props, ref) {
   const [toasts, setToasts] = useState([])
   const [expandedToasts, setExpandedToasts] = useState(new Set())
 

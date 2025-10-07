@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import PINKeypad from '../common/PINKeypad'
-import ToastNotification from '../common/ToastNotification'
-import Link from 'next/link'
 
 export default function ChangePINCard({
   currentStep,
@@ -21,7 +19,6 @@ export default function ChangePINCard({
   showKeypad,     // Accept showKeypad prop from parent
   setShowKeypad   // Accept setShowKeypad prop from parent
 }) {
-  const toastRef = useRef()
   // Remove local showKeypad state since it comes from parent now
   // const [showKeypad, setShowKeypad] = useState(false)
 
@@ -152,9 +149,6 @@ export default function ChangePINCard({
         <div className={`hidden lg:block absolute bottom-4 left-0 right-0 text-center transition-opacity duration-300 ${
           showKeypad ? 'opacity-0' : 'opacity-100'
         }`}>
-          <Link href="/login" className="text-sm text-green-600 hover:text-green-700 active:text-green-800 cursor-pointer">
-            ← Back to Login
-          </Link>
           <p className="mx-4 my-4 text-center text-xs text-gray-500">
               You have 24 hours before this link expires. After setting your PIN, you'll be redirected to the login page.
           </p>
@@ -211,7 +205,7 @@ export default function ChangePINCard({
           </div>
           
           <PINKeypad 
-            mpin={getCurrentPin()}
+            pin={getCurrentPin()}
             onNumberPress={onKeypadNumber}
             onBackspace={onKeypadBackspace}
             onClose={closeKeypad}
@@ -222,9 +216,6 @@ export default function ChangePINCard({
           />
         </div>
       </div>
-
-      {/* Toast Notification */}
-      <ToastNotification ref={toastRef} />
     </>
   )
 }

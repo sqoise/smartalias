@@ -304,6 +304,16 @@ class ApiClient {
     })
   }
 
+  /**
+   * Reset resident PIN (admin only)
+   * Generates new temporary credentials
+   */
+  static async resetResidentPin(residentId) {
+    return await ApiClient.request(`/residents/${residentId}/reset-pin`, {
+      method: 'POST',
+    })
+  }
+
   // ============================================
   // SERVICE REQUESTS ENDPOINTS (Future)
   // ============================================

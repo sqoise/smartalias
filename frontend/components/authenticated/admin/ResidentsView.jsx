@@ -1,4 +1,6 @@
 import React from 'react'
+import Modal from '../../common/Modal'
+import ApiClient from '../../../lib/apiClient'
 
 export default function ResidentsView({ open, onClose, children, onStatusUpdate }) {
   // Status management (existing)
@@ -10,6 +12,14 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
   const [editFormData, setEditFormData] = React.useState({})
   const [editErrors, setEditErrors] = React.useState({})
   const [isUpdatingResident, setIsUpdatingResident] = React.useState(false)
+
+  // Reset PIN state management
+  const [showResetPinConfirm, setShowResetPinConfirm] = React.useState(false)
+  const [showNewCredentials, setShowNewCredentials] = React.useState(false)
+  const [newCredentials, setNewCredentials] = React.useState(null)
+  const [isResettingPin, setIsResettingPin] = React.useState(false)
+  const [showCredentials, setShowCredentials] = React.useState(false)
+  const [copied, setCopied] = React.useState(false)
 
   // Update local status when children changes
   React.useEffect(() => {
@@ -104,6 +114,71 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
         ...prev,
         [fieldName]: ''
       }))
+    }
+  }
+
+  // Handle Reset PIN button click
+  const handleResetPinClick = () => {
+    setShowResetPinConfirm(true)
+  }
+
+  // Handle Reset PIN confirmation
+  const handleResetPinConfirm = async () => {
+    if (!children?.id) return
+    
+    // Check if resident has user account
+    if (!children?.user_id) {
+      alert('This resident does not have a user account. Cannot reset PIN.')
+      setShowResetPinConfirm(false)
+      return
+    }
+    
+    setIsResettingPin(true)
+    try {
+      // Call backend API to reset PIN
+      const response = await ApiClient.resetResidentPin(children.id)
+      
+      if (response.success && response.data) {
+        // Store new credentials
+        setNewCredentials({
+          username: response.data.username,
+          pin: response.data.pin
+        })
+        
+        // Close confirmation modal and show credentials modal
+        setShowResetPinConfirm(false)
+        setShowNewCredentials(true)
+      } else {
+        alert('Failed to reset PIN: ' + (response.error || 'Unknown error'))
+        setShowResetPinConfirm(false)
+      }
+    } catch (error) {
+      console.error('Error resetting PIN:', error)
+      alert('Failed to reset PIN. Please try again.')
+      setShowResetPinConfirm(false)
+    } finally {
+      setIsResettingPin(false)
+    }
+  }
+
+  // Handle copying credentials to clipboard
+  const handleCopyCredentials = async () => {
+    if (!newCredentials) return
+    
+    try {
+      const credentialsText = `Username: ${newCredentials.username}\nPIN: ${newCredentials.pin}`
+      await navigator.clipboard.writeText(credentialsText)
+      
+      // Show copied feedback
+      setCopied(true)
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error('Failed to copy credentials:', error)
+      alert('Failed to copy credentials')
     }
   }
 
@@ -278,39 +353,6 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
                   </div>
                 </div>
 
-                {/* Temporary Credentials Section - Only show if password hasn't been changed */}
-                {children.is_password_changed === 0 && children.username && (
-                  <div className="pt-2 border-t border-gray-200">
-                    <div className="flex items-center mb-2">
-                      <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mr-2">Temporary Login Credentials</div>
-                      <i className="bi bi-key text-amber-500 text-xs" />
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        Requires Password Change
-                      </span>
-                    </div>
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-amber-700 mb-1 font-medium">Username</div>
-                          <div className="text-xs font-mono text-amber-900 bg-white px-2 py-1 rounded border border-amber-200">
-                            {children.username}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-amber-700 mb-1 font-medium">Temporary PIN</div>
-                          <div className="text-xs font-mono text-amber-900 bg-white px-2 py-1 rounded border border-amber-200">
-                            {children.temp_password || '******'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs text-amber-700">
-                        <i className="bi bi-info-circle mr-1" />
-                        User must change this PIN on first login for security.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Administrative Notes */}
                 <div className="pt-2 border-t border-gray-200">
                   <div className="flex items-center mb-2">
@@ -426,15 +468,28 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
         {children && children.id && (
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-end space-x-2">
             {!isEditing ? (
-              // Normal Mode - Edit Button (Yellow theme)
-              <button 
-                className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-md hover:bg-yellow-100 focus:ring-1 focus:ring-yellow-500 transition-colors cursor-pointer h-9"
-                onClick={handleEditStart}
-                title="Edit resident information"
-              >
-                <i className="bi bi-pencil mr-1.5" />
-                Edit
-              </button>
+              // Normal Mode - Edit and Reset PIN Buttons
+              <>
+                {/* Reset PIN button - only show if resident has user account */}
+                {children.user_id && (
+                  <button 
+                    className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9"
+                    onClick={handleResetPinClick}
+                    title="Reset user PIN and generate new temporary credentials"
+                  >
+                    <i className="bi bi-arrow-clockwise mr-1.5" />
+                    Reset PIN
+                  </button>
+                )}
+                <button 
+                  className="inline-flex items-center px-4 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-md hover:bg-yellow-100 focus:ring-1 focus:ring-yellow-500 transition-colors cursor-pointer h-9"
+                  onClick={handleEditStart}
+                  title="Edit resident information"
+                >
+                  <i className="bi bi-pencil mr-1.5" />
+                  Edit
+                </button>
+              </>
             ) : (
               // Edit Mode - Cancel and Update Buttons
               <>
@@ -466,6 +521,173 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate 
           </div>
         )}
       </div>
+
+      {/* Reset PIN Confirmation Modal - Custom Design matching AddResidentsView */}
+      {showResetPinConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 mx-4 max-w-xs w-full">
+            <div className="text-center">
+              {/* Icon - Question or Check */}
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 transition-colors duration-300">
+                {isResettingPin ? (
+                  <div className="bg-green-100 rounded-full h-12 w-12 flex items-center justify-center">
+                    <i className="bi bi-check-lg text-green-600 text-xl"></i>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 rounded-full h-12 w-12 flex items-center justify-center">
+                    <i className="bi bi-question-lg text-gray-600 text-xl"></i>
+                  </div>
+                )}
+              </div>
+              
+              {/* Title */}
+              <div className="mb-4">
+                {isResettingPin ? (
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Resetting PIN...
+                  </h3>
+                ) : (
+                  <div>
+                    <h4 className="text-base font-normal text-gray-700 mb-2">
+                      Are you sure you want to Reset PIN?
+                    </h4>
+                    {children && (
+                      <p className="text-xl font-semibold text-gray-900">
+                        {children.first_name} {children.middle_name && `${children.middle_name.charAt(0)}.`} {children.last_name}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Details */}
+              <div className="text-sm text-gray-600 mb-6">
+                {!isResettingPin && (
+                  <p className="text-xs text-gray-500">
+                    A new temporary PIN will be generated. User must change it on next login.
+                  </p>
+                )}
+                {isResettingPin && (
+                  <div className="flex items-center justify-center">
+                    <i className="bi bi-arrow-clockwise animate-spin text-sm mr-2"></i>
+                    <span className="text-sm text-gray-600">Please wait while we reset the PIN...</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Action Buttons */}
+              {!isResettingPin && (
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => setShowResetPinConfirm(false)}
+                    className="w-26 h-10 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleResetPinConfirm}
+                    className="w-28 h-10 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors cursor-pointer"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Credentials Display Modal - Custom Design matching AddResidentsView */}
+      {showNewCredentials && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center"
+          style={{ zIndex: 999999 }}
+          onClick={(e) => {
+            // Close modal if clicking outside
+            if (e.target === e.currentTarget) {
+              setShowNewCredentials(false)
+              setShowCredentials(false)
+              setCopied(false)
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl p-4 mx-4 max-w-xs w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with close button */}
+            <div className="flex justify-end mb-2">
+              <button 
+                onClick={() => {
+                  setShowNewCredentials(false)
+                  setShowCredentials(false)
+                  setCopied(false)
+                }}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all duration-200"
+              >
+                <i className="bi bi-x text-2xl"></i>
+              </button>
+            </div>
+            
+            <div className="text-center">
+              {/* Success Icon */}
+              <div className="mx-auto flex items-center justify-center h-11 w-11 rounded-full bg-green-100 mb-4">
+                <i className="bi bi-check-lg text-green-600 text-2xl"></i>
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                PIN Reset Successful!
+              </h3>
+              
+              {/* Expandable Credentials Section */}
+              {newCredentials && (
+                <div className="mb-6 flex justify-center">
+                  <div className="w-[100%]">
+                    <button
+                      onClick={() => setShowCredentials(!showCredentials)}
+                      className="w-full p-2 bg-gray-100 border-dashed border border-gray-300 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-medium text-gray-800">Temporary Credentials</h4>
+                        <i className={`bi bi-chevron-${showCredentials ? 'up' : 'down'} text-gray-600 transition-transform duration-200 text-sm`}></i>
+                      </div>
+                    </button>
+                    
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      showCredentials ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'
+                    }`}>
+                      <div className="px-2 py-1.5 bg-gray-100 border-l border-r border-b border-gray-300 border-dashed">
+                        <div className="flex items-center justify-between">
+                          <div className="text-gray-700 space-y-1 text-left">
+                            <div className="text-xs"><span className="font-medium">Username:</span> {newCredentials.username}</div>
+                            <div className="text-xs"><span className="font-medium">PIN:</span> {newCredentials.pin}</div>
+                          </div>
+                          <button
+                            onClick={handleCopyCredentials}
+                            className={`ml-2 p-1 rounded-md transition-colors cursor-pointer ${
+                              copied 
+                                ? 'text-gray-600' 
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                            title={copied ? "Copied!" : "Copy credentials to clipboard"}
+                          >
+                            {copied ? (
+                              <span className="text-xs font-medium">Copied!</span>
+                            ) : (
+                              <i className="bi bi-copy text-xs"></i>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
