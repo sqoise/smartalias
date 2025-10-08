@@ -173,7 +173,7 @@ export default function LoginPage() {
       const token = result.data?.token || result.token
       
       // Store token ONLY if password has been changed
-      // For password change flow, token is in the redirectTo URL
+      // For password change flow, token is in the URL
       if (token && user.passwordChanged) {
         localStorage.setItem('token', token)
       }
@@ -185,12 +185,12 @@ export default function LoginPage() {
       handleAlert(message, !user.passwordChanged ? 'info' : 'success')
 
       setTimeout(() => {
-        // Clear any old tokens before redirecting to change-password
-        if (!user.passwordChanged) {
-          localStorage.removeItem('token')
+        // If redirecting to change-pin, append token as query parameter
+        if (redirectTo === '/change-pin' && token) {
+          router.push(`${redirectTo}?token=${token}`)
+        } else {
+          router.push(redirectTo)
         }
-        // Backend already includes token in redirectTo for change-password flow
-        router.push(redirectTo)
       }, 1500) // Increased delay to see the toast message
 
     } catch (error) {
