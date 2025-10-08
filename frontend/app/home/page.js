@@ -1,70 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PublicLayout from '../../components/public/PublicLayout'
 import ApiClient from '../../lib/apiClient'
-import { USER_ROLES } from '../../lib/constants'
+import { USER_ROLES, ANNOUNCEMENT_TYPE_NAMES } from '../../lib/constants'
 
-// Sample announcements data (same as resident announcements)
-const ANNOUNCEMENTS = [
-  {
-    id: 1,
-    title: 'New Online Document Request System',
-    content: 'We are pleased to announce the launch of our new online document request system. Residents can now apply for barangay clearances, certificates, and permits online. Visit our website to get started.',
-    fullDescription: 'We are excited to announce the launch of our comprehensive online document request system, designed to make your interactions with the barangay more convenient and efficient. This new digital platform allows residents to apply for various documents including barangay clearances, certificates of residency, business permits, and indigency certificates from the comfort of their homes. The system features a user-friendly interface, secure document upload capabilities, and real-time status tracking. To get started, simply visit our website and create your account using your valid identification. Processing times remain the same, but you can now track your applications 24/7 and receive notifications when your documents are ready for pickup.',
-    category: 'news',
-    date: '2024-09-17',
-    time: '09:00',
-    isNew: true,
-    image: '/images/barangay_logo.png'
-  },
-  {
-    id: 2,
-    title: 'Community Clean-Up Drive',
-    content: 'Join us for our monthly community clean-up drive this Saturday, September 21st at 7:00 AM. Meeting point is at the barangay hall. Bring your own cleaning materials.',
-    fullDescription: 'Our monthly community clean-up drive is a vital initiative that brings our neighborhood together while keeping our environment clean and healthy. This Saturday, September 21st, we invite all residents to participate in this meaningful activity starting at 7:00 AM. The meeting point will be at the barangay hall where we will distribute cleaning supplies and assign areas to different groups. Please bring your own gloves, face masks, and water bottles. We will provide garbage bags, brooms, and other cleaning equipment. The clean-up will cover all major streets, parks, and common areas within our barangay. Light refreshments will be served to all volunteers after the activity. Together, we can make our community a cleaner and more beautiful place to live.',
-    category: 'activities',
-    date: '2024-09-15',
-    time: '14:30',
-    isNew: true,
-    image: '/images/bg.jpg'
-  },
-  {
-    id: 3,
-    title: 'Health and Wellness Program',
-    content: 'Free medical check-up and consultation will be available every Wednesday from 9:00 AM to 3:00 PM at the barangay health center. Senior citizens and PWDs are prioritized.',
-    fullDescription: 'The barangay is proud to announce our ongoing Health and Wellness Program, providing free medical services to all residents. Every Wednesday, our qualified medical professionals will be available at the barangay health center from 9:00 AM to 3:00 PM for free check-ups and consultations. This program covers basic health screenings, blood pressure monitoring, blood sugar testing, and general health consultations. Senior citizens aged 60 and above, as well as Persons with Disabilities (PWDs), will be given priority in our service queue. We also offer health education sessions covering topics such as nutrition, exercise, and disease prevention. Please bring a valid ID and your health records if available. Our goal is to ensure that every resident has access to basic healthcare services regardless of their financial situation.',
-    category: 'news',
-    date: '2024-09-14',
-    time: '11:15',
-    isNew: false,
-    image: '/images/barangay_logo.png'
-  },
-  {
-    id: 4,
-    title: 'Basketball Tournament Registration',
-    content: 'Registration for the annual inter-purok basketball tournament is now open. Registration fee is ₱500 per team. Deadline for registration is September 30, 2024.',
-    fullDescription: 'Get ready for the most exciting sporting event of the year! The annual inter-purok basketball tournament is back, and registration is now officially open. This tournament brings together teams from all puroks within our barangay for friendly competition and community bonding. The registration fee is ₱500 per team, which covers tournament supplies, referees, and prizes for the winners. Teams must have a minimum of 8 players and a maximum of 12 players, with all players being verified residents of the barangay. The tournament will be held at the barangay basketball court starting October 15, 2024, with games scheduled on weekends. Prizes will be awarded for 1st, 2nd, and 3rd place teams, along with individual awards for MVP and Best Player. Registration deadline is September 30, 2024. Contact the barangay office for registration forms and more details.',
-    category: 'activities',
-    date: '2024-09-12',
-    time: '16:45',
-    isNew: false,
-    image: '/images/bg.jpg'
-  },
-  {
-    id: 5,
-    title: 'Scholarship Program Applications',
-    content: 'Applications for the barangay scholarship program are now being accepted. This program supports deserving students from low-income families. Application deadline is October 15, 2024.',
-    fullDescription: 'The barangay scholarship program is designed to support the educational aspirations of deserving students from low-income families within our community. This program provides financial assistance for tuition fees, school supplies, and other educational expenses. We are now accepting applications for the upcoming school year. Eligible applicants must be residents of the barangay for at least 2 years, have a general weighted average of 85% or higher, and come from families with a combined monthly income of less than ₱15,000. Required documents include academic records, certificate of indigency, barangay clearance, and a written essay about educational goals. A total of 20 scholarships will be awarded, with amounts ranging from ₱5,000 to ₱15,000 per semester depending on the level of education. Application forms are available at the barangay office. The deadline for submission is October 15, 2024.',
-    category: 'news',
-    date: '2024-09-10',
-    time: '08:30',
-    isNew: false,
-    image: '/images/barangay_logo.png'
-  }
-]
+// Global flag to prevent duplicate fetches across component remounts
+let globalFetchLock = false
+let globalFetchPromise = null
 
 // Navigation Header Component
 function NavigationHeader() {
@@ -103,7 +48,7 @@ function NavigationHeader() {
 
   if (isLoading) {
     return (
-      <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
+      <header className="absolute top-0 left-0 right-0 z-[50] p-4 lg:p-6">
         <nav className="flex justify-end items-center">
           <div className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700">
             Loading...
@@ -114,7 +59,7 @@ function NavigationHeader() {
   }
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
+    <header className="absolute top-0 left-0 right-0 z-[50] p-4 lg:p-6">
       <nav className="flex justify-end items-center">
         {isAuthenticated ? (
           <button
@@ -137,7 +82,7 @@ function NavigationHeader() {
 }
 
 // Announcement Card Component
-function AnnouncementCard({ announcement, onClick }) {
+function AnnouncementCard({ announcement, onClick, getTypeName, getTypeIcon, getTypeBadgeColor }) {
   const formatDateTime = (date, time) => {
     const dateObj = new Date(`${date}T${time}`)
     return {
@@ -162,16 +107,19 @@ function AnnouncementCard({ announcement, onClick }) {
     >
       <div className="flex items-start justify-between mb-1.5">
         <div className="flex items-center space-x-1">
-          <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${
-            announcement.category === 'news' 
-              ? 'bg-blue-100 text-blue-800' 
-              : 'bg-green-100 text-green-800'
-          }`}>
-            {announcement.category === 'news' ? 'News' : 'Activity'}
+          <span className={`inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full border ${getTypeBadgeColor(announcement.type)}`}>
+            <i className={`${getTypeIcon(announcement.type)} mr-1 text-xs`}></i>
+            {getTypeName(announcement.type)}
           </span>
           {announcement.isNew && (
             <span className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">
               New
+            </span>
+          )}
+          {announcement.is_urgent && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
+              <i className="bi bi-exclamation-triangle-fill mr-1 text-xs"></i>
+              Urgent
             </span>
           )}
         </div>
@@ -202,9 +150,96 @@ function AnnouncementCard({ announcement, onClick }) {
 function HomepageContent({ className = '' }) {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Show only the first 3 announcements
-  const latestAnnouncements = ANNOUNCEMENTS.slice(0, 3)
+  // Helper functions for announcement types
+  const getTypeName = (typeId) => {
+    return ANNOUNCEMENT_TYPE_NAMES[typeId] || 'General'
+  }
+
+  const getTypeIcon = (typeId) => {
+    // All announcement types use the same gray megaphone icon
+    return 'bi bi-megaphone text-gray-500'
+  }
+
+  const getTypeBadgeColor = (typeId) => {
+    const colors = {
+      1: 'bg-gray-100 text-gray-700 border-gray-200',      // General
+      2: 'bg-red-100 text-red-700 border-red-200',        // Health
+      3: 'bg-green-100 text-green-700 border-green-200',  // Activities
+      4: 'bg-blue-100 text-blue-700 border-blue-200',     // Assistance
+      5: 'bg-amber-100 text-amber-700 border-amber-200'   // Advisory
+    }
+    return colors[typeId] || colors[1]
+  }
+
+  // Fetch announcements on mount
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      // If already fetching, wait for that promise
+      if (globalFetchLock) {
+        if (globalFetchPromise) {
+          const cachedData = await globalFetchPromise
+          if (cachedData) {
+            setAnnouncements(cachedData)
+            setIsLoading(false)
+          }
+        }
+        return
+      }
+      
+      // Lock and start fetching
+      globalFetchLock = true
+      
+      try {
+        setIsLoading(true)
+        
+        globalFetchPromise = (async () => {
+          const response = await ApiClient.getPublishedAnnouncements(3, 0)
+          
+          if (response.success && response.data && response.data.announcements) {
+            const transformedData = response.data.announcements.map(announcement => ({
+              id: announcement.id,
+              title: announcement.title,
+              content: announcement.content,
+              fullDescription: announcement.content,
+              type: announcement.type,
+              is_urgent: announcement.is_urgent,
+              created_at: announcement.created_at,
+              published_at: announcement.published_at,
+              date: announcement.published_at ? new Date(announcement.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              time: announcement.published_at ? new Date(announcement.published_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '00:00',
+              isNew: announcement.published_at ? (new Date() - new Date(announcement.published_at)) < 3 * 24 * 60 * 60 * 1000 : false,
+              image: '/images/barangay_logo.png'
+            }))
+            return transformedData
+          }
+          return []
+        })()
+        
+        const data = await globalFetchPromise
+        setAnnouncements(data)
+      } catch (error) {
+        setAnnouncements([])
+      } finally {
+        setIsLoading(false)
+        // Short lock (100ms) just to prevent duplicate mount calls
+        setTimeout(() => {
+          globalFetchLock = false
+          globalFetchPromise = null
+        }, 100)
+      }
+    }
+    
+    fetchAnnouncements()
+    
+    // Clear cache when component unmounts (user navigates away)
+    return () => {
+      globalFetchLock = false
+      globalFetchPromise = null
+    }
+  }, [])
 
   const handleAnnouncementClick = (announcement) => {
     setSelectedAnnouncement(announcement)
@@ -213,6 +248,8 @@ function HomepageContent({ className = '' }) {
 
   return (
     <div className={`w-full max-w-sm lg:max-w-md ${className}`}>
+      {/* Remove ToastNotification - no error messages needed */}
+      
       {/* Header Section - More compact */}
       <div className="mb-4">
         <h2 className="text-lg font-bold text-gray-900 mb-1">
@@ -223,20 +260,67 @@ function HomepageContent({ className = '' }) {
         </p>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-md p-2.5 animate-pulse">
+              {/* Top row: badge and date/time */}
+              <div className="flex items-start justify-between mb-1.5">
+                <div className="flex items-center space-x-1">
+                  <div className="h-5 bg-gray-200 rounded-full w-20"></div>
+                </div>
+                <div className="text-right flex-shrink-0 ml-2">
+                  <div className="h-3 bg-gray-200 rounded w-12 mb-1"></div>
+                  <div className="h-3 bg-gray-200 rounded w-12"></div>
+                </div>
+              </div>
+              
+              {/* Title */}
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+              
+              {/* Content preview */}
+              <div className="h-3 bg-gray-200 rounded w-full mb-1.5"></div>
+              
+              {/* Read more indicator */}
+              <div className="flex justify-end">
+                <div className="h-3 bg-gray-200 rounded w-16"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Announcements List - More compact spacing */}
-      <div className="space-y-3">
-        {latestAnnouncements.map((announcement) => (
-          <AnnouncementCard 
-            key={announcement.id} 
-            announcement={announcement}
-            onClick={handleAnnouncementClick}
-          />
-        ))}
-      </div>
+      {!isLoading && announcements.length > 0 && (
+        <div className="space-y-3">
+          {announcements.map((announcement) => (
+            <AnnouncementCard 
+              key={announcement.id} 
+              announcement={announcement}
+              onClick={handleAnnouncementClick}
+              getTypeName={getTypeName}
+              getTypeIcon={getTypeIcon}
+              getTypeBadgeColor={getTypeBadgeColor}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* No Announcements / Database Error State - Show Announcement Icon */}
+      {!isLoading && announcements.length === 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <i className="bi bi-megaphone text-gray-300 text-6xl"></i>
+          </div>
+          <p className="text-sm text-gray-500">No announcements at this time</p>
+          <p className="text-xs text-gray-400 mt-1">Check back later for updates</p>
+        </div>
+      )}
 
       {/* Announcement Detail Modal */}
       {showAnnouncementModal && selectedAnnouncement && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-[9000]">
           <div className="bg-white rounded-lg sm:rounded-xl w-full max-w-sm sm:max-w-md lg:max-w-lg max-h-[95vh] sm:max-h-[85vh] overflow-hidden shadow-xl mx-2 sm:mx-0">
             {/* Modal Header with Image */}
             <div className="relative">
@@ -249,30 +333,42 @@ function HomepageContent({ className = '' }) {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              {selectedAnnouncement.isNew && (
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+              <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex gap-1.5">
+                {selectedAnnouncement.isNew && (
                   <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
                     New
                   </span>
-                </div>
-              )}
+                )}
+                {selectedAnnouncement.is_urgent && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full text-xs font-medium bg-red-500 text-white shadow-sm">
+                    <i className="bi bi-exclamation-triangle-fill mr-1"></i>
+                    Urgent
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Modal Content */}
             <div className="p-3 sm:p-4 overflow-y-auto max-h-[calc(95vh-6rem)] sm:max-h-[calc(85vh-8rem)]">
-              {/* Date and Time */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs text-gray-500 mb-3">
-                <div className="flex items-center gap-1">
-                  <i className="bi bi-calendar3"></i>
-                  <span>{new Date(selectedAnnouncement.date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: '2-digit',
-                    year: 'numeric'
-                  })}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <i className="bi bi-clock"></i>
-                  <span>{selectedAnnouncement.time}</span>
+              {/* Type Badge, Date and Time */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs mb-3">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${getTypeBadgeColor(selectedAnnouncement.type)}`}>
+                  <i className={`${getTypeIcon(selectedAnnouncement.type)} mr-1`}></i>
+                  {getTypeName(selectedAnnouncement.type)}
+                </span>
+                <div className="flex items-center gap-3 text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <i className="bi bi-calendar3"></i>
+                    <span>{new Date(selectedAnnouncement.date).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: '2-digit',
+                      year: 'numeric'
+                    })}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <i className="bi bi-clock"></i>
+                    <span>{selectedAnnouncement.time}</span>
+                  </div>
                 </div>
               </div>
 
@@ -283,7 +379,7 @@ function HomepageContent({ className = '' }) {
 
               {/* Full Description */}
               <div className="mb-4 sm:mb-6">
-                <p className="text-sm text-gray-700 leading-relaxed">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {selectedAnnouncement.fullDescription}
                 </p>
               </div>
@@ -317,7 +413,7 @@ export default function HomePage() {
         <HomepageContent />
       </PublicLayout>
       
-      {/* Navigation overlay */}
+      {/* Navigation overlay - no wrapper to avoid stacking context issues */}
       <NavigationHeader />
     </>
   )

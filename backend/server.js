@@ -20,16 +20,24 @@ const database = require('./config/db')
 // ==========================================================================
 
 async function startServer() {
+  let dbConnected = false
+
+  // Connect to database
   try {
-    // Initialize database connection (required)
     await database.connect()
-    
-    // Start the server
+    dbConnected = true
+  } catch (error) {
+    logger.error('Database connection failed', { error: error.message })
+  }
+  
+  // Start the server
+  try {
     const server = app.listen(config.PORT, () => {
-      logger.info(`SMARTLIAS API Server started`)
+      logger.info('SMARTLIAS API Server started')
       logger.info(`Environment: ${config.NODE_ENV}`)
       logger.info(`Port: ${config.PORT}`)
       logger.info(`Frontend URL: ${config.FRONTEND_URL}`)
+      logger.info(`Database connected: ${dbConnected}`)
     })
 
     // Graceful shutdown
@@ -39,15 +47,23 @@ async function startServer() {
       server.close(async () => {
         logger.info('HTTP server closed')
         
-        try {
-          await database.disconnect()
-          logger.info('Database disconnected')
-          process.exit(0)
-        } catch (error) {
-          logger.error('Error during shutdown', error)
-          process.exit(1)
+        if (dbConnected) {
+          try {
+            await database.disconnect()
+            logger.info('Database disconnected')
+          } catch (error) {
+            logger.error('Error disconnecting database', error)
+          }
         }
+        
+        process.exit(0)
       })
+      
+      // Force shutdown after 10 seconds
+      setTimeout(() => {
+        logger.error('Forced shutdown after timeout')
+        process.exit(1)
+      }, 10000)
     }
 
     // Handle shutdown signals

@@ -26,6 +26,7 @@ export default function Spinner({
     gray: 'text-gray-400',
     white: 'text-white',
     green: 'text-green-600',
+    darkgreen: 'text-green-900',
     blue: 'text-blue-600',
     red: 'text-red-600'
   }
@@ -50,7 +51,7 @@ export default function Spinner({
             cy="12" 
             r="9.5" 
             fill="none" 
-            strokeWidth="3"
+            strokeWidth="5"
             strokeLinecap="round"
           >
             <animate 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import RegisterCard from '../../components/public/RegisterCard'
+import ChatbotButton from '../../components/common/ChatbotButton'
 import PageLoading from '../../components/common/PageLoading'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
@@ -438,7 +439,7 @@ export default function RegisterPage() {
   
   // Simple Navigation Header
   const NavigationHeader = () => (
-    <header className="absolute top-0 left-0 right-0 z-30 p-3 sm:p-4 lg:p-6">
+    <header className="absolute top-0 left-0 right-0 z-10 p-3 sm:p-4 lg:p-6">
       <nav className="flex justify-end items-center">
         <Link 
           href="/login"
@@ -459,7 +460,7 @@ export default function RegisterPage() {
       ) : (
         <>
           <NavigationHeader />
-          <PublicLayout>
+          <PublicLayout showChatbot={false}>
             <RegisterCard
               formData={formData}
               onInputChange={handleInputChange}
@@ -474,6 +475,7 @@ export default function RegisterPage() {
               isCheckingUsername={isCheckingUsername}
             />
           </PublicLayout>
+          <ChatbotButton />
         </>
       )}
     </>

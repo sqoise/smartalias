@@ -23,7 +23,7 @@ const config = {
   
   // Authentication Configuration
   JWT_SECRET: process.env.JWT_SECRET || null,
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '12h',
   
   // Security Configuration
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 12,
@@ -47,6 +47,10 @@ const config = {
   // Data Source Configuration (removed mock data)
   // Always use PostgreSQL database
   USE_MOCK_DATA: false,
+  
+  // AI Configuration (Google Gemini)
+  GEMINI_ENABLED: process.env.GEMINI_ENABLED === 'true' || false,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
   
   // Rate Limiting
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW) || 15 * 60 * 1000, // 15 minutes

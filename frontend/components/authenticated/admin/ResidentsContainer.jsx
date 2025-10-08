@@ -96,6 +96,10 @@ export default function ResidentsContainer({
       const matchesCivilStatus = civilStatusFilter === 'all' || 
         (resident.civil_status && resident.civil_status.toLowerCase() === civilStatusFilter.toLowerCase())
       
+      // Purok Filter
+      const matchesPurok = purokFilter === 'all' || 
+        (resident.purok && resident.purok.toString() === purokFilter.toString())
+      
       // Special Category Filter
       const matchesSpecialCategory = specialCategoryFilter === 'all' || (() => {
         // Handle "Regular" case - residents without special_category_id
@@ -113,7 +117,7 @@ export default function ResidentsContainer({
       })()
       
       return matchesSearch && matchesStatus && 
-             matchesAgeGroup && matchesCivilStatus && matchesSpecialCategory
+             matchesAgeGroup && matchesCivilStatus && matchesPurok && matchesSpecialCategory
     })
 
     // Sort data
@@ -132,7 +136,7 @@ export default function ResidentsContainer({
     })
 
     return filtered
-  }, [residents, searchQuery, statusFilter, ageGroupFilter, civilStatusFilter, specialCategoryFilter, sortField, sortDirection])
+  }, [residents, searchQuery, statusFilter, ageGroupFilter, civilStatusFilter, purokFilter, specialCategoryFilter, sortField, sortDirection])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)

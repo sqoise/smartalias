@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import AuthProvider from '../../components/authenticated/AuthProvider.jsx'
 import DashboardLayout from '../../components/authenticated/DashboardLayout.jsx'
 import Header from '../../components/authenticated/Header.jsx'
 import Sidebar from '../../components/authenticated/Sidebar.jsx'
-import PageLoading from '../../components/common/PageLoading.jsx'
+import PageLoadingV2 from '../../components/common/PageLoadingV2.jsx'
 import ApiClient from '../../lib/apiClient'
 
 export default function ResidentLayout({ children }) {
@@ -14,6 +15,7 @@ export default function ResidentLayout({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [userName, setUserName] = useState('')
+  const [showSessionExpired, setShowSessionExpired] = useState(false)
   
   // Check authentication on mount
   useEffect(() => {
@@ -22,7 +24,15 @@ export default function ResidentLayout({ children }) {
         const session = await ApiClient.getSession()
         
         if (!session.success) {
-          // No valid session - redirect to login
+          // Check if it's a session expiration (401 or 403)
+          if (session.status === 401 || session.status === 403 || session.sessionExpired) {
+            // Don't redirect - show modal via AuthProvider
+            setShowSessionExpired(true)
+            setIsLoading(false)
+            return
+          }
+          
+          // Other auth errors - redirect to login
           router.push('/login')
           return
         }
@@ -51,7 +61,16 @@ export default function ResidentLayout({ children }) {
 
   // Show loading while checking authentication
   if (isLoading) {
-    return <PageLoading />
+    return <PageLoadingV2 isLoading={true} />
+  }
+
+  // If session expired, render AuthProvider so modal can show
+  if (showSessionExpired) {
+    return (
+      <AuthProvider>
+        <div></div>
+      </AuthProvider>
+    )
   }
 
   // Don't render content if not authenticated (redirect in progress)
@@ -77,11 +96,13 @@ export default function ResidentLayout({ children }) {
   }
 
   return (
-    <DashboardLayout 
-      header={<Header role="resident" userName={userName} title={getPageTitle()} />} 
-      sidebar={<Sidebar role="resident" />}
-    >
-      {children}
-    </DashboardLayout>
+    <AuthProvider>
+      <DashboardLayout 
+        header={<Header role="resident" userName={userName} title={getPageTitle()} />} 
+        sidebar={<Sidebar role="resident" />}
+      >
+        {children}
+      </DashboardLayout>
+    </AuthProvider>
   )
 }

@@ -29,7 +29,7 @@ const sampleAnnouncements = [
   },
   {
     title: 'Christmas Celebration Planning Meeting',
-    content: 'All residents are invited to attend the Christmas celebration planning meeting on December 15th at the barangay hall. Your ideas and participation are welcome!',
+    content: 'All residents are invited to attend the Christmas celebration planning meeting on December 15th at the barangay office. Your ideas and participation are welcome!',
     type: ANNOUNCEMENT_TYPES.ACTIVITIES,
     created_by: 1,
     published_by: 1,
@@ -45,7 +45,7 @@ const sampleAnnouncements = [
   },
   {
     title: 'Senior Citizens Cash Assistance Program',
-    content: 'Senior citizens are reminded to claim their quarterly cash assistance at the barangay hall. Bring your senior citizen ID and barangay clearance.',
+    content: 'Senior citizens are reminded to claim their quarterly cash assistance at the barangay office. Bring your senior citizen ID and barangay clearance.',
     type: ANNOUNCEMENT_TYPES.ASSISTANCE,
     created_by: 1,
     published_by: 1,
@@ -53,7 +53,7 @@ const sampleAnnouncements = [
   },
   {
     title: 'Typhoon Preparedness Advisory',
-    content: 'A typhoon is expected to affect our area this weekend. Please secure your properties and prepare emergency kits. Evacuation center is ready at the barangay hall.',
+    content: 'A typhoon is expected to affect our area this weekend. Please secure your properties and prepare emergency kits. Evacuation center is ready at the barangay office.',
     type: ANNOUNCEMENT_TYPES.ADVISORY,
     created_by: 1,
     published_by: 1,
@@ -85,7 +85,7 @@ const sampleAnnouncements = [
   },
   {
     title: 'Free Skills Training Workshop',
-    content: 'Free cooking and baking workshop for interested residents. Limited slots available. Register at the barangay hall until December 16th. Materials provided.',
+    content: 'Free cooking and baking workshop for interested residents. Limited slots available. Register at the barangay office until December 16th. Materials provided.',
     type: ANNOUNCEMENT_TYPES.ACTIVITIES,
     created_by: 1,
     published_by: 1,

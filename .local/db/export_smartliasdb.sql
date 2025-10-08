@@ -81,6 +81,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 -- Drop existing tables (sequences will be dropped automatically)
 DROP TABLE IF EXISTS "announcement_sms_logs";
 DROP TABLE IF EXISTS "announcements";
+DROP TABLE IF EXISTS "document_catalog";
 DROP TABLE IF EXISTS "residents";
 DROP TABLE IF EXISTS "special_categories";
 DROP TABLE IF EXISTS "users";
@@ -148,6 +149,18 @@ CREATE TABLE "public"."residents" (
     "created_by" integer
 );
 
+-- Document Catalog table
+CREATE TABLE "public"."document_catalog" (
+    "id" SERIAL PRIMARY KEY,
+    "title" character varying(255) NOT NULL,
+    "description" text,
+    "filename" character varying(255),
+    "fee" numeric(10,2) DEFAULT 0.00,
+    "is_active" integer DEFAULT 1,
+    "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Announcements table
 CREATE TABLE "public"."announcements" (
     "id" SERIAL PRIMARY KEY,
@@ -196,6 +209,18 @@ INSERT INTO "special_categories" ("id", "category_code", "category_name", "descr
 (6,	'INDIGENT',	'Indigent',	'Residents classified as indigent for social services',	'2025-10-06 17:51:07.045482',	'2025-10-06 17:51:07.045482'),
 (2,	'PWD',	'PWD',	'Residents with physical, mental, intellectual, or sensory disabilities',	'2025-10-03 23:14:15.805248',	'2025-10-03 23:14:15.805248');
 
+-- Insert Document Catalog
+INSERT INTO "document_catalog" ("id", "title", "description", "filename", "fee", "is_active", "created_at", "updated_at") VALUES
+(1,	'Electrical Permit',	'Permit required for electrical installations and repairs in residential or commercial properties.',	'electrical_permit_template.pdf',	100.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(2,	'Fence Permit',	'Authorization to construct fences around residential or commercial properties within barangay jurisdiction.',	'fence_permit_template.pdf',	75.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(3,	'Excavation Permit',	'Permit for excavation activities including digging, construction foundations, and land development.',	'excavation_permit_template.pdf',	150.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(4,	'Barangay Clearance',	'Certificate indicating no pending cases or issues in the barangay. Required for employment and various transactions.',	'barangay_clearance_template.pdf',	50.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(5,	'Certificate of Residency',	'Official certificate proving residency within the barangay. Required for school enrollment and government transactions.',	'certificate_of_residency_template.pdf',	40.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(6,	'Certificate of Good Moral',	'Character reference certificate from barangay officials attesting to good moral standing in the community.',	'good_moral_template.pdf',	30.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(7,	'Certificate of Indigency (Medical)',	'Document certifying indigent status specifically for medical assistance and healthcare support programs.',	'indigency_medical_template.pdf',	0.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(8,	'Certificate of Indigency (Financial)',	'Document certifying indigent status for financial assistance and social services programs.',	'indigency_financial_template.pdf',	0.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP),
+(9,	'Business Permit Clearance',	'Barangay clearance required for small business operations and business permit applications.',	'business_permit_template.pdf',	100.00,	1,	CURRENT_TIMESTAMP,	CURRENT_TIMESTAMP);
+
 -- Insert Household
 INSERT INTO "household" ("id", "household_name", "created_at", "updated_at") VALUES
 (1,	'Macariola Family',	'2025-10-03 23:14:15.806254',	'2025-10-03 23:14:15.806254'),
@@ -214,13 +239,13 @@ INSERT INTO "announcements" ("id", "title", "content", "type", "created_by", "cr
 (51,	'Community Clean-Up Drive',	'Join us this Saturday for our monthly community clean-up drive. Let''s work together to keep our barangay clean and green. Bring your gloves and cleaning materials!',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-08-15 16:00:00',	NULL,	NULL),
 (52,	'Free Health Check-Up',	'The barangay health center is offering free health check-ups and vaccinations for all residents this Friday from 8 AM to 5 PM. Bring your health card and valid ID.',	'2',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-07-22 17:00:00',	NULL,	NULL),
 (53,	'Water Interruption Advisory',	'Water supply will be temporarily interrupted tomorrow from 9 AM to 3 PM for emergency pipe repairs. Please store enough water for your needs.',	'5',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-10-03 23:00:00',	NULL,	NULL),
-(54,	'Christmas Celebration Planning Meeting',	'All residents are invited to attend the Christmas celebration planning meeting on December 15th at the barangay hall. Your ideas and participation are welcome!',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-28 18:00:00',	NULL,	NULL),
-(56,	'Senior Citizens Cash Assistance Program',	'Senior citizens are reminded to claim their quarterly cash assistance at the barangay hall. Bring your senior citizen ID and barangay clearance.',	'4',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-08-05 21:00:00',	NULL,	NULL),
-(57,	'Typhoon Preparedness Advisory',	'A typhoon is expected to affect our area this weekend. Please secure your properties and prepare emergency kits. Evacuation center is ready at the barangay hall.',	'5',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-10-01 15:00:00',	NULL,	NULL),
+(54,	'Christmas Celebration Planning Meeting',	'All residents are invited to attend the Christmas celebration planning meeting on December 15th at the barangay office. Your ideas and participation are welcome!',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-28 18:00:00',	NULL,	NULL),
+(56,	'Senior Citizens Cash Assistance Program',	'Senior citizens are reminded to claim their quarterly cash assistance at the barangay office. Bring your senior citizen ID and barangay clearance.',	'4',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-08-05 21:00:00',	NULL,	NULL),
+(57,	'Typhoon Preparedness Advisory',	'A typhoon is expected to affect our area this weekend. Please secure your properties and prepare emergency kits. Evacuation center is ready at the barangay office.',	'5',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-10-01 15:00:00',	NULL,	NULL),
 (58,	'Barangay Assembly Meeting',	'Quarterly barangay assembly meeting will be held on December 18th at 2 PM. All household representatives are required to attend. Important matters will be discussed.',	'1',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-10 22:00:00',	NULL,	NULL),
 (59,	'Job Fair Announcement',	'A job fair will be held at the barangay covered court on December 22nd. Various companies will be accepting applications. Bring your resume and valid IDs.',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-05 18:00:00',	NULL,	NULL),
 (60,	'Garbage Collection Schedule Update',	'New garbage collection schedule: Biodegradable waste on Mondays and Thursdays, Non-biodegradable on Tuesdays and Fridays. Recyclables on Saturdays.',	'1',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-07-10 16:00:00',	NULL,	NULL),
-(61,	'Free Skills Training Workshop',	'Free cooking and baking workshop for interested residents. Limited slots available. Register at the barangay hall until December 16th. Materials provided.',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-06-25 17:30:00',	NULL,	NULL),
+(61,	'Free Skills Training Workshop',	'Free cooking and baking workshop for interested residents. Limited slots available. Register at the barangay office until December 16th. Materials provided.',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-06-25 17:30:00',	NULL,	NULL),
 (62,	'Road Closure Advisory',	'Main road will be closed for repairs from December 14-16. Use alternate routes via Purok 3 and Purok 5. Heavy vehicles are not allowed.',	'5',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-21 00:00:00',	NULL,	NULL),
 (63,	'Youth Development Program',	'Calling all youth ages 15-21! Join our youth development program featuring leadership training, sports activities, and educational workshops. Registration ongoing.',	'3',	1,	'2025-10-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-08-30 19:00:00',	NULL,	NULL),
 (55,	'Basketball Tournament Registration',	'Basketball tournament registration is now open! Teams must register by December 20th. Maximum of 12 players per team. Contact the barangay sports coordinator.',	'3',	1,	'2025-09-05 16:56:47.727716',	'2025-10-05 16:56:47.727716',	1,	'2025-09-15 19:00:00',	NULL,	NULL),
@@ -237,6 +262,7 @@ INSERT INTO "announcements" ("id", "title", "content", "type", "created_by", "cr
 
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 SELECT setval('special_categories_id_seq', (SELECT MAX(id) FROM special_categories));
+SELECT setval('document_catalog_id_seq', (SELECT MAX(id) FROM document_catalog));
 SELECT setval('household_id_seq', (SELECT MAX(id) FROM household));
 SELECT setval('residents_id_seq', (SELECT MAX(id) FROM residents));
 SELECT setval('announcements_id_seq', (SELECT MAX(id) FROM announcements));
@@ -249,12 +275,16 @@ SELECT setval('announcement_sms_logs_id_seq', COALESCE((SELECT MAX(id) FROM anno
 -- Table Comments
 COMMENT ON TABLE "public"."users" IS 'Authentication and registration table - contains login credentials and basic account info';
 COMMENT ON TABLE "public"."special_categories" IS 'Lookup table for special resident categories (government programs, roles, etc.)';
+COMMENT ON TABLE "public"."document_catalog" IS 'Master catalog of available document types with fees and requirements';
 COMMENT ON TABLE "public"."announcement_sms_logs" IS 'Simplified SMS logging per announcement (batch summary instead of per-recipient tracking)';
 COMMENT ON TABLE "public"."announcements" IS 'Barangay announcements and notifications with optional image support';
 
 -- Column Comments
 COMMENT ON COLUMN "public"."users"."role" IS '1=Admin, 2=Staff, 3=Resident (default for resident registration)';
 COMMENT ON COLUMN "public"."residents"."created_by" IS 'NULL=system_generated (registration), user_id=admin created';
+COMMENT ON COLUMN "public"."document_catalog"."title" IS 'Document name: Electrical Permit, Fence Permit, Excavation Permit, Barangay Clearance, Certificate of Residency, Certificate of Good Moral, Certificate of Indigency (Medical), Certificate of Indigency (Financial), Business Permit Clearance';
+COMMENT ON COLUMN "public"."document_catalog"."fee" IS 'Processing fee in PHP - 0.00 for indigency certificates, varies for other documents';
+COMMENT ON COLUMN "public"."document_catalog"."is_active" IS '1=available for request, 0=temporarily unavailable';
 COMMENT ON COLUMN "public"."announcements"."published_by" IS 'User who published (may differ from created_by for approval workflows)';
 COMMENT ON COLUMN "public"."announcements"."published_at" IS 'Publication timestamp: NULL = draft, NOT NULL = published';
 COMMENT ON COLUMN "public"."announcements"."target_type" IS 'SMS indicator: NULL = SMS OFF, "all" = SMS to all residents, "special_category" = specific group, etc.';
@@ -273,6 +303,10 @@ CREATE INDEX idx_users_role ON public.users USING btree (role);
 -- Special Categories indexes
 CREATE UNIQUE INDEX special_categories_category_code_key ON public.special_categories USING btree (category_code);
 CREATE INDEX idx_special_categories_code ON public.special_categories USING btree (category_code);
+
+-- Document Catalog indexes
+CREATE INDEX idx_document_catalog_active ON public.document_catalog USING btree (is_active);
+CREATE INDEX idx_document_catalog_title ON public.document_catalog USING btree (title);
 
 -- Residents indexes
 CREATE UNIQUE INDEX residents_user_id_key ON public.residents USING btree (user_id);

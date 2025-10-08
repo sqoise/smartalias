@@ -6,7 +6,7 @@ import Link from 'next/link'
 import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import LoginCard from '../../components/public/LoginCard'
-import PageLoading from '../../components/common/PageLoading'
+import ChatbotButton from '../../components/common/ChatbotButton'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
 import { AUTH_MESSAGES, USER_ROLES } from '../../lib/constants'
@@ -122,7 +122,7 @@ export default function LoginPage() {
           handleAlert(AUTH_MESSAGES.USERNAME_NOT_FOUND, 'error')
         } else if (userExists.status === 422) {
           setErrors({ username: true })
-          handleAlert(AUTH_MESSAGES.USERNAME_VALIDATION_FAILED, 'error')
+          handleAlert(AUTH_MESSAGES.USERNAME_NOT_FOUND, 'error')
         } else if ((userExists.error || '').includes('fetch')) {
           setErrors({ username: true })
           handleAlert(AUTH_MESSAGES.USERNAME_CONNECTION_ERROR, 'error')
@@ -160,6 +160,10 @@ export default function LoginPage() {
       if (!result.success) {
         handleAlert(result.error || AUTH_MESSAGES.LOGIN_FAILED, 'error')
         setIsLoading(false)
+        
+        // Clear the PIN so user can try again
+        setPin('')
+        setErrors(prev => ({ ...prev, pin: true }))
         return
       }
 
@@ -224,7 +228,7 @@ export default function LoginPage() {
   
   // Simple Navigation Header
   const NavigationHeader = () => (
-    <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">
+    <header className="absolute top-0 left-0 right-0 z-10 p-4 lg:p-6">
       <nav className="flex justify-end items-center">
         <Link 
           href="/home"
@@ -239,29 +243,24 @@ export default function LoginPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      {isCheckingAuth ? (
-        <PageLoading />
-      ) : (
-        <>
-          <NavigationHeader />
-          <PublicLayout hideBackgroundImage={showKeypad}>
-            <LoginCard
-                username={username}
-                setUsername={setUsername}
-                onUsernameSubmit={handleUsernameSubmit}
-                pin={pin}
-                errors={errors}
-                setErrors={setErrors}
-                isLoading={isLoading}
-                onLogin={handleLogin}
-                onKeypadNumber={handleKeypadNumber}
-                onKeypadBackspace={handleKeypadBackspace}
-                showKeypad={showKeypad}
-                setShowKeypad={setShowKeypad}
-              />
-          </PublicLayout>
-        </>
-      )}
+      <NavigationHeader />
+      <PublicLayout hideBackgroundImage={showKeypad} showChatbot={false}>
+        <LoginCard
+            username={username}
+            setUsername={setUsername}
+            onUsernameSubmit={handleUsernameSubmit}
+            pin={pin}
+            errors={errors}
+            setErrors={setErrors}
+            isLoading={isLoading}
+            onLogin={handleLogin}
+            onKeypadNumber={handleKeypadNumber}
+            onKeypadBackspace={handleKeypadBackspace}
+            showKeypad={showKeypad}
+            setShowKeypad={setShowKeypad}
+          />
+      </PublicLayout>
+      <ChatbotButton />
     </>
   )
 }

@@ -1124,6 +1124,61 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
 // ANNOUNCEMENTS ROUTES
 // ==========================================================================
 
+// GET /api/announcements/public - List published announcements (public access, no auth required)
+router.get('/announcements/public', generalLimiter, async (req, res) => {
+  try {
+    // Parse pagination parameters
+    const limit = parseInt(req.query.limit) || 20
+    const offset = parseInt(req.query.offset) || 0
+    
+    logger.info('Public announcements request', { limit, offset })
+    
+    // Get all announcements from database
+    const announcements = await AnnouncementRepository.findAll()
+    
+    // Filter to only published announcements
+    const publishedAnnouncements = announcements.filter(announcement => 
+      announcement.published_at !== null
+    )
+    
+    // Sort by published_at (newest first)
+    publishedAnnouncements.sort((a, b) => {
+      const dateA = new Date(a.published_at)
+      const dateB = new Date(b.published_at)
+      return dateB - dateA
+    })
+    
+    // Apply pagination
+    const paginatedAnnouncements = publishedAnnouncements.slice(offset, offset + limit)
+    const hasMore = (offset + limit) < publishedAnnouncements.length
+    
+    logger.info('Public announcements retrieved', { 
+      total: publishedAnnouncements.length, 
+      returned: paginatedAnnouncements.length,
+      hasMore 
+    })
+    
+    return res.json({
+      success: true,
+      data: {
+        announcements: paginatedAnnouncements,
+        pagination: {
+          limit,
+          offset,
+          total: publishedAnnouncements.length,
+          hasMore
+        }
+      }
+    })
+  } catch (error) {
+    logger.error('Error fetching public announcements:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch announcements'
+    })
+  }
+})
+
 // GET /api/announcements - List announcements (filtered by user role/targeting)
 router.get('/announcements', authenticateToken, async (req, res) => {
   try {
@@ -1619,5 +1674,38 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, asy
 
 // Use upload routes
 router.use('/upload', uploadRoutes)
+
+// ==========================================================================
+// CHATBOT ROUTES
+// ==========================================================================
+
+const ChatbotController = require('./controllers/chatbotController')
+
+// GET /api/chatbot/categories - Get FAQ categories (public)
+router.get('/chatbot/categories', generalLimiter, ChatbotController.getCategories)
+
+// GET /api/chatbot/faqs - Get FAQs (public, optional categoryId filter)
+router.get('/chatbot/faqs', generalLimiter, ChatbotController.getFAQs)
+
+// GET /api/chatbot/faqs/:id - Get specific FAQ (public)
+router.get('/chatbot/faqs/:id', generalLimiter, ChatbotController.getFAQById)
+
+// GET /api/chatbot/search - Search FAQs (public)
+router.get('/chatbot/search', generalLimiter, ChatbotController.searchFAQs)
+
+// POST /api/chatbot/query - Process chatbot query (public/authenticated)
+router.post('/chatbot/query', generalLimiter, ChatbotController.processQuery)
+
+// POST /api/chatbot/faqs/:id/feedback - Submit FAQ feedback (public)
+router.post('/chatbot/faqs/:id/feedback', generalLimiter, ChatbotController.submitFAQFeedback)
+
+// GET /api/chatbot/conversations/:sessionId - Get conversation history (public/authenticated)
+router.get('/chatbot/conversations/:sessionId', generalLimiter, ChatbotController.getConversationHistory)
+
+// POST /api/chatbot/conversations/:sessionId/end - End conversation (public/authenticated)
+router.post('/chatbot/conversations/:sessionId/end', generalLimiter, ChatbotController.endConversation)
+
+// GET /api/chatbot/ai-status - Get AI service status (admin only)
+router.get('/chatbot/ai-status', generalLimiter, authenticateToken, requireAdmin, ChatbotController.getAIStatus)
 
 module.exports = router

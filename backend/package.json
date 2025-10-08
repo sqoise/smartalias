@@ -4,10 +4,10 @@
   "description": "Backend API for SMART LIAS",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "node server.js",
     "start": "node server.js",
     "test": "jest",
-    "pm2:start": "pm2 start server.js --name smartlias-api --watch --ignore-watch logs --ignore-watch node_modules",
+    "pm2:start": "pm2 start server.js --name smartlias-api --max-restarts 3 --restart-delay 5000",
     "pm2:stop": "pm2 stop smartlias-api",
     "pm2:restart": "pm2 restart smartlias-api",
     "pm2:delete": "pm2 delete smartlias-api",
@@ -22,6 +22,7 @@
     "management-system"
   ],
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.57.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -29,6 +30,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.5.1",
     "fs-extra": "^11.3.2",
+    "fuse.js": "^7.1.0",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",

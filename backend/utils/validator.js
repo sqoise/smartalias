@@ -1,5 +1,14 @@
 /**
- * Input Validation Utilities
+ * I  // Sanitize input to prevent XSS and injection attacks
+  // Preserves special name characters like ñ, ', -
+  static sanitizeInput(input) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .replace(/[<>&]/g, '') // Remove XSS dangerous characters but keep quotes, apostrophes, hyphens
+      .slice(0, 100) // Limit length to prevent buffer overflow
+  }dation Utilities
  * Centralized validation functions for API inputs
  */
 
@@ -22,7 +31,7 @@ class Validator {
     
     return input
       .trim()
-      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .replace(/[<>&]/g, '') // Remove XSS dangerous characters but keep quotes and apostrophes
       .slice(0, maxLength) // Allow longer content up to 2000 characters
   }
 
@@ -130,24 +139,24 @@ class Validator {
       errors.push('First name is required')
     } else if (data.firstName.trim().length > 50) {
       errors.push('First name must be less than 50 characters')
-    } else if (!/^[a-zA-Z\s]+$/.test(data.firstName.trim())) {
-      errors.push('First name can only contain letters and spaces')
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.firstName.trim())) {
+      errors.push('First name can only contain letters, spaces, apostrophes, hyphens, and periods')
     }
     
     if (!data.lastName || data.lastName.trim().length === 0) {
       errors.push('Last name is required')
     } else if (data.lastName.trim().length > 50) {
       errors.push('Last name must be less than 50 characters')
-    } else if (!/^[a-zA-Z\s]+$/.test(data.lastName.trim())) {
-      errors.push('Last name can only contain letters and spaces')
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.lastName.trim())) {
+      errors.push('Last name can only contain letters, spaces, apostrophes, hyphens, and periods')
     }
     
     // Middle name validation (optional but must be valid format if provided)
     if (data.middleName && data.middleName.trim().length > 0) {
       if (data.middleName.trim().length > 50) {
         errors.push('Middle name must be less than 50 characters')
-      } else if (!/^[a-zA-Z\s]+$/.test(data.middleName.trim())) {
-        errors.push('Middle name can only contain letters and spaces')
+      } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.middleName.trim())) {
+        errors.push('Middle name can only contain letters, spaces, apostrophes, hyphens, and periods')
       }
     }
     

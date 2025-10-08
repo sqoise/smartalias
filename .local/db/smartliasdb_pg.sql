@@ -361,7 +361,7 @@ INSERT INTO document_requests (resident_id, document_id, purpose, status, priori
 -- Type values: 1=General, 2=Health, 3=Activities, 4=Assistance, 5=Advisory
 INSERT INTO announcements (title, content, type, created_by, published_by, published_at) VALUES
 -- Published announcements
-('Barangay Assembly Meeting', 'Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall.', 3, 1, 1, CURRENT_TIMESTAMP - INTERVAL '2 days'),
+('Barangay Assembly Meeting', 'Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Office.', 3, 1, 1, CURRENT_TIMESTAMP - INTERVAL '2 days'),
 ('COVID-19 Vaccination', 'Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025.', 2, 1, 1, CURRENT_TIMESTAMP - INTERVAL '1 day'),
 ('Waste Collection Schedule', 'New waste collection schedule: Mondays and Thursdays for biodegradable, Tuesdays and Fridays for non-biodegradable.', 1, 1, 1, CURRENT_TIMESTAMP - INTERVAL '3 days'),
 
@@ -374,7 +374,7 @@ INSERT INTO announcements (title, content, type, created_by, published_by, publi
 -- Sample SMS logs (showing sent SMS for published announcements - simplified)
 INSERT INTO announcement_sms_logs (announcement_id, target_groups, total_recipients, successful_sends, failed_sends, sms_content) VALUES
 -- SMS sent for Barangay Assembly Meeting (all residents with mobile numbers)
-(1, '["all"]', 45, 43, 2, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Hall. Your attendance is appreciated.'),
+(1, '["all"]', 45, 43, 2, 'BARANGAY LIAS: Monthly barangay assembly meeting scheduled for September 25, 2025 at 7:00 PM at the Barangay Office. Your attendance is appreciated.'),
 
 -- SMS sent for COVID-19 Vaccination (senior citizens and PWDs only)
 (2, '["age_group:60+", "special_category:PWD"]', 18, 16, 2, 'BARANGAY LIAS: Free COVID-19 vaccination for residents aged 12 and above. Schedule: September 20-22, 2025. Priority for senior citizens and PWDs.'),

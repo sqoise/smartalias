@@ -26,6 +26,12 @@ export default function DashboardLayout({
     }
   }
 
+  const handleSessionExpiredClose = () => {
+    // Logout and redirect to login
+    ApiClient.removeStoredToken()
+    router.push('/login')
+  }
+
   return (
     <div className="h-screen bg-gray-50 overflow-hidden flex">
       {/* Sidebar */}

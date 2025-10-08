@@ -20,6 +20,9 @@ const API_CONFIG = {
  */
 
 class ApiClient {
+  // Session expired callback - can be set by components
+  static onSessionExpired = null
+
   /**
    * Generic HTTP request handler
    */
@@ -60,6 +63,43 @@ class ApiClient {
         data = { message: await response.text() }
       }
 
+      // Check for authentication errors (401 Unauthorized or 403 Forbidden)
+      // BUT: Don't treat login endpoint failures as session expiration
+      if (response.status === 401 || response.status === 403) {
+        // Special case: Login endpoint failures are NOT session expiration
+        // They are just failed login attempts (wrong credentials)
+        if (endpoint === '/auth/login') {
+          return {
+            success: false,
+            error: data.message || 'Invalid credentials',
+            status: response.status,
+          }
+        }
+        
+        // For all other endpoints: treat as session expiration
+        // Clear token
+        ApiClient.removeStoredToken()
+        
+        // Trigger session expired handler if set
+        if (ApiClient.onSessionExpired) {
+          // Call handler without redirecting immediately
+          // Let the modal component handle the redirect
+          ApiClient.onSessionExpired()
+        } else {
+          // If no handler, redirect to login directly
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+        }
+        
+        return {
+          success: false,
+          error: data.message || 'Session expired',
+          status: response.status,
+          sessionExpired: true,
+        }
+      }
+
       // Return consistent response format
       if (response.ok) {
         return {
@@ -90,6 +130,13 @@ class ApiClient {
     }
   }
 
+  /**
+   * Simple GET request wrapper
+   */
+  static async get(endpoint) {
+    return await ApiClient.request(endpoint, { method: 'GET' })
+  }
+
   // ============================================
   // TOKEN MANAGEMENT
   // ============================================
@@ -110,6 +157,20 @@ class ApiClient {
   static removeStoredToken() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken')
+    }
+  }
+
+  /**
+   * TEST METHOD: Simulate session expiration
+   * This will trigger the session expired modal
+   */
+  static testSessionExpiration() {
+    console.log('Testing session expiration...')
+    if (ApiClient.onSessionExpired) {
+      ApiClient.removeStoredToken()
+      ApiClient.onSessionExpired()
+    } else {
+      console.warn('No session expired handler registered')
     }
   }
 
@@ -385,12 +446,86 @@ class ApiClient {
   }
 
   /**
-   * Get published announcements with pagination support
+   * Get published announcements with pagination support (public endpoint, no auth required)
    */
   static async getPublishedAnnouncements(limit = 5, offset = 0) {
     const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() })
-    return await ApiClient.request(`/announcements?${params.toString()}`)
+    return await ApiClient.request(`/announcements/public?${params.toString()}`)
   }
+
+  // ============================================
+  // CHATBOT ENDPOINTS
+  // ============================================
+
+  /**
+   * Get FAQ categories
+   */
+  static async getChatbotCategories() {
+    return await ApiClient.request('/chatbot/categories')
+  }
+
+  /**
+   * Get FAQs (optionally filtered by category)
+   */
+  static async getChatbotFAQs(categoryId = null) {
+    const endpoint = categoryId ? `/chatbot/faqs?categoryId=${categoryId}` : '/chatbot/faqs'
+    return await ApiClient.request(endpoint)
+  }
+
+  /**
+   * Get specific FAQ by ID
+   */
+  static async getChatbotFAQ(faqId) {
+    return await ApiClient.request(`/chatbot/faqs/${faqId}`)
+  }
+
+  /**
+   * Search FAQs
+   */
+  static async searchChatbotFAQs(query) {
+    return await ApiClient.request(`/chatbot/search?q=${encodeURIComponent(query)}`)
+  }
+
+  /**
+   * Process chatbot query
+   */
+  static async processChatbotQuery(query, sessionId) {
+    return await ApiClient.request('/chatbot/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, sessionId }),
+    })
+  }
+
+  /**
+   * Submit FAQ feedback
+   */
+  static async submitFAQFeedback(faqId, helpful) {
+    return await ApiClient.request(`/chatbot/faqs/${faqId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ helpful }),
+    })
+  }
+
+  /**
+   * Get conversation history
+   */
+  static async getChatbotConversation(sessionId) {
+    return await ApiClient.request(`/chatbot/conversations/${sessionId}`)
+  }
+
+  /**
+   * End conversation
+   */
+  static async endChatbotConversation(sessionId) {
+    return await ApiClient.request(`/chatbot/conversations/${sessionId}/end`, {
+      method: 'POST',
+    })
+  }
+}
+
+// Expose ApiClient to window for testing
+if (typeof window !== 'undefined') {
+  window.ApiClient = ApiClient
 }
 
 export default ApiClient

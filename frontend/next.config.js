@@ -2,6 +2,9 @@
 const path = require('path')
 
 const nextConfig = {
+  // Disable Strict Mode to prevent double-rendering in development
+  reactStrictMode: false,
+  
   // Production optimizations
   output: 'standalone', // For containerized deployments
   poweredByHeader: false, // Security: hide Next.js version

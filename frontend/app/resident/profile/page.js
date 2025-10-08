@@ -24,7 +24,7 @@ export default function Profile() {
       const sessionResponse = await ApiClient.getSession()
       
       if (!sessionResponse.success || !sessionResponse.data) {
-        console.error('No session found')
+        // Session expired or invalid - modal will handle this
         return
       }
       

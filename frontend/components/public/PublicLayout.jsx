@@ -1,10 +1,13 @@
 'use client'
 
-import { cloneElement, useState, useEffect } from 'react'
+import { cloneElement, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ApiClient from '../../lib/apiClient'
 import { USER_ROLES } from '../../lib/constants'
+import Spinner from '../common/Spinner'
+import PageLoadingV2 from '../common/PageLoadingV2'
+import ChatbotButton from '../common/ChatbotButton'
 
 export default function PublicLayout({ 
   children,
@@ -15,22 +18,31 @@ export default function PublicLayout({
   subtitle = 'Digital services and document requests for residents and visitors. Access barangay services conveniently online.',
   mobileImageHeight = 30, // percentage for mobile image section
   hideBackgroundImage = false, // Hide background image when keypad is active
-  allowAuthenticated = false // Allow authenticated users to access this page (for home page)
+  allowAuthenticated = false, // Allow authenticated users to access this page (for home page)
+  showChatbot = true // Show chatbot button (default true, false when rendered externally)
 }) {
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
 
   // ============================================
   // SILENT AUTHENTICATION CHECK ON LAYOUT LOAD
   // ============================================
+  const hasCheckedRef = useRef(false)
+  
   useEffect(() => {
     // Only redirect if allowAuthenticated is false (for login/register pages)
     if (allowAuthenticated) {
+      setIsLoading(false) // Skip loading for pages that allow authenticated users
       return // Skip authentication check for pages that allow authenticated users
     }
 
     const checkExistingAuthentication = async () => {
+      if (hasCheckedRef.current) return
+      hasCheckedRef.current = true
+      
       try {
         const sessionResponse = await ApiClient.getSession()
+        
         if (sessionResponse.success) {
           // User is already authenticated, redirect to appropriate dashboard
           const userRole = sessionResponse.data.role // Fixed: Use .data instead of .user
@@ -40,7 +52,11 @@ export default function PublicLayout({
         }
       } catch (error) {
         // User is not authenticated, continue to public page silently
-        console.log('User not authenticated, showing public page')
+      } finally {
+        // Add a small delay to show the loading spinner
+        setTimeout(() => {
+          setIsLoading(false)
+        }, 500) // 500ms delay to show loading spinner
       }
     }
 
@@ -74,13 +90,18 @@ export default function PublicLayout({
 
   const config = getLayoutConfig()
 
+  // Don't show loading screen - use PageLoadingV2 instead
+  // Content is always visible with progress bar overlay
+
   return (
-    <div className="bg-gray-100 text-gray-800 overflow-hidden" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0 }}>
+    <>
+      <PageLoadingV2 isLoading={isLoading} />
+      <div className="bg-gray-100 text-gray-800 overflow-hidden" style={{ height: '100dvh', position: 'fixed', width: '100%', top: 0, left: 0, zIndex: 1 }}>
       <main className="h-full relative" style={{ height: '100dvh' }}>
         {/* Large screens: Dynamic column layout */}
         <div className={`hidden lg:grid ${config.desktopCols} h-full relative transition-all duration-500 ease-in-out`}>
           {/* LEFT: Hero section with background image */}
-          <section className="relative z-0 transition-all duration-500 ease-in-out">
+          <section className="relative transition-all duration-500 ease-in-out">
             <img 
               src="/images/bg.jpg" 
               className="absolute inset-0 w-full h-full object-cover" 
@@ -117,8 +138,8 @@ export default function PublicLayout({
                 {cloneElement(children, { 
                   showLogo: false,
                   className: variant === 'homepage' 
-                    ? "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-6 lg:p-12 w-full max-w-4xl min-h-[500px]"
-                    : "bg-white rounded-lg shadow-lg mx-auto relative z-10 p-6 sm:p-4 lg:p-8"
+                    ? "bg-white rounded-lg shadow-lg mx-auto relative p-6 sm:p-6 lg:p-12 w-full max-w-4xl min-h-[500px]"
+                    : "bg-white rounded-lg shadow-lg mx-auto relative p-6 sm:p-4 lg:p-8"
                 })}
               </div>
             </section>
@@ -149,7 +170,7 @@ export default function PublicLayout({
           </div>
 
           {/* Layout container with transition */}
-          <div className="relative z-10 flex flex-col transition-all duration-500 ease-out" style={{ height: '100dvh' }}>
+          <div className="relative flex flex-col transition-all duration-500 ease-out" style={{ height: '100dvh', zIndex: 2 }}>
             {/* Top image area - animates out when keypad is active */}
             <div className={`flex-shrink-0 transition-all duration-500 ease-out ${
               hideBackgroundImage 
@@ -189,7 +210,7 @@ export default function PublicLayout({
               )}
               
               {/* Content container with mobile-optimized padding */}
-              <div className={`h-full flex flex-col relative z-30 ${
+              <div className={`h-full flex flex-col relative z-10 ${
                 hideBackgroundImage ? 'px-6 py-8' : 'px-4 py-4'
               }`}>
                 {/* Main content area - centered with extra top padding for logo overlap */}
@@ -243,6 +264,10 @@ export default function PublicLayout({
           </div>
         </div>
       </main>
-    </div>
+      </div>
+
+      {/* Chatbot - Available on all public pages (unless disabled) - Outside fixed container */}
+      {showChatbot && <ChatbotButton />}
+    </>
   )
 }

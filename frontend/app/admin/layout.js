@@ -2,10 +2,11 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import AuthProvider from '../../components/authenticated/AuthProvider.jsx'
 import DashboardLayout from '../../components/authenticated/DashboardLayout.jsx'
 import Header from '../../components/authenticated/Header.jsx'
 import Sidebar from '../../components/authenticated/Sidebar.jsx'
-import PageLoading from '../../components/common/PageLoading.jsx'
+import PageLoadingV2 from '../../components/common/PageLoadingV2.jsx'
 import ApiClient from '../../lib/apiClient.js'
 import { isAdmin, isStaff } from '../../lib/constants.js'
 
@@ -15,6 +16,7 @@ export default function AdminLayout({ children }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userInfo, setUserInfo] = useState(null)
+  const [showSessionExpired, setShowSessionExpired] = useState(false)
 
   // Check authentication and admin/staff role on mount
   useEffect(() => {
@@ -23,7 +25,15 @@ export default function AdminLayout({ children }) {
         const sessionResponse = await ApiClient.getSession()
         
         if (!sessionResponse.success) {
-          // Not authenticated - redirect to login
+          // Check if it's a session expiration (401 or 403)
+          if (sessionResponse.status === 401 || sessionResponse.status === 403 || sessionResponse.sessionExpired) {
+            // Don't redirect - show modal via AuthProvider
+            setShowSessionExpired(true)
+            setIsLoading(false)
+            return
+          }
+          
+          // Other auth errors - redirect to login
           router.replace('/login')
           return
         }
@@ -52,7 +62,16 @@ export default function AdminLayout({ children }) {
 
   // Show loading screen while checking authentication
   if (isLoading) {
-    return <PageLoading />
+    return <PageLoadingV2 isLoading={true} />
+  }
+
+  // If session expired, render AuthProvider so modal can show
+  if (showSessionExpired) {
+    return (
+      <AuthProvider>
+        <div></div>
+      </AuthProvider>
+    )
   }
 
   // Don't render anything if not authenticated (redirect in progress)
@@ -75,11 +94,13 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <DashboardLayout 
-      header={<Header role="admin" userName={userInfo?.username || 'Admin'} title={getPageTitle()} />} 
-      sidebar={<Sidebar role="admin" />}
-    >
-      {children}
-    </DashboardLayout>
+    <AuthProvider>
+      <DashboardLayout 
+        header={<Header role="admin" userName={userInfo?.username || 'Admin'} title={getPageTitle()} />} 
+        sidebar={<Sidebar role="admin" />}
+      >
+        {children}
+      </DashboardLayout>
+    </AuthProvider>
   )
 }
