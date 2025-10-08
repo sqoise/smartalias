@@ -382,3 +382,53 @@ select {
 .btn-hover:hover::before {
   left: 100%;
 }
+
+/* Bubbly Progress Bar Animations */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes bubble {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-4px) scale(0.8);
+    opacity: 0.9;
+  }
+  60% {
+    transform: translateY(-8px) scale(1.2);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-14px) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes progressGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite ease-in-out;
+}
+
+.animate-bubble {
+  animation: bubble 1.5s infinite ease-out;
+}
+
+.animate-progress-glow {
+  animation: progressGlow 3s infinite ease-in-out;
+}

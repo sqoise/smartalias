@@ -8,6 +8,7 @@ export default function CategoriesChart() {
     loading: true,
     categories: []
   })
+  const [animateProgress, setAnimateProgress] = useState(false)
 
   useEffect(() => {
     const loadChartData = async () => {
@@ -22,7 +23,7 @@ export default function CategoriesChart() {
           
           // Transform API data to chart format
           const residentTypes = [
-            { name: 'Regular Residents', count: data.regular || 0, color: 'bg-blue-600' },
+            { name: 'Regular', count: data.regular || 0, color: 'bg-blue-600' },
             { name: 'Senior Citizens', count: data.senior || 0, color: 'bg-green-600' },
             { name: 'PWD', count: data.pwd || 0, color: 'bg-purple-600' },
             { name: 'Solo Parents', count: data.solo_parent || 0, color: 'bg-orange-500' }
@@ -32,6 +33,11 @@ export default function CategoriesChart() {
             loading: false,
             categories: residentTypes
           })
+
+          // Trigger animation after data loads
+          setTimeout(() => {
+            setAnimateProgress(true)
+          }, 100)
         } else {
           throw new Error('Failed to fetch resident categories')
         }
@@ -88,11 +94,17 @@ export default function CategoriesChart() {
                   <span className="text-sm text-gray-700 truncate">{category.name}</span>
                 </div>
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-32 bg-gray-200 rounded-full h-3">
+                  <div className="relative w-32 bg-gray-200 rounded-full h-3 overflow-hidden">
+                    {/* Racing fill animation from 0% to target % */}
                     <div 
-                      className={`h-3 rounded-full ${category.color} transition-all duration-500`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
+                      className={`h-3 rounded-full ${category.color}`}
+                      style={{ 
+                        width: animateProgress ? `${percentage}%` : '0%',
+                        transition: 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transitionDelay: `${index * 200}ms`
+                      }}
+                    >
+                    </div>
                   </div>
                   <span className="text-xs font-medium text-gray-500 min-w-[35px] text-right">
                     {percentage.toFixed(1)}%
