@@ -56,9 +56,16 @@ const config = {
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW) || 15 * 60 * 1000, // 15 minutes
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX) || 100, // requests per window
   
-  // SMS Configuration (Semaphore - Philippine SMS Provider)
+  // SMS Configuration - Generic SMS Provider Support
+  SMS_PROVIDER: process.env.SMS_PROVIDER || 'iprog', // 'semaphore', 'iprog', 'twilio'
+  
+  // Semaphore SMS Configuration (Philippine SMS Provider)
   SEMAPHORE_API_KEY: process.env.SEMAPHORE_API_KEY,
   SEMAPHORE_SENDER_NAME: process.env.SEMAPHORE_SENDER_NAME,
+  
+  // IProg SMS Configuration (Alternative Philippine SMS Provider)
+  IPROG_API_TOKEN: process.env.IPROG_API_TOKEN,
+  IPROG_SMS_PROVIDER: parseInt(process.env.IPROG_SMS_PROVIDER) || 0, // 0 or 1
   
   // Development flags
   isDevelopment: process.env.NODE_ENV === 'development',

@@ -122,47 +122,80 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
   const validateForm = () => {
     const newErrors = {}
 
+    // First name validation
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required'
-    } else if (!/^[a-zA-Z\s]+$/.test(formData.firstName.trim())) {
-      newErrors.firstName = 'First name can only contain letters and spaces'
+    } else if (formData.firstName.trim().length > 50) {
+      newErrors.firstName = 'First name must be less than 50 characters'
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(formData.firstName.trim())) {
+      newErrors.firstName = 'First name can only contain letters, spaces, apostrophes, hyphens, and periods'
     }
     
+    // Last name validation
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required'
-    } else if (!/^[a-zA-Z\s]+$/.test(formData.lastName.trim())) {
-      newErrors.lastName = 'Last name can only contain letters and spaces'
+    } else if (formData.lastName.trim().length > 50) {
+      newErrors.lastName = 'Last name must be less than 50 characters'
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(formData.lastName.trim())) {
+      newErrors.lastName = 'Last name can only contain letters, spaces, apostrophes, hyphens, and periods'
     }
     
     // Middle name validation (optional but must be valid format if provided)
-    if (formData.middleName.trim() && !/^[a-zA-Z\s]+$/.test(formData.middleName.trim())) {
-      newErrors.middleName = 'Middle name can only contain letters and spaces'
+    if (formData.middleName.trim()) {
+      if (formData.middleName.trim().length > 50) {
+        newErrors.middleName = 'Middle name must be less than 50 characters'
+      } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(formData.middleName.trim())) {
+        newErrors.middleName = 'Middle name can only contain letters, spaces, apostrophes, hyphens, and periods'
+      }
     }
+
+    // Birth date validation
     if (!formData.birthDate) {
       newErrors.birthDate = 'Birth date is required'
+    } else {
+      const birthDate = new Date(formData.birthDate)
+      const today = new Date()
+      const minDate = new Date('1900-01-01')
+      
+      if (isNaN(birthDate.getTime())) {
+        newErrors.birthDate = 'Invalid birth date format'
+      } else if (birthDate > today) {
+        newErrors.birthDate = 'Birth date cannot be in the future'
+      } else if (birthDate < minDate) {
+        newErrors.birthDate = 'Birth date cannot be before 1900'
+      }
     }
+
+    // Gender validation
     if (!formData.gender) {
       newErrors.gender = 'Gender is required'
     }
+
+    // Civil status validation
     if (!formData.civilStatus) {
       newErrors.civilStatus = 'Civil status is required'
     }
     
-    // Address is required with minimum 20 characters
+    // Address validation (required with minimum 20 characters)
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required'
-    } else if (formData.address.trim().length < 20) {
-      newErrors.address = 'Address must be at least 20 characters long'
+    } else {
+      const addressLength = formData.address.trim().length
+      if (addressLength < 20) {
+        newErrors.address = 'Address must be at least 20 characters long'
+      } else if (addressLength > 200) {
+        newErrors.address = 'Address must be less than 200 characters'
+      }
     }
     
-    // Purok is required
+    // Purok validation (required)
     if (!formData.purok) {
       newErrors.purok = 'Purok is required'
     }
     
     // Additional Information fields are optional - no validation needed
     
-    // Mobile number is optional, but validate format if provided
+    // Mobile number validation (optional, but validate format if provided)
     if (formData.mobileNumber.trim()) {
       const cleanMobileNumber = formData.mobileNumber.replace(/\s+/g, '')
       if (!/^09\d{9}$/.test(cleanMobileNumber)) {
@@ -170,7 +203,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
       }
     }
     
-    // Home number is optional, but validate format if provided
+    // Home number validation (optional, but validate format if provided)
     if (formData.homeNumber.trim()) {
       const cleanHomeNumber = formData.homeNumber.replace(/\s+/g, '')
       if (!/^\d{8}$/.test(cleanHomeNumber)) {
@@ -178,7 +211,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
       }
     }
 
-    // Email is optional, but validate format if provided
+    // Email validation (optional, but validate format if provided)
     if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email.trim())) {
@@ -768,7 +801,6 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                         <option value="PWD">PWD</option>
                         <option value="SOLO_PARENT">Solo Parent</option>
                         <option value="INDIGENT">Indigent</option>
-                        <option value="STUDENT">Student</option>
                       </select>
                       <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     </div>

@@ -76,8 +76,16 @@ export default function AnnouncementsPage() {
   const handleAddAnnouncement = async (newAnnouncement) => {
     try {
       setAddLoading(true)
+      
+      // Ensure no detail view is shown automatically
+      setShowView(false)
+      setSelectedAnnouncement(null)
+      
+      // Update the announcements list and close the add panel
       setAnnouncementsData(prev => [...(prev || []), newAnnouncement])
       setShowAdd(false)
+      
+      // Reload the announcements list to get fresh data
       await loadAnnouncements()
     } catch (err) {
       console.error('Error handling added announcement:', err)

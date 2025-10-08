@@ -29,6 +29,16 @@ export default function ResidentsPage() {
       const response = await ApiClient.getResidents()
       
       if (response.success) {
+        console.log('=== LOADED RESIDENTS FROM API ===')
+        console.log('Total residents:', response.data?.length || 0)
+        console.log('Active residents:', response.data?.filter(r => r.is_active === 1).length || 0)
+        console.log('Inactive residents:', response.data?.filter(r => r.is_active === 0).length || 0)
+        console.log('Sample data:', response.data?.slice(0, 3).map(r => ({
+          id: r.id,
+          name: `${r.first_name} ${r.last_name}`,
+          is_active: r.is_active
+        })))
+        
         setResidentsData(response.data || [])
       } else {
         setError(response.error || 'Failed to load residents')
@@ -98,6 +108,60 @@ export default function ResidentsPage() {
     }
   }
 
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      // Call API to update status in database
+      const response = await ApiClient.updateResidentStatus(id, newStatus)
+      
+      if (response && response.success) {
+        // Parse ID to ensure consistent comparison (handles both "00042" and 42)
+        const numericId = parseInt(id, 10)
+        
+        // Update local state to reflect the change
+        setResidentsData(prev => 
+          prev.map(r => {
+            const residentId = parseInt(r.id, 10)
+            return residentId === numericId ? { ...r, is_active: newStatus } : r
+          })
+        )
+        
+        // Update selected resident if it's the one being updated
+        if (selectedResident) {
+          const selectedId = parseInt(selectedResident.id, 10)
+          if (selectedId === numericId) {
+            setSelectedResident(prev => ({ ...prev, is_active: newStatus }))
+          }
+        }
+        
+        return response
+      } else {
+        throw new Error(response?.error || 'Failed to update status')
+      }
+    } catch (error) {
+      console.error('Error updating resident status:', error)
+      throw error
+    }
+  }
+
+  const handleEditComplete = async (id) => {
+    try {
+      // Reload all residents to get updated data including special categories
+      await loadResidents()
+      
+      // Also update the selected resident with fresh data
+      const response = await ApiClient.getResidents()
+      if (response.success) {
+        const numericId = parseInt(id, 10)
+        const updatedResident = response.data.find(r => parseInt(r.id, 10) === numericId)
+        if (updatedResident) {
+          setSelectedResident(updatedResident)
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing resident data:', err)
+    }
+  }
+
   return (
     <div className="space-y-2">
 
@@ -129,7 +193,12 @@ export default function ResidentsPage() {
       />
 
       {/* View Resident Slide Panel */}
-      <ResidentsView open={showView} onClose={() => setShowView(false)}>
+      <ResidentsView 
+        open={showView} 
+        onClose={() => setShowView(false)}
+        onStatusUpdate={handleStatusUpdate}
+        onEditComplete={handleEditComplete}
+      >
         {selectedResident}
       </ResidentsView>
 

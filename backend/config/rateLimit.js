@@ -32,8 +32,8 @@ const authLimiter = rateLimit({
 
 // Very strict rate limiting for password changes
 const passwordChangeLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: config.isDevelopment ? 200 : 50, // 200 in dev, 50 in production per hour
+  windowMs: 2 * 60 * 60 * 1000, // 2 hours
+  max: config.isDevelopment ? 200 : 50, // 200 in dev, 50 in production per 2 hours
   message: {
     success: false,
     error: 'Too many password change attempts. Please try again later.',

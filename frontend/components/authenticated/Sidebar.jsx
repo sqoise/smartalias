@@ -40,7 +40,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
-      { name: 'Households', href: '/admin/households', icon: 'bi-house' },
+      // { name: 'Households', href: '/admin/households', icon: 'bi-house' },
       { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
       { name: 'Document Services', href: '/admin/documents', icon: 'bi-file-earmark-text' },
       { name: 'Maintenance', href: '/admin/settings', icon: 'bi-gear' },

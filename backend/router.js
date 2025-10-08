@@ -16,7 +16,6 @@ const logger = require('./config/logger')
 const db = require('./config/db')
 const Validator = require('./utils/validator')
 const ApiResponse = require('./utils/apiResponse')
-const IDUtils = require('./utils/idUtils')
 const UserRepository = require('./repositories/UserRepository')
 
 // Import route modules
@@ -25,7 +24,7 @@ const ResidentRepository = require('./repositories/ResidentRepository')
 const AnnouncementRepository = require('./repositories/AnnouncementRepository')
 const DashboardRepository = require('./repositories/DashboardRepository')
 const SMSService = require('./services/smsService')
-const { authenticateToken, requireAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
+const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
 // Import shared messages
@@ -95,6 +94,16 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
       logger.warn('Failed login attempt', { username, ip: req.ip, attempts: failedAttempts })
       return ApiResponse.unauthorized(res, 'Invalid PIN. Please try again.')
+    }
+
+    // Check if resident account is active (for role 3 - Resident)
+    if (user.role === USER_ROLES.RESIDENT) {
+      const resident = await ResidentRepository.findByUserId(user.id)
+      
+      if (resident && resident.is_active === 0) {
+        logger.warn('Login attempt with inactive resident account', { username, user_id: user.id, resident_id: resident.id })
+        return ApiResponse.error(res, 'Your account has been deactivated. Please contact the barangay office.', 403)
+      }
     }
 
     // Successful login - reset failed attempts
@@ -505,9 +514,9 @@ router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async
     // Create resident record
     const residentDataWithUser = {
       ...sanitizedData,
-      userId: IDUtils.parseID(newUser.id), // Parse formatted ID back to integer for database
+      userId: newUser.id, // Use clean integer ID
       isActive: 1,
-      createdBy: IDUtils.parseID(req.user.id)
+      createdBy: req.user.id // Use clean integer ID
     }
 
     const newResident = await ResidentRepository.create(residentDataWithUser)
@@ -535,8 +544,8 @@ router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async
   }
 })
 
-// PUT /api/residents/:id - Update resident (admin only)
-router.put('/residents/:id', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+// PUT /api/residents/:id - Update resident (staff or admin)
+router.put('/residents/:id', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const { id } = req.params
     const updateData = req.body
@@ -546,8 +555,29 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireAdmin, as
       return ApiResponse.error(res, 'Valid resident ID is required', 400)
     }
 
+    // Transform snake_case to camelCase for validation (support both formats)
+    const normalizedData = {
+      firstName: updateData.firstName || updateData.first_name,
+      lastName: updateData.lastName || updateData.last_name,
+      middleName: updateData.middleName || updateData.middle_name || '',
+      suffix: updateData.suffix || '',
+      birthDate: updateData.birthDate || updateData.birth_date || null,
+      gender: updateData.gender || '',
+      civilStatus: updateData.civilStatus || updateData.civil_status || '',
+      homeNumber: updateData.homeNumber || updateData.home_number || '',
+      mobileNumber: updateData.mobileNumber || updateData.mobile_number || '',
+      email: updateData.email || '',
+      address: updateData.address || '',
+      purok: updateData.purok || null,
+      religion: updateData.religion || '',
+      occupation: updateData.occupation || '',
+      specialCategory: updateData.specialCategory || updateData.special_category || updateData.special_category_id || '',
+      notes: updateData.notes || '',
+      isActive: updateData.isActive !== undefined ? updateData.isActive : (updateData.is_active !== undefined ? updateData.is_active : 1)
+    }
+
     // CRITICAL: Use identical validation as POST /api/residents (create endpoint)
-    const validation = Validator.validateResident(updateData)
+    const validation = Validator.validateResident(normalizedData)
     if (!validation.isValid) {
       Validator.logValidationError(req, validation, 'resident update')
       return ApiResponse.validationError(res, validation.errors, 'Invalid resident data')
@@ -555,23 +585,23 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireAdmin, as
 
     // Sanitize input data (identical to create endpoint)
     const sanitizedData = {
-      firstName: Validator.sanitizeInput(updateData.firstName),
-      lastName: Validator.sanitizeInput(updateData.lastName),
-      middleName: Validator.sanitizeInput(updateData.middleName || ''),
-      suffix: Validator.sanitizeInput(updateData.suffix || ''),
-      birthDate: updateData.birthDate || null,
-      gender: Validator.sanitizeInput(updateData.gender || ''),
-      civilStatus: Validator.sanitizeInput(updateData.civilStatus || ''),
-      homeNumber: Validator.sanitizeInput(updateData.homeNumber || ''),
-      mobileNumber: Validator.sanitizeInput(updateData.mobileNumber || ''),
-      email: Validator.sanitizeInput(updateData.email || ''),
-      address: Validator.sanitizeInput(updateData.address || ''),
-      purok: updateData.purok || null,
-      religion: Validator.sanitizeInput(updateData.religion || ''),
-      occupation: Validator.sanitizeInput(updateData.occupation || ''),
-      specialCategory: Validator.sanitizeInput(updateData.specialCategory || ''),
-      notes: Validator.sanitizeInput(updateData.notes || ''),
-      isActive: updateData.isActive !== undefined ? updateData.isActive : 1
+      firstName: Validator.sanitizeInput(normalizedData.firstName),
+      lastName: Validator.sanitizeInput(normalizedData.lastName),
+      middleName: Validator.sanitizeInput(normalizedData.middleName),
+      suffix: Validator.sanitizeInput(normalizedData.suffix),
+      birthDate: normalizedData.birthDate,
+      gender: Validator.sanitizeInput(normalizedData.gender),
+      civilStatus: Validator.sanitizeInput(normalizedData.civilStatus),
+      homeNumber: Validator.sanitizeInput(normalizedData.homeNumber),
+      mobileNumber: Validator.sanitizeInput(normalizedData.mobileNumber),
+      email: Validator.sanitizeInput(normalizedData.email),
+      address: Validator.sanitizeInput(normalizedData.address),
+      purok: normalizedData.purok,
+      religion: Validator.sanitizeInput(normalizedData.religion),
+      occupation: Validator.sanitizeInput(normalizedData.occupation),
+      specialCategory: Validator.sanitizeInput(normalizedData.specialCategory),
+      notes: Validator.sanitizeInput(normalizedData.notes),
+      isActive: normalizedData.isActive
     }
 
     // Apply formatTitleCase for consistency (same as create)
@@ -599,8 +629,8 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireAdmin, as
   }
 })
 
-// PATCH /api/residents/:id/status - Update resident status (admin only)
-router.patch('/residents/:id/status', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+// PATCH /api/residents/:id/status - Update resident status (staff or admin)
+router.patch('/residents/:id/status', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const { id } = req.params
     const { is_active } = req.body
@@ -680,14 +710,14 @@ router.post('/residents/:id/reset-pin', generalLimiter, authenticateToken, requi
   try {
     const { id } = req.params
 
-    // Parse and validate ID
-    const parsedId = IDUtils.parseID(id)
-    if (!parsedId || isNaN(parseInt(parsedId))) {
+    // Validate ID
+    const residentId = parseInt(id)
+    if (!residentId || isNaN(residentId)) {
       return ApiResponse.validationError(res, { id: ['Valid resident ID is required'] }, 'Invalid resident ID')
     }
 
     // Get resident to verify it exists and get user_id
-    const resident = await ResidentRepository.findById(parsedId)
+    const resident = await ResidentRepository.findById(residentId)
 
     if (!resident) {
       return ApiResponse.error(res, 'Resident not found', 404)
@@ -697,24 +727,24 @@ router.post('/residents/:id/reset-pin', generalLimiter, authenticateToken, requi
     const userId = resident.user_id || resident.userId
     
     if (!userId) {
-      logger.warn(`Reset PIN failed: Resident ${parsedId} has no user account`, { 
-        residentId: parsedId,
+      logger.warn(`Reset PIN failed: Resident ${residentId} has no user account`, { 
+        residentId: residentId,
         residentData: { ...resident, user_id: resident.user_id, userId: resident.userId }
       })
       return ApiResponse.error(res, 'This resident does not have a user account', 400)
     }
 
-    // Parse userId to integer (it might be formatted with leading zeros)
-    const parsedUserId = IDUtils.parseID(userId)
+    // Ensure userId is integer
+    const userIdInt = parseInt(userId)
 
-    logger.info(`Attempting to reset PIN for resident ${parsedId}, user ${parsedUserId}`, {
-      residentId: parsedId,
-      userId: parsedUserId,
+    logger.info(`Attempting to reset PIN for resident ${residentId}, user ${userIdInt}`, {
+      residentId: residentId,
+      userId: userIdInt,
       requestedBy: req.user.username
     })
 
     // Get user account
-    const user = await UserRepository.findById(parsedUserId)
+    const user = await UserRepository.findById(userIdInt)
 
     if (!user) {
       return ApiResponse.error(res, 'User account not found', 404)
@@ -815,22 +845,29 @@ router.get('/dashboard/categories', generalLimiter, authenticateToken, requireAd
   }
 })
 
-// GET /api/dashboard/sms - Get SMS statistics (admin only)
+// GET /api/dashboard/sms - Get SMS statistics and service status (admin only)
 router.get('/dashboard/sms', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const smsStats = await DashboardRepository.getSMSStats()
+    // Get both SMS stats and service status
+    const [smsStats, serviceStatus] = await Promise.all([
+      DashboardRepository.getSMSStats(),
+      SMSService.checkSMSCredits()
+    ])
 
     res.json({
       success: true,
-      data: smsStats,
-      message: 'SMS statistics retrieved successfully'
+      data: {
+        ...smsStats,
+        serviceStatus
+      },
+      message: 'SMS statistics and service status retrieved successfully'
     })
 
   } catch (error) {
-    logger.error('Error getting SMS stats', error)
+    logger.error('Error getting SMS stats and service status', error)
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve SMS statistics'
+      error: 'Failed to retrieve SMS statistics and service status'
     })
   }
 })
@@ -1095,7 +1132,7 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
     // Create resident record
     const residentDataWithUser = {
       ...sanitizedData,
-      userId: IDUtils.parseID(newUser.id), // Parse formatted ID back to integer for database
+      userId: newUser.id, // Use clean integer ID
       isActive: 1,
       selfRegistered: true // Flag to indicate self-registration
     }
@@ -1310,8 +1347,8 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
       }, 'Missing required fields')
     }
 
-    // Validate content length
-    const contentValidation = Validator.validateContent(content)
+    // Validate content length (200 character limit for SMS compatibility)
+    const contentValidation = Validator.validateContent(content, 30, 200)
     if (!contentValidation.isValid) {
       return ApiResponse.validationError(res, {
         content: contentValidation.errors
@@ -1442,8 +1479,8 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
       }, 'Missing required fields')
     }
 
-    // Validate content length
-    const contentValidation = Validator.validateContent(content)
+    // Validate content length (200 character limit for SMS compatibility)
+    const contentValidation = Validator.validateContent(content, 30, 200)
     if (!contentValidation.isValid) {
       return ApiResponse.validationError(res, {
         content: contentValidation.errors

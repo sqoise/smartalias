@@ -285,7 +285,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
           console.error('Error refreshing announcement data:', refreshError)
         }
         
-        onUpdateKeepOpen?.() // Use the keep-open handler for publish operations
+        onUpdate() // Close panel after successful publish
       } else {
         console.error('Publish failed:', response)
         onToast?.(response.error || 'Failed to publish announcement', 'error')
@@ -489,7 +489,7 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                   {/* Status Badge */}
                   <div className="flex items-center gap-2 mb-4">
                     {isPublished ? (
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded bg-gray-500 text-white">
                         <i className="bi bi-check-circle-fill mr-1.5" />
                         Published
                       </span>

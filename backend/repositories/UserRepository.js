@@ -5,7 +5,6 @@
 
 const db = require('../config/db')
 const logger = require('../config/logger')
-const IDUtils = require('../utils/idUtils')
 
 class UserRepository {
   /**
@@ -153,7 +152,7 @@ class UserRepository {
     const newUser = result.rows[0]
     
     return {
-      id: IDUtils.formatID(newUser.id),
+      id: newUser.id, // Use clean integer ID
       username: newUser.username,
       role: userData.role,
       passwordChanged: newUser.is_password_changed === 1,

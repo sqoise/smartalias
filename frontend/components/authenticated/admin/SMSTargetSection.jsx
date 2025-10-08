@@ -209,7 +209,7 @@ export default function SMSTargetSection({
                   <span className={`ml-2 text-sm transition-colors ${
                     targetGroups.includes('special_category:SOLO_PARENT') ? 'text-slate-900 font-medium' : 'text-slate-700'
                   } ${disabled ? 'opacity-50' : 'group-hover:text-slate-900'}`}>
-                    Solo Parents
+                    Solo Parent
                   </span>
                 </label>
 
@@ -239,35 +239,6 @@ export default function SMSTargetSection({
                     targetGroups.includes('age_group:18-65') ? 'text-slate-900 font-medium' : 'text-slate-700'
                   } ${disabled ? 'opacity-50' : 'group-hover:text-slate-900'}`}>
                     Adults (18-59 years)
-                  </span>
-                </label>
-
-                {/* Youth */}
-                <label className="flex items-center cursor-pointer group py-1 px-2 rounded hover:bg-white transition-colors">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={targetGroups.includes('age_group:13-17')}
-                      onChange={(e) => handleTargetGroupToggle('age_group:13-17', e.target.checked)}
-                      className="sr-only"
-                      disabled={disabled}
-                    />
-                    <div className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 flex items-center justify-center ${
-                      targetGroups.includes('age_group:13-17')
-                        ? 'bg-slate-600 border-slate-600' 
-                        : 'bg-white border-slate-300 group-hover:border-slate-400'
-                    } ${disabled ? 'opacity-50 cursor-not-allowed' : 'group-hover:shadow-sm'}`}>
-                      {targetGroups.includes('age_group:13-17') && (
-                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`ml-2 text-sm transition-colors ${
-                    targetGroups.includes('age_group:13-17') ? 'text-slate-900 font-medium' : 'text-slate-700'
-                  } ${disabled ? 'opacity-50' : 'group-hover:text-slate-900'}`}>
-                    Youth (13-17 years)
                   </span>
                 </label>
               </div>

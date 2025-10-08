@@ -67,6 +67,21 @@ export default function ResidentsContainer({
     }
   }, [])  // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
+    // Debug: Check data before filtering
+    if (statusFilter === 'inactive') {
+      console.log('=== INACTIVE FILTER DEBUG ===')
+      console.log('Total residents:', residents.length)
+      console.log('Residents with is_active=0:', residents.filter(r => r.is_active === 0).length)
+      console.log('Residents with is_active=1:', residents.filter(r => r.is_active === 1).length)
+      console.log('Status filter:', statusFilter)
+      console.log('Other filters:', {
+        ageGroupFilter,
+        civilStatusFilter,
+        purokFilter,
+        specialCategoryFilter
+      })
+    }
+    
     let filtered = residents.filter(resident => {
       const fullName = `${resident.first_name || ''} ${resident.last_name || ''}`.trim()
       const matchesSearch = searchQuery === '' || 
@@ -77,8 +92,8 @@ export default function ResidentsContainer({
         (resident.mobile_number && resident.mobile_number.toLowerCase().includes(searchQuery.toLowerCase()))
       
       const matchesStatus = statusFilter === 'all' || 
-        (statusFilter === 'active' && resident.is_active === 1) ||
-        (statusFilter === 'inactive' && resident.is_active === 0)
+        (statusFilter === 'active' && (resident.is_active === 1 || resident.is_active === '1')) ||
+        (statusFilter === 'inactive' && (resident.is_active === 0 || resident.is_active === '0'))
       
       // Age Group Filter
       const matchesAgeGroup = ageGroupFilter === 'all' || (() => {
@@ -116,6 +131,22 @@ export default function ResidentsContainer({
         return false
       })()
       
+      // Debug inactive filter - after all variables are defined
+      if (statusFilter === 'inactive') {
+        console.log('Resident:', {
+          id: resident.id,
+          name: `${resident.first_name} ${resident.last_name}`,
+          is_active: resident.is_active,
+          is_active_type: typeof resident.is_active,
+          matchesStatus,
+          matchesSearch,
+          matchesAgeGroup,
+          matchesCivilStatus,
+          matchesPurok,
+          matchesSpecialCategory
+        })
+      }
+      
       return matchesSearch && matchesStatus && 
              matchesAgeGroup && matchesCivilStatus && matchesPurok && matchesSpecialCategory
     })
@@ -143,6 +174,18 @@ export default function ResidentsContainer({
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentData = filteredAndSortedData.slice(startIndex, endIndex)
+  
+  // Debug pagination for inactive filter
+  if (statusFilter === 'inactive') {
+    console.log('=== PAGINATION DEBUG ===')
+    console.log('Filtered data length:', filteredAndSortedData.length)
+    console.log('Current page:', currentPage)
+    console.log('Items per page:', itemsPerPage)
+    console.log('Start index:', startIndex)
+    console.log('End index:', endIndex)
+    console.log('Current data length:', currentData.length)
+    console.log('Current data:', currentData)
+  }
 
   // Reset to first page when filters change
   const handleSearchChange = (value) => {
@@ -222,8 +265,6 @@ export default function ResidentsContainer({
   { value: 'all', label: 'Any' },
         { value: 'Single', label: 'Single' },
         { value: 'Married', label: 'Married' },
-        { value: 'Live in', label: 'Live in' },
-        { value: 'Solo Parent', label: 'Solo Parent' },
         { value: 'Widowed', label: 'Widowed' },
         { value: 'Separated', label: 'Separated' }
       ]
@@ -239,8 +280,7 @@ export default function ResidentsContainer({
         { value: 'Regular', label: 'Regular' },
         { value: 'PWD', label: 'PWD' },
         { value: 'Solo Parent', label: 'Solo Parent' },
-        { value: 'Indigent', label: 'Indigent' },
-        { value: 'Student', label: 'Student' }
+        { value: 'Indigent', label: 'Indigent' }
       ]
     }
   }
@@ -800,12 +840,6 @@ export default function ResidentsContainer({
                 <thead className={`bg-gray-100 sticky top-0 z-[5] ${isScrolled ? 'shadow-sm' : ''}`}>
                   <tr>
                     <th 
-                      onClick={() => handleSort('id')}
-                      className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-14"
-                    >
-                      ID <SortIcon field="id" />
-                    </th>
-                    <th 
                       onClick={() => handleSort('first_name')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-52"
                     >
@@ -861,11 +895,6 @@ export default function ResidentsContainer({
                         index === currentData.length - 1 ? 'shadow-sm' : ''
                       }`}
                     >
-                      <td className="px-3 py-1 whitespace-nowrap w-14">
-                        <span className="text-xs font-semibold tracking-normal antialiased text-gray-900">
-                          {resident.id}
-                        </span>
-                      </td>
                       <td className="px-3 py-1 whitespace-nowrap w-52">
                         <span className="text-xs font-semibold tracking-normal antialiased text-gray-900">
                           {(() => {

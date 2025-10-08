@@ -7,13 +7,13 @@ export default function SystemStatusCard() {
   // Individual service states
   const [systemStatus, setSystemStatus] = useState({
     api: { available: false, loading: true },
-    db: { available: false, loading: true },
-    sms: { available: false, loading: true }
+    sms: { available: false, loading: true, credits: 0, provider: 'Unknown', lastChecked: null }
   })
 
   const [aiStatus, setAiStatus] = useState({
     available: false,
-    loading: true
+    loading: true,
+    model: 'Unknown'
   })
 
   // API Status Check
@@ -40,31 +40,6 @@ export default function SystemStatusCard() {
     loadAPIStatus()
   }, [])
 
-  // DB Status Check
-  useEffect(() => {
-    const loadDBStatus = async () => {
-      try {
-        setSystemStatus(prev => ({ 
-          ...prev, 
-          db: { ...prev.db, loading: true } 
-        }))
-        
-        const response = await ApiClient.request('/dashboard/health')
-        const dbHealthy = response.success && response.data?.database !== false
-        setSystemStatus(prev => ({ 
-          ...prev, 
-          db: { available: dbHealthy, loading: false } 
-        }))
-      } catch (error) {
-        setSystemStatus(prev => ({ 
-          ...prev, 
-          db: { available: false, loading: false } 
-        }))
-      }
-    }
-    loadDBStatus()
-  }, [])
-
   // SMS Status Check
   useEffect(() => {
     const loadSMSStatus = async () => {
@@ -75,14 +50,24 @@ export default function SystemStatusCard() {
         }))
         
         const response = await ApiClient.request('/dashboard/sms')
+        
+        // Check both API success and service availability
+        const isAvailable = response.success && response.data?.serviceStatus?.available
+        
         setSystemStatus(prev => ({ 
           ...prev, 
-          sms: { available: response.success, loading: false } 
+          sms: { 
+            available: isAvailable, 
+            loading: false,
+            credits: response.data?.serviceStatus?.credits || 0,
+            provider: response.data?.serviceStatus?.provider || 'Unknown',
+            lastChecked: response.data?.serviceStatus?.lastChecked || null
+          } 
         }))
       } catch (error) {
         setSystemStatus(prev => ({ 
           ...prev, 
-          sms: { available: false, loading: false } 
+          sms: { available: false, loading: false, credits: 0, provider: 'Unknown', lastChecked: null } 
         }))
       }
     }
@@ -99,19 +84,22 @@ export default function SystemStatusCard() {
         if (response.success) {
           setAiStatus({
             available: response.data.available,
-            loading: false
+            loading: false,
+            model: response.data.model || 'Gemini'
           })
         } else {
           setAiStatus({
             available: false,
-            loading: false
+            loading: false,
+            model: 'Unknown'
           })
         }
       } catch (error) {
         console.error('Error loading AI status:', error)
         setAiStatus({
           available: false,
-          loading: false
+          loading: false,
+          model: 'Unknown'
         })
       }
     }
@@ -126,7 +114,6 @@ export default function SystemStatusCard() {
           {(() => {
             // Simple status without complex state dependencies
             const hasLoadingServices = systemStatus.api.loading || 
-                                     systemStatus.db.loading || 
                                      systemStatus.sms.loading || 
                                      aiStatus.loading
             
@@ -139,12 +126,11 @@ export default function SystemStatusCard() {
             // All services loaded, calculate final status
             const onlineCount = [
               systemStatus.api.available,
-              systemStatus.db.available,
               systemStatus.sms.available,
               aiStatus.available
             ].filter(Boolean).length
             
-            const statusText = onlineCount === 4 ? "Online" : 
+            const statusText = onlineCount === 3 ? "Online" : 
                               onlineCount === 0 ? "Offline" : "Degraded"
             
             return (
@@ -169,23 +155,6 @@ export default function SystemStatusCard() {
               )}
             </div>
 
-            {/* DB Status */}
-            <div className="flex items-center">
-              {systemStatus.db.loading ? (
-                <>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full mr-1 animate-pulse"></div>
-                  <div className="w-4 h-3 bg-gray-300 rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <div className={`w-2 h-2 rounded-full mr-1 ${
-                    systemStatus.db.available ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="text-xs text-gray-600">DB</span>
-                </>
-              )}
-            </div>
-
             {/* SMS Status */}
             <div className="flex items-center">
               {systemStatus.sms.loading ? (
@@ -194,12 +163,24 @@ export default function SystemStatusCard() {
                   <div className="w-6 h-3 bg-gray-300 rounded animate-pulse"></div>
                 </>
               ) : (
-                <>
+                <div className="relative group flex items-center px-2 py-1 rounded-md hover:bg-gray-50 transition-colors duration-150 cursor-help">
                   <div className={`w-2 h-2 rounded-full mr-1 ${
                     systemStatus.sms.available ? 'bg-green-500' : 'bg-red-500'
                   }`}></div>
-                  <span className="text-xs text-gray-600">SMS</span>
-                </>
+                  <span className="text-xs text-gray-600">
+                    SMS
+                  </span>
+                  
+                  {/* Custom Tailwind Tooltip - Credits Only */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 whitespace-nowrap">
+                    <div className="text-center">
+                      <span className="text-white">Credits: </span>
+                      <span className="text-yellow-400 font-medium">{systemStatus.sms.credits}</span>
+                    </div>
+                    {/* Tooltip Arrow */}
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -211,12 +192,22 @@ export default function SystemStatusCard() {
                   <div className="w-12 h-3 bg-gray-300 rounded animate-pulse"></div>
                 </>
               ) : (
-                <>
+                <div className="relative group flex items-center px-2 py-1 rounded-md hover:bg-gray-50 transition-colors duration-150 cursor-help">
                   <div className={`w-2 h-2 rounded-full mr-1 ${
                     aiStatus.available ? 'bg-green-500' : 'bg-red-500'
                   }`}></div>
                   <span className="text-xs text-gray-600">AI Model</span>
-                </>
+                  
+                  {/* Custom Tailwind Tooltip - Model Name */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 whitespace-nowrap">
+                    <div className="text-center">
+                      <span className="text-white">Model: </span>
+                      <span className="text-blue-400 font-medium">{aiStatus.model}</span>
+                    </div>
+                    {/* Tooltip Arrow */}
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                  </div>
+                </div>
               )}
             </div>
           </div>

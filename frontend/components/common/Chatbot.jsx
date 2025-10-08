@@ -264,14 +264,14 @@ export default function Chatbot({ isOpen, onClose }) {
           <div className="flex items-center gap-1">
             <button
               onClick={clearConversation}
-              className="text-white/80 hover:text-white hover:bg-white/10 rounded p-1.5 transition-colors flex items-center justify-center w-7 h-7"
+              className="cursor-pointer text-white/80 hover:text-white hover:bg-white/10 rounded p-1.5 transition-colors flex items-center justify-center w-7 h-7"
               title="Clear conversation"
             >
               <i className="bi bi-arrow-clockwise text-sm"></i>
             </button>
             <button
               onClick={onClose}
-              className="text-white/80 hover:text-white hover:bg-white/10 rounded p-1.5 transition-colors flex items-center justify-center w-7 h-7"
+              className="cursor-pointer text-white/80 hover:text-white hover:bg-white/10 rounded p-1.5 transition-colors flex items-center justify-center w-7 h-7"
               title="Minimize"
             >
               <span className="text-2xl leading-none font-light">−</span>

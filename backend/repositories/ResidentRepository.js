@@ -8,7 +8,6 @@ const path = require('path')
 const config = require('../config/config')
 const db = require('../config/db')
 const logger = require('../config/logger')
-const IDUtils = require('../utils/idUtils')
 const Resident = require('../models/Resident')
 
 class ResidentRepository {
@@ -36,16 +35,16 @@ class ResidentRepository {
   }
 
   /**
-   * Add calculated age and formatted ID to resident object
+   * Add calculated age to resident object
    * @param {Object} resident - Resident object
-   * @returns {Object} - Resident with age field and formatted ID
+   * @returns {Object} - Resident with age field
    */
   static enrichWithAge(resident) {
     if (!resident) return resident
     
     return {
       ...resident,
-      id: IDUtils.formatID(resident.id), // Always format ID with leading zeros
+      id: resident.id, // Use clean integer ID
       age: this.calculateAge(resident.birth_date)
     }
   }
@@ -69,6 +68,17 @@ class ResidentRepository {
       return await this._findByIdJSON(id)
     } else {
       return await this._findByIdDB(id)
+    }
+  }
+
+  /**
+   * Find resident by user_id
+   */
+  static async findByUserId(userId) {
+    if (config.USE_MOCK_DATA) {
+      return await this._findByUserIdJSON(userId)
+    } else {
+      return await this._findByUserIdDB(userId)
     }
   }
 
@@ -125,7 +135,7 @@ class ResidentRepository {
 
 
   /**
-   * Delete resident
+   * Delete resident (hard delete - permanently remove)
    */
   static async delete(id) {
     if (config.USE_MOCK_DATA) {
@@ -152,9 +162,11 @@ class ResidentRepository {
 
   static async _findAllDB(searchQuery, page, limit) {
     const offset = (page - 1) * limit
+    
+    // Fetch ALL residents - let frontend filter by status
     let query = `
       SELECT * FROM residents 
-      WHERE is_active = 1
+      WHERE 1=1
     `
     const params = []
 
@@ -171,17 +183,28 @@ class ResidentRepository {
     params.push(limit, offset)
 
     const result = await db.query(query, params)
-    const countResult = await db.query('SELECT COUNT(*) as total FROM residents WHERE is_active = 1')
+    
+    // Count ALL residents
+    const countResult = await db.query('SELECT COUNT(*) as total FROM residents WHERE 1=1')
+    
+    // Debug: Log resident status distribution
+    const activeCount = result.rows.filter(r => r.is_active === 1).length
+    const inactiveCount = result.rows.filter(r => r.is_active === 0).length
+    console.log('Backend _findAllDB:', {
+      total: result.rows.length,
+      active: activeCount,
+      inactive: inactiveCount
+    })
     
     // Use Resident model's batch processing with special categories
     const processedResidents = await Resident.batchProcessWithSpecialCategories(result.rows, db)
     
-    // Convert to API format and add calculated age with formatted ID
+    // Convert to API format and add calculated age (no ID formatting - use clean integers)
     const residentsForApi = processedResidents.map(resident => {
       const apiData = resident.toApiFormat()
       return {
         ...apiData,
-        id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+        id: resident.id, // Use clean integer ID
         age: resident.calculateAge() // Ensure age is calculated
       }
     })
@@ -227,7 +250,7 @@ class ResidentRepository {
           
           return {
             ...apiData,
-            id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+            id: resident.id, // Use clean integer ID
             age: resident.calculateAge() // Ensure age is calculated
           }
         }
@@ -237,13 +260,42 @@ class ResidentRepository {
       }
     }
     
-    // Return resident API data with formatted ID and age
+    // Return resident API data with age
     const apiData = resident.toApiFormat()
     return {
       ...apiData,
-      id: IDUtils.formatID(resident.id), // Format ID with leading zeros
+      id: resident.id, // Use clean integer ID
       age: resident.calculateAge() // Ensure age is calculated
     }
+  }
+
+  static async _findByUserIdDB(userId) {
+    // Get the resident by user_id
+    const residentQuery = `SELECT * FROM residents WHERE user_id = $1`
+    const residentResult = await db.query(residentQuery, [userId])
+    
+    if (residentResult.rows.length === 0) {
+      return null
+    }
+    
+    const residentData = residentResult.rows[0]
+    
+    // Use Resident model's single processing with special category
+    const resident = await Resident.processWithSpecialCategory(residentData, db)
+    
+    // Return basic resident data (no need for full user info since we're checking from user context)
+    const apiData = resident.toApiFormat()
+    return {
+      ...apiData,
+      id: resident.id, // Use clean integer ID
+      age: resident.calculateAge() // Ensure age is calculated
+    }
+  }
+
+  static async _findByUserIdJSON(userId) {
+    // JSON mock data doesn't support this feature yet
+    // For now, return null (will only work with database)
+    return null
   }
 
   static async _createDB(data) {
@@ -293,6 +345,14 @@ class ResidentRepository {
       transformed.purok = null
     }
 
+    // Convert special_category_id to integer or null (support multiple field name formats)
+    if (data.special_category_id || data.specialCategory || data.specialCategoryId) {
+      const categoryId = parseInt(data.special_category_id || data.specialCategory || data.specialCategoryId)
+      transformed.specialCategoryId = isNaN(categoryId) ? null : categoryId
+    } else {
+      transformed.specialCategoryId = null
+    }
+
     // Ensure userId is integer
     if (data.userId) {
       transformed.userId = parseInt(data.userId)
@@ -307,7 +367,7 @@ class ResidentRepository {
 
     // Clean up empty strings to null for optional fields
     const optionalFields = ['middleName', 'email', 'homeNumber', 'mobileNumber', 
-                           'religion', 'occupation', 'civilStatus']
+                           'religion', 'occupation', 'civilStatus', 'suffix']
     
     optionalFields.forEach(field => {
       if (transformed[field] === '' || transformed[field] === undefined) {
@@ -326,13 +386,22 @@ class ResidentRepository {
       // Transform data for database compatibility
       const dbData = this._transformForDB(data)
       
+      // Log important field transformations for debugging
+      logger.info('Updating resident in database', { 
+        id, 
+        occupation: dbData.occupation,
+        religion: dbData.religion,
+        specialCategoryId: dbData.specialCategoryId 
+      })
+      
+      // Update query with all fields including occupation, religion, and special_category_id
       const result = await db.query(`
         UPDATE residents SET
           first_name = $1, last_name = $2, middle_name = $3, suffix = $4,
           birth_date = $5, gender = $6, civil_status = $7,
           home_number = $8, mobile_number = $9, email = $10,
           address = $11, purok = $12, religion = $13, occupation = $14,
-          special_category = $15, notes = $16, is_active = $17,
+          special_category_id = $15, notes = $16, is_active = $17,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $18
         RETURNING *
@@ -341,7 +410,7 @@ class ResidentRepository {
         dbData.birthDate, dbData.gender, dbData.civilStatus,
         dbData.homeNumber, dbData.mobileNumber, dbData.email,
         dbData.address, dbData.purok, dbData.religion, dbData.occupation,
-        dbData.specialCategory, dbData.notes, dbData.isActive, 
+        dbData.specialCategoryId, dbData.notes, dbData.isActive, 
         id
       ])
 
@@ -349,8 +418,15 @@ class ResidentRepository {
         return null // Resident not found
       }
 
+      // Process with special category to include category name
+      const updatedResident = await Resident.processWithSpecialCategory(result.rows[0], db)
+      
       // Return enriched resident data with formatted ID and calculated age
-      return this.enrichWithAge(result.rows[0])
+      return {
+        ...updatedResident.toApiFormat(),
+        id: updatedResident.id,
+        age: updatedResident.calculateAge()
+      }
     } catch (error) {
       logger.error('Error updating resident in database', { id, error: error.message })
       throw error
@@ -455,8 +531,13 @@ class ResidentRepository {
 
 
   static async _deleteDB(id) {
-    await db.query('UPDATE residents SET is_active = 0 WHERE id = $1', [id])
-    return true
+    try {
+      const result = await db.query('DELETE FROM residents WHERE id = $1 RETURNING id', [id])
+      return result.rows.length > 0
+    } catch (error) {
+      logger.error('Error deleting resident from database', { id, error: error.message })
+      throw error
+    }
   }
 
   static async _getStatsDB() {
@@ -510,7 +591,9 @@ class ResidentRepository {
 
   static async _findAllJSON(searchQuery, page, limit) {
     const residents = await this._loadResidentsJSON()
-    let filtered = residents.filter(r => r.is_active !== 0)
+    
+    // Fetch ALL residents - let frontend filter by status
+    let filtered = residents
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -574,14 +657,23 @@ class ResidentRepository {
   }
 
   static async _deleteJSON(id) {
-    const residents = await this._loadResidentsJSON()
-    const resident = residents.find(r => r.id === parseInt(id))
-    
-    if (resident) {
-      resident.is_active = 0
+    try {
+      const residents = await this._loadResidentsJSON()
+      const index = residents.findIndex(r => r.id === parseInt(id))
+      
+      if (index === -1) {
+        return false
+      }
+      
+      // Remove resident from array (hard delete)
+      residents.splice(index, 1)
       await this._saveResidentsJSON(residents)
+      
+      return true
+    } catch (error) {
+      logger.error('Error deleting resident from JSON file', { id, error: error.message })
+      throw error
     }
-    return true
   }
 
   static async _getStatsJSON() {

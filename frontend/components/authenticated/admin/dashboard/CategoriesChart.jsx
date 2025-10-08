@@ -26,7 +26,7 @@ export default function CategoriesChart() {
             { name: 'Regular', count: data.regular || 0, color: 'bg-blue-600' },
             { name: 'Senior Citizens', count: data.senior || 0, color: 'bg-green-600' },
             { name: 'PWD', count: data.pwd || 0, color: 'bg-purple-600' },
-            { name: 'Solo Parents', count: data.solo_parent || 0, color: 'bg-orange-500' }
+            { name: 'Solo Parent', count: data.solo_parent || 0, color: 'bg-orange-500' }
           ]
           
           setChartData({

@@ -310,6 +310,7 @@ class ApiClient {
 
   /**
    * Get all residents (admin only)
+   * Backend returns ALL residents, frontend filters by status
    */
   static async getResidents() {
     return await ApiClient.request('/residents')
@@ -353,6 +354,23 @@ class ApiClient {
     return await ApiClient.request(`/residents/${id}`, {
       method: 'PUT',
       body: JSON.stringify(residentData),
+    })
+  }
+
+  /**
+   * Update resident status (staff or admin)
+   */
+  static async updateResidentStatus(id, isActive) {
+    // Parse ID to remove any leading zeros and ensure it's a valid number
+    const numericId = parseInt(id, 10)
+    
+    if (isNaN(numericId)) {
+      throw new Error(`Invalid resident ID: ${id}`)
+    }
+    
+    return await ApiClient.request(`/residents/${numericId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
     })
   }
 

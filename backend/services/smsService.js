@@ -40,43 +40,70 @@ class SMSService {
       } else {
         // Filter by specific target groups
         const categoryIds = []
+        const specialConditions = []
+        let paramIndex = 1
         
         for (const group of targetGroups) {
           if (group.startsWith('special_category:')) {
             const categoryName = group.replace('special_category:', '')
             
-            // Map category names to IDs
-            const categoryMap = {
-              'PWD': 1,
-              'SENIOR_CITIZEN': 2,
-              'SOLO_PARENT': 3,
-              'INDIGENT': 4
-            }
-            
-            const categoryId = categoryMap[categoryName]
-            if (categoryId) {
-              categoryIds.push(categoryId)
+            if (categoryName === 'SENIOR_CITIZEN') {
+              // Senior citizen is age-based, not category-based
+              // Assuming 60+ years old qualifies as senior citizen
+              specialConditions.push(`(EXTRACT(YEAR FROM AGE(CURRENT_DATE, r.birth_date)) >= 60)`)
+            } else {
+              // Map other category names to IDs (faster numeric lookup)
+              const categoryMap = {
+                'PWD': 2,
+                'SOLO_PARENT': 3,
+                'INDIGENT': 4
+              }
+              
+              const categoryId = categoryMap[categoryName]
+              if (categoryId) {
+                categoryIds.push(categoryId)
+              }
             }
           }
         }
 
+        // Build WHERE conditions
+        const whereConditions = []
+        
+        // Add category ID conditions
         if (categoryIds.length > 0) {
+          whereConditions.push(`r.special_category_id = ANY($${paramIndex})`)
+          params.push(categoryIds)
+          paramIndex++
+        }
+        
+        // Add special conditions (like age-based senior citizen)
+        if (specialConditions.length > 0) {
+          whereConditions.push(...specialConditions)
+        }
+
+        if (whereConditions.length > 0) {
           query = `
             SELECT 
               r.id,
               r.first_name,
               r.last_name,
               r.mobile_number,
-              sc.category_name as special_category_name
+              r.birth_date,
+              EXTRACT(YEAR FROM AGE(CURRENT_DATE, r.birth_date)) as age,
+              sc.category_name as special_category_name,
+              CASE 
+                WHEN EXTRACT(YEAR FROM AGE(CURRENT_DATE, r.birth_date)) >= 60 THEN 'SENIOR_CITIZEN'
+                ELSE sc.category_name
+              END as effective_category
             FROM residents r
             LEFT JOIN special_categories sc ON r.special_category_id = sc.id
             WHERE r.is_active = 1 
               AND r.mobile_number IS NOT NULL 
               AND r.mobile_number != ''
-              AND r.special_category_id = ANY($1)
+              AND (${whereConditions.join(' OR ')})
             ORDER BY r.last_name, r.first_name
           `
-          params = [categoryIds]
         } else {
           // No valid categories, return empty array
           return []
@@ -87,9 +114,7 @@ class SMSService {
       
       logger.info('SMS recipients query result', {
         targetGroups,
-        recipientCount: result.rows.length,
-        query: query.replace(/\s+/g, ' ').trim(),
-        params
+        recipientCount: result.rows.length
       })
       
       return result.rows
@@ -162,11 +187,29 @@ class SMSService {
       }
     }
 
+    // Remove duplicate phone numbers
+    const seenPhones = new Set()
+    const uniqueRecipients = []
+    const duplicateInfo = []
+
+    validRecipients.forEach(recipient => {
+      if (seenPhones.has(recipient.normalizedPhone)) {
+        duplicateInfo.push({
+          name: `${recipient.first_name} ${recipient.last_name}`,
+          phone: recipient.normalizedPhone,
+          reason: 'Duplicate phone number'
+        })
+      } else {
+        seenPhones.add(recipient.normalizedPhone)
+        uniqueRecipients.push(recipient)
+      }
+    })
+
     // Send in batches of 1000 (Semaphore limit)
     const BATCH_SIZE = 1000
     const batches = []
-    for (let i = 0; i < validRecipients.length; i += BATCH_SIZE) {
-      batches.push(validRecipients.slice(i, i + BATCH_SIZE))
+    for (let i = 0; i < uniqueRecipients.length; i += BATCH_SIZE) {
+      batches.push(uniqueRecipients.slice(i, i + BATCH_SIZE))
     }
 
     logger.info('Sending SMS in batches', {
@@ -188,7 +231,7 @@ class SMSService {
           phoneNumbers: phoneNumbers.substring(0, 100) + '...' // Log first 100 chars
         })
 
-        const sendResult = await this.sendBulkViaSemaphore(phoneNumbers, message)
+        const sendResult = await this.sendBulkSMS(phoneNumbers, message)
 
         if (sendResult.success) {
           // If bulk send successful, mark all in batch as sent
@@ -272,17 +315,17 @@ class SMSService {
    * @returns {String} Formatted SMS message
    */
   static formatSMSMessage(announcement) {
-    const maxLength = 160 // Standard SMS length
-    const prefix = '[BARANGAY ANNOUNCEMENT]\n'
-    const suffix = '\n- Barangay Office'
+    const maxLength = 200 // Standard SMS length
+    const prefix = '[SMARTLIAS]\n'
+    const suffix = '\n\nThis is an auto-generated message. Do not reply.'
     
-    let message = `${prefix}${announcement.title}\n\n${announcement.content}${suffix}`
+    let message = `${prefix}\n${announcement.content}${suffix}`
     
     // Truncate if too long
     if (message.length > maxLength) {
       const availableLength = maxLength - prefix.length - suffix.length - 3 // 3 for "..."
       const truncatedContent = announcement.content.substring(0, availableLength)
-      message = `${prefix}${announcement.title}\n\n${truncatedContent}...${suffix}`
+      message = `${prefix}\n${truncatedContent}...${suffix}`
     }
     
     return message
@@ -338,6 +381,165 @@ class SMSService {
     }
     
     return phone
+  }
+
+  /**
+   * Send SMS to multiple recipients using the configured provider (IProg priority)
+   * @param {String} phoneNumbers - Comma-separated phone numbers
+   * @param {String} message - SMS message content
+   * @returns {Object} Send result
+   */
+  static async sendBulkSMS(phoneNumbers, message) {
+    const provider = config.SMS_PROVIDER || 'iprog'
+    
+    try {
+      switch (provider.toLowerCase()) {
+        case 'iprog':
+          return await this.sendBulkViaIProg(phoneNumbers, message)
+        case 'semaphore':
+          return await this.sendBulkViaSemaphore(phoneNumbers, message)
+        default:
+          // Default to IProg if provider not recognized
+          logger.warn(`Unknown SMS provider: ${provider}, defaulting to IProg`)
+          return await this.sendBulkViaIProg(phoneNumbers, message)
+      }
+    } catch (error) {
+      logger.error(`Error with ${provider} SMS provider, trying fallback`, error)
+      
+      // Fallback logic: try the other provider
+      try {
+        if (provider.toLowerCase() === 'iprog') {
+          logger.info('Falling back to Semaphore SMS provider')
+          return await this.sendBulkViaSemaphore(phoneNumbers, message)
+        } else {
+          logger.info('Falling back to IProg SMS provider')
+          return await this.sendBulkViaIProg(phoneNumbers, message)
+        }
+      } catch (fallbackError) {
+        logger.error('Both SMS providers failed', fallbackError)
+        return {
+          success: false,
+          error: `Both SMS providers failed. Primary: ${error.message}, Fallback: ${fallbackError.message}`
+        }
+      }
+    }
+  }
+
+  /**
+   * Send SMS to multiple recipients via IProg bulk API (Philippines SMS Provider)
+   * @param {String} phoneNumbers - Comma-separated phone numbers
+   * @param {String} message - SMS message content
+   * @returns {Object} Send result
+   */
+  static async sendBulkViaIProg(phoneNumbers, message) {
+    try {
+      const apiToken = config.IPROG_API_TOKEN
+      
+      if (!apiToken || apiToken === 'your-iprog-api-token-here') {
+        // Development mode - simulate bulk SMS
+        if (config.NODE_ENV === 'development') {
+          logger.info('Simulating IProg bulk SMS in development mode', {
+            phoneCount: phoneNumbers.split(',').length,
+            message: message.substring(0, 50) + '...'
+          })
+          
+          return {
+            success: true,
+            messageId: `IPROG-SIM-${Date.now()}`,
+            message: 'IProg bulk SMS simulated in development mode'
+          }
+        }
+        
+        // Production without API token - error
+        return {
+          success: false,
+          error: 'IProg API token not configured'
+        }
+      }
+
+      // Prepare URL parameters for IProg API
+      const urlParams = new URLSearchParams({
+        api_token: apiToken,
+        phone_number: phoneNumbers, // Comma-separated phone numbers
+        message: message
+      })
+      
+      // Add SMS provider if configured
+      if (config.IPROG_SMS_PROVIDER !== undefined) {
+        urlParams.append('sms_provider', config.IPROG_SMS_PROVIDER.toString())
+      }
+      
+      const apiUrl = `https://sms.iprogtech.com/api/v1/sms_messages/send_bulk?${urlParams.toString()}`
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+
+      // Check if response is ok
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger.error('IProg bulk API HTTP error', { 
+          status: response.status, 
+          statusText: response.statusText,
+          response: errorText,
+          phoneCount: phoneNumbers.split(',').length
+        })
+        
+        return {
+          success: false,
+          error: `IProg API HTTP ${response.status}: ${errorText || response.statusText}`
+        }
+      }
+
+      // Parse JSON response
+      const result = await response.json()
+      
+      // IProg API success response structure
+      // IProg returns status: 200 (number) and message_ids when successful
+      if (result.success || 
+          result.status === 'success' || 
+          result.status === 200 ||
+          result.message_ids ||
+          result.message === 'SMS sent successfully' ||
+          result.message?.includes('successfully added to the queue')) {
+        
+        logger.info('IProg bulk SMS sent successfully', {
+          phoneCount: phoneNumbers.split(',').length,
+          messageId: result.message_ids || result.message_id || result.id || result.reference_id,
+          response: result
+        })
+        
+        return {
+          success: true,
+          messageId: result.message_ids || result.message_id || result.id || result.reference_id || `IPROG-${Date.now()}`,
+          message: `IProg bulk SMS sent successfully to ${phoneNumbers.split(',').length} recipients`
+        }
+      } else {
+        const errorMessage = result.message || result.error || result.errors || 'Failed to send bulk SMS via IProg'
+        logger.error('Failed to send bulk SMS via IProg', { 
+          phoneCount: phoneNumbers.split(',').length,
+          error: errorMessage,
+          result 
+        })
+        
+        return {
+          success: false,
+          error: errorMessage
+        }
+      }
+    } catch (error) {
+      logger.error('Error sending bulk SMS via IProg', {
+        error: error.message,
+        phoneCount: phoneNumbers.split(',').length
+      })
+      return {
+        success: false,
+        error: error.message
+      }
+    }
   }
 
   /**
@@ -620,6 +822,81 @@ class SMSService {
     } catch (error) {
       logger.error('Error logging SMS batch', error)
       // Don't throw - logging failure shouldn't stop SMS sending
+    }
+  }
+
+  /**
+   * Check SMS credits and service status via IProg API
+   * @returns {Object} Service status and credits information
+   */
+  static async checkSMSCredits() {
+    logger.info('Checking SMS credits and service status')
+    
+    try {
+      const apiToken = config.IPROG_API_TOKEN
+      if (!apiToken) {
+        logger.warn('IProg API token not configured')
+        return {
+          available: false,
+          credits: 0,
+          provider: 'IProg',
+          error: 'API token not configured'
+        }
+      }
+
+      const url = `https://sms.iprogtech.com/api/v1/account/sms_credits?api_token=${encodeURIComponent(apiToken)}`
+      
+      logger.info('Making IProg credits API request', { url: url.replace(apiToken, '***') })
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
+      })
+
+      if (!response.ok) {
+        logger.error('IProg credits API HTTP error', { 
+          status: response.status, 
+          statusText: response.statusText 
+        })
+        return {
+          available: false,
+          credits: 0,
+          provider: 'IProg',
+          error: `HTTP ${response.status}: ${response.statusText}`
+        }
+      }
+
+      const data = await response.json()
+      logger.info('IProg credits API response', { 
+        status: data.status, 
+        message: data.message,
+        credits: data.data?.load_balance 
+      })
+
+      const isAvailable = data.status === 'success'
+      const credits = data.data?.load_balance || 0
+
+      return {
+        available: isAvailable,
+        credits: credits,
+        provider: 'IProg',
+        message: data.message || 'Unknown response',
+        lastChecked: new Date().toISOString()
+      }
+
+    } catch (error) {
+      logger.error('Error checking SMS credits', error)
+      
+      return {
+        available: false,
+        credits: 0,
+        provider: 'IProg',
+        error: error.message || 'Unknown error',
+        lastChecked: new Date().toISOString()
+      }
     }
   }
 }

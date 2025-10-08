@@ -25,7 +25,7 @@ export default function ChatbotButton() {
       {!isChatbotOpen && (
         <button
           onClick={handleToggleChatbot}
-          className="fixed bottom-6 right-6 z-[9999] w-16 h-16 bg-gradient-to-br from-green-700 to-green-800 text-white rounded-2xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center group backdrop-blur-sm"
+          className="cursor-pointer fixed bottom-6 right-6 z-[9999] w-16 h-16 bg-gradient-to-br from-green-700 to-green-800 text-white rounded-2xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center group backdrop-blur-sm"
           aria-label="Open Chatbot"
         >
           {/* Icon - Modern message bubble with sparkle */}

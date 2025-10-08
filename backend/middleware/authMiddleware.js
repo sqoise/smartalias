@@ -95,6 +95,22 @@ const requireAdmin = (req, res, next) => {
   next()
 }
 
+// Require staff or admin role
+const requireStaffOrAdmin = (req, res, next) => {
+  if (!req.user || (req.user.role !== USER_ROLES.ADMIN && req.user.role !== USER_ROLES.STAFF)) {
+    logger.warn('Unauthorized staff/admin access attempt', { 
+      user: req.user?.username || 'unknown',
+      role: req.user?.role || 'none',
+      ip: req.ip 
+    })
+    return res.status(403).json({
+      success: false,
+      error: 'Staff or Admin access required'
+    })
+  }
+  next()
+}
+
 // Require resident role (or admin)
 const requireResident = (req, res, next) => {
   if (!req.user || (req.user.role !== USER_ROLES.RESIDENT && req.user.role !== USER_ROLES.ADMIN)) {
@@ -176,6 +192,7 @@ const authenticateChangePinToken = (req, res, next) => {
 module.exports = {
   authenticateToken,
   requireAdmin,
+  requireStaffOrAdmin,
   requireResident,
   optionalAuth,
   authenticateChangePinToken,
