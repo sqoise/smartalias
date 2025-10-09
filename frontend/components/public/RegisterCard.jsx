@@ -15,14 +15,14 @@ export default function RegisterCard({
   errors,
   showLogo = false,
   className = '',
-  onUsernameBlur,
-  isCheckingUsername = false
+  specialCategories = [],
+  isLoadingCategories = false
 }) {
   
   // Step 1: Name Fields
   const renderStep1 = () => (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Last Name */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -62,9 +62,7 @@ export default function RegisterCard({
             <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Middle Name */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -82,7 +80,9 @@ export default function RegisterCard({
             <p className="text-xs text-red-600 mt-1">{errors.middleName}</p>
           )}
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 gap-2">
         {/* Suffix */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -113,8 +113,8 @@ export default function RegisterCard({
 
   // Step 2: Personal Information
   const renderStep2 = () => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Birth Date */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -197,7 +197,7 @@ export default function RegisterCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Email */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -278,8 +278,8 @@ export default function RegisterCard({
 
   // Step 3: Additional Information
   const renderStep3 = () => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Purok */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -339,9 +339,7 @@ export default function RegisterCard({
             <p className="text-xs text-red-600 mt-1">{errors.religion}</p>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Occupation */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -370,7 +368,9 @@ export default function RegisterCard({
             <p className="text-xs text-red-600 mt-1">{errors.occupation}</p>
           )}
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 gap-2">
         {/* Special Category */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -387,10 +387,15 @@ export default function RegisterCard({
               style={{ fontSize: '14.5px' }}
             >
               <option value="">Not Applicable</option>
-              <option value="PWD">PWD</option>
-              <option value="SOLO_PARENT">Solo Parent</option>
-              <option value="INDIGENT">Indigent</option>
-              <option value="STUDENT">Student</option>
+              {isLoadingCategories ? (
+                <option disabled>Loading categories...</option>
+              ) : (
+                specialCategories.map(category => (
+                  <option key={category.id} value={category.category_code}>
+                    {category.category_name}
+                  </option>
+                ))
+              )}
             </select>
             <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
           </div>
@@ -404,31 +409,23 @@ export default function RegisterCard({
 
   // Step 4: Account Information
   const renderStep4 = () => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Username */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Username <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={onInputChange}
-              onBlur={(e) => onUsernameBlur && onUsernameBlur(e.target.value)}
-              className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
-                errors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9 ${isCheckingUsername ? 'pr-8' : ''}`}
-              placeholder="firstname.lastname"
-            />
-            {isCheckingUsername && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Spinner size="sm" />
-              </div>
-            )}
-          </div>
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={onInputChange}
+            className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+              errors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            } focus:ring-1 focus:outline-none placeholder:text-sm placeholder:text-gray-400 bg-white hover:border-gray-400 h-9`}
+            placeholder="firstname.lastname"
+          />
           {errors.username ? (
             <p className="text-xs text-red-600 mt-1">{errors.username}</p>
           ) : (
@@ -510,44 +507,45 @@ export default function RegisterCard({
   }
 
   return (
-    <div className={`bg-white rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto ${className}`}>
+    <div className={`bg-white rounded-lg sm:rounded-xl shadow-lg p-2 sm:p-3 w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto ${className}`}>
       {/* Logo */}
       {showLogo && (
-        <div className="flex justify-center mb-3 sm:mb-4">
+        <div className="flex justify-center mb-1 sm:mb-2">
           <img
             src="/images/barangay_logo.png"
             alt="Barangay Logo"
-            className="w-12 h-12 sm:w-16 sm:h-16 object-contain"
+            className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
           />
         </div>
       )}
 
       {/* Header */}
-      <div className="text-center mb-4 sm:mb-6">
+      <div className="text-center mb-2 sm:mb-3">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">{stepTitle}</h2>
         <div className="flex items-center justify-center space-x-2 px-2">
           <span className="text-xs sm:text-sm text-gray-600 flex-shrink-0">Step {currentStep} of 4</span>
           <div className="flex-1 max-w-24 sm:max-w-32 bg-gray-200 rounded-full h-1.5">
             <div 
               className="bg-green-600 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 4) * 100}%` }}
-            />
+              style={{ width: `${(currentStep / 4) * 100}%` }} />
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-2">
         {/* Step Content */}
-        {renderStepContent()}
+        <div>
+          {renderStepContent()}
+        </div>
 
         {/* Navigation Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+        <div className="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:space-x-3 pt-2">
           {currentStep > 1 ? (
             <button
               type="button"
               onClick={onBack}
-              className="flex-1 px-4 py-2.5 sm:py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors min-h-[44px] sm:min-h-[36px]"
+              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors min-h-[40px] sm:min-h-[36px]"
               disabled={isLoading}
             >
               Back
@@ -559,14 +557,13 @@ export default function RegisterCard({
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] sm:min-h-[36px]"
+            className="flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[40px] sm:min-h-[36px]"
           >
             {isLoading ? (
               <Spinner size="sm" />
             ) : currentStep === 4 ? (
               <>
                 <span className="hidden sm:inline">Complete Registration</span>
-                <span className="sm:hidden">Register</span>
               </>
             ) : (
               'Next'
@@ -576,7 +573,7 @@ export default function RegisterCard({
       </form>
 
       {/* Login Link */}
-      <div className="mt-4 text-center">
+      <div className="mt-3 text-center">
         <p className="text-sm text-gray-600">
           Already have an account?{' '}
           <Link href="/login" className="font-medium text-green-600 hover:text-green-500">

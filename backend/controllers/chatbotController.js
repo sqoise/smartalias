@@ -643,8 +643,15 @@ Please try rephrasing your question or browse the FAQ categories below.`,
           const testResponse = await aiService.generateAnswer('test', testContext)
           aiStatus.lastTestResponse = testResponse ? 'success' : 'failed'
           aiStatus.lastTestAt = new Date().toISOString()
+          
+          // Update availability based on actual test result
+          if (!testResponse) {
+            aiStatus.available = false
+            aiStatus.lastTestError = 'AI test call returned empty response'
+          }
         } catch (testError) {
           logger.warn('AI status test failed', { error: testError.message })
+          aiStatus.available = false  // Set to false if test fails
           aiStatus.lastTestResponse = 'failed'
           aiStatus.lastTestError = testError.message
           aiStatus.lastTestAt = new Date().toISOString()

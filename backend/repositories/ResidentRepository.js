@@ -190,11 +190,6 @@ class ResidentRepository {
     // Debug: Log resident status distribution
     const activeCount = result.rows.filter(r => r.is_active === 1).length
     const inactiveCount = result.rows.filter(r => r.is_active === 0).length
-    console.log('Backend _findAllDB:', {
-      total: result.rows.length,
-      active: activeCount,
-      inactive: inactiveCount
-    })
     
     // Use Resident model's batch processing with special categories
     const processedResidents = await Resident.batchProcessWithSpecialCategories(result.rows, db)
@@ -255,7 +250,6 @@ class ResidentRepository {
           }
         }
       } catch (error) {
-        console.error('Error fetching user data for resident:', error)
         // Continue without user data if there's an error
       }
     }
@@ -304,15 +298,16 @@ class ResidentRepository {
     
     const result = await db.query(`
       INSERT INTO residents (
-        user_id, last_name, first_name, middle_name, birth_date, gender,
+        user_id, last_name, first_name, middle_name, suffix, birth_date, gender,
         civil_status, home_number, mobile_number, email, address, purok,
-        religion, occupation, is_active, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 1, CURRENT_TIMESTAMP)
+        religion, occupation, special_category_id, notes, is_active, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 1, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
-      dbData.userId, dbData.lastName, dbData.firstName, dbData.middleName, 
+      dbData.userId, dbData.lastName, dbData.firstName, dbData.middleName, dbData.suffix,
       dbData.birthDate, dbData.gender, dbData.civilStatus, dbData.homeNumber, dbData.mobileNumber,
-      dbData.email, dbData.address, dbData.purok, dbData.religion, dbData.occupation
+      dbData.email, dbData.address, dbData.purok, dbData.religion, dbData.occupation,
+      dbData.specialCategoryId, dbData.notes
     ])
     return this.enrichWithAge(result.rows[0])
   }
@@ -367,7 +362,7 @@ class ResidentRepository {
 
     // Clean up empty strings to null for optional fields
     const optionalFields = ['middleName', 'email', 'homeNumber', 'mobileNumber', 
-                           'religion', 'occupation', 'civilStatus', 'suffix']
+                           'religion', 'occupation', 'civilStatus', 'suffix', 'notes']
     
     optionalFields.forEach(field => {
       if (transformed[field] === '' || transformed[field] === undefined) {
@@ -394,6 +389,16 @@ class ResidentRepository {
         specialCategoryId: dbData.specialCategoryId 
       })
       
+      // Debug: Log all SQL parameters to identify special category issue
+      const sqlParams = [
+        dbData.firstName, dbData.lastName, dbData.middleName, dbData.suffix,
+        dbData.birthDate, dbData.gender, dbData.civilStatus,
+        dbData.homeNumber, dbData.mobileNumber, dbData.email,
+        dbData.address, dbData.purok, dbData.religion, dbData.occupation,
+        dbData.specialCategoryId, dbData.notes, dbData.isActive, 
+        id
+      ]
+      
       // Update query with all fields including occupation, religion, and special_category_id
       const result = await db.query(`
         UPDATE residents SET
@@ -405,14 +410,7 @@ class ResidentRepository {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $18
         RETURNING *
-      `, [
-        dbData.firstName, dbData.lastName, dbData.middleName, dbData.suffix,
-        dbData.birthDate, dbData.gender, dbData.civilStatus,
-        dbData.homeNumber, dbData.mobileNumber, dbData.email,
-        dbData.address, dbData.purok, dbData.religion, dbData.occupation,
-        dbData.specialCategoryId, dbData.notes, dbData.isActive, 
-        id
-      ])
+      `, sqlParams)
 
       if (result.rows.length === 0) {
         return null // Resident not found

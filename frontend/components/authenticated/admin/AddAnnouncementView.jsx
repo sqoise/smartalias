@@ -136,8 +136,8 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
       newErrors.content = 'Content is required'
     } else if (formData.content.trim().length < 30) {
       newErrors.content = 'Content must be at least 30 characters'
-    } else if (formData.content.length > 200) {
-      newErrors.content = 'Content must be 200 characters or less'
+    } else if (formData.content.length > 800) {
+      newErrors.content = 'Content must be 800 characters or less'
     } else if (formData.content.toLowerCase().includes('test')) {
       newErrors.content = 'Content cannot contain the word "TEST" as it may be blocked by SMS providers'
     }
@@ -347,17 +347,17 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
                         Content <span className="text-red-500">*</span>
                       </label>
                       <span className={`text-xs ${
-                        formData.content.length > 200 ? 'text-red-600' : 
-                        formData.content.length > 180 ? 'text-amber-600' : 'text-gray-500'
+                        formData.content.length > 800 ? 'text-red-600' : 
+                        formData.content.length > 720 ? 'text-amber-600' : 'text-gray-500'
                       }`}>
-                        {formData.content.length}/200
+                        {formData.content.length}/800
                       </span>
                     </div>
                     <textarea
                       id="content"
                       value={formData.content}
                       onChange={(e) => handleChange('content', e.target.value)}
-                      maxLength={200}
+                      maxLength={800}
                       rows={8}
                       className={`w-full rounded-md px-3 py-1.5 text-sm border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-gray-400 bg-white transition-colors resize-none ${
                         errors.content ? 'border-red-300' : 'border-gray-300'

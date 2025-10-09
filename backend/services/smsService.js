@@ -315,7 +315,7 @@ class SMSService {
    * @returns {String} Formatted SMS message
    */
   static formatSMSMessage(announcement) {
-    const maxLength = 200 // Standard SMS length
+    const maxLength = 1000 // Standard SMS length
     const prefix = '[SMARTLIAS]\n'
     const suffix = '\n\nThis is an auto-generated message. Do not reply.'
     

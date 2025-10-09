@@ -23,6 +23,7 @@ const uploadRoutes = require('./routes/uploadRoutes')
 const ResidentRepository = require('./repositories/ResidentRepository')
 const AnnouncementRepository = require('./repositories/AnnouncementRepository')
 const DashboardRepository = require('./repositories/DashboardRepository')
+const ChatbotRepository = require('./repositories/ChatbotRepository')
 const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
@@ -197,6 +198,18 @@ router.post('/auth/check-user', authLimiter, async (req, res) => {
   } catch (error) {
     logger.error('Check user error', error)
     return ApiResponse.serverError(res, 'Failed to check user', error)
+  }
+})
+
+// GET /api/public/special-categories - Get special categories for registration (public endpoint)
+router.get('/public/special-categories', generalLimiter, async (req, res) => {
+  try {
+    const categories = await ChatbotRepository.getSpecialCategories()
+    
+    return ApiResponse.success(res, categories, 'Special categories retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching public special categories', error)
+    return ApiResponse.serverError(res, 'Failed to fetch special categories', error)
   }
 })
 
@@ -420,6 +433,18 @@ router.get('/residents', generalLimiter, authenticateToken, async (req, res) => 
   }
 })
 
+// GET /api/residents/special-categories - Get special categories for dropdowns (authenticated)
+router.get('/residents/special-categories', generalLimiter, authenticateToken, async (req, res) => {
+  try {
+    const categories = await ChatbotRepository.getSpecialCategories()
+    
+    return ApiResponse.success(res, categories, 'Special categories retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching special categories', error)
+    return ApiResponse.serverError(res, 'Failed to fetch special categories', error)
+  }
+})
+
 // GET /api/residents/:id - Get resident by ID
 router.get('/residents/:id', generalLimiter, authenticateToken, async (req, res) => {
   try {
@@ -571,7 +596,7 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireStaffOrAd
       purok: updateData.purok || null,
       religion: updateData.religion || '',
       occupation: updateData.occupation || '',
-      specialCategory: updateData.specialCategory || updateData.special_category || updateData.special_category_id || '',
+      special_category_id: updateData.specialCategory || updateData.special_category || updateData.special_category_id || null,
       notes: updateData.notes || '',
       isActive: updateData.isActive !== undefined ? updateData.isActive : (updateData.is_active !== undefined ? updateData.is_active : 1)
     }
@@ -581,6 +606,17 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireStaffOrAd
     if (!validation.isValid) {
       Validator.logValidationError(req, validation, 'resident update')
       return ApiResponse.validationError(res, validation.errors, 'Invalid resident data')
+    }
+
+    // Additional validation: Check if special_category_id exists in database
+    if (normalizedData.special_category_id) {
+      const categories = await ChatbotRepository.getSpecialCategories()
+      const validCategoryIds = categories.map(cat => cat.id)
+      const categoryId = parseInt(normalizedData.special_category_id)
+      
+      if (!validCategoryIds.includes(categoryId)) {
+        return ApiResponse.validationError(res, ['Invalid special category selected'], 'Invalid special category')
+      }
     }
 
     // Sanitize input data (identical to create endpoint)
@@ -599,7 +635,7 @@ router.put('/residents/:id', generalLimiter, authenticateToken, requireStaffOrAd
       purok: normalizedData.purok,
       religion: Validator.sanitizeInput(normalizedData.religion),
       occupation: Validator.sanitizeInput(normalizedData.occupation),
-      specialCategory: Validator.sanitizeInput(normalizedData.specialCategory),
+      special_category_id: normalizedData.special_category_id || null,
       notes: Validator.sanitizeInput(normalizedData.notes),
       isActive: normalizedData.isActive
     }
@@ -1094,7 +1130,7 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
       middleName: Validator.sanitizeInput(registrationData.middleName || ''),
       suffix: Validator.sanitizeInput(registrationData.suffix || ''),
       birthDate: registrationData.birthDate || null,
-      gender: Validator.sanitizeInput(registrationData.gender || ''),
+      gender: registrationData.gender || null, // Keep as number, don't sanitize
       civilStatus: Validator.sanitizeInput(registrationData.civilStatus || ''),
       homeNumber: Validator.sanitizeInput(registrationData.homeNumber || ''),
       mobileNumber: Validator.sanitizeInput(registrationData.mobileNumber || ''),
@@ -1103,8 +1139,8 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
       purok: registrationData.purok || null,
       religion: Validator.sanitizeInput(registrationData.religion || ''),
       occupation: Validator.sanitizeInput(registrationData.occupation || ''),
-      specialCategory: Validator.sanitizeInput(registrationData.specialCategory || ''),
-      notes: Validator.sanitizeInput(registrationData.notes || '')
+      specialCategory: registrationData.specialCategory || null, // Keep as number, don't sanitize
+      notes: null // Notes are admin-only, not for public registration
     }
 
     const username = Validator.sanitizeInput(registrationData.username)
@@ -1347,8 +1383,8 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
       }, 'Missing required fields')
     }
 
-    // Validate content length (200 character limit for SMS compatibility)
-    const contentValidation = Validator.validateContent(content, 30, 200)
+    // Validate content length (800 character limit)
+    const contentValidation = Validator.validateContent(content, 30, 800)
     if (!contentValidation.isValid) {
       return ApiResponse.validationError(res, {
         content: contentValidation.errors
@@ -1479,8 +1515,8 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
       }, 'Missing required fields')
     }
 
-    // Validate content length (200 character limit for SMS compatibility)
-    const contentValidation = Validator.validateContent(content, 30, 200)
+    // Validate content length (800 character limit)
+    const contentValidation = Validator.validateContent(content, 30, 800)
     if (!contentValidation.isValid) {
       return ApiResponse.validationError(res, {
         content: contentValidation.errors

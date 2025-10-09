@@ -331,6 +331,18 @@ class ApiClient {
   }
 
   /**
+   * Get special categories for dropdowns (authenticated users)
+   */
+  static async getSpecialCategories() {
+    return await ApiClient.request('/residents/special-categories')
+  }
+
+  /**
+   * Get special categories for registration (public endpoint)
+   */
+  static async getPublicSpecialCategories() {
+    return await ApiClient.request('/public/special-categories')
+  }  /**
    * Get resident by ID
    */
   static async getResident(id) {

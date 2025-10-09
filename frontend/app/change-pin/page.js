@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import PublicLayout from '../../components/public/PublicLayout'
 import ToastNotification from '../../components/common/ToastNotification'
 import ChangePINCard from '../../components/public/ChangePINCard'
-import PageLoading from '../../components/common/PageLoading'
+import PageLoadingV2 from '../../components/common/PageLoadingV2'
 import ApiClient from '../../lib/apiClient'
 import { alertToast } from '../../lib/utility'
 import { AUTH_MESSAGES } from '../../lib/constants'
@@ -138,7 +138,7 @@ export default function ChangePinPage() {
     <>
       <ToastNotification ref={toastRef} />
       {isValidatingToken ? (
-        <PageLoading />
+        <PageLoadingV2 isLoading={true} />
       ) : (
         <>
           <header className="absolute top-0 left-0 right-0 z-30 p-4 lg:p-6">

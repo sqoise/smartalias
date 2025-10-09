@@ -267,10 +267,10 @@ class Validator {
       }
     }
     
-    // Special category validation (optional)
-    if (data.specialCategory) {
-      const validCategories = ['PWD', 'SOLO_PARENT', 'INDIGENT', 'STUDENT']
-      if (!validCategories.includes(data.specialCategory)) {
+    // Special category validation (optional) - Basic validation, detailed validation in controller
+    if (data.special_category_id !== undefined && data.special_category_id !== null && data.special_category_id !== '') {
+      const categoryId = parseInt(data.special_category_id)
+      if (isNaN(categoryId) || categoryId <= 0) {
         errors.push('Invalid special category option')
       }
     }

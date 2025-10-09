@@ -29,6 +29,10 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
 
+  // Special categories state
+  const [specialCategories, setSpecialCategories] = React.useState([])
+  const [isLoadingCategories, setIsLoadingCategories] = React.useState(false)
+
   // Deactivate/Activate confirmation state management
   const [showActivationConfirm, setShowActivationConfirm] = React.useState(false)
   const [pendingActivationStatus, setPendingActivationStatus] = React.useState(null)
@@ -47,6 +51,28 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
       setCurrentStatus(children.is_active)
     }
   }, [children?.is_active])
+
+  // Load special categories on component mount
+  React.useEffect(() => {
+    const loadSpecialCategories = async () => {
+      try {
+        setIsLoadingCategories(true)
+        const response = await ApiClient.get('/residents/special-categories')
+        
+        if (response.success) {
+          setSpecialCategories(response.data)
+        } else {
+          // Don't show toast for this as it's not critical for viewing
+        }
+      } catch (error) {
+        // Don't show toast for this as it's not critical for viewing
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    loadSpecialCategories()
+  }, [])
 
   // Handle status change
   const handleStatusChange = async (newStatus) => {
@@ -78,7 +104,6 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
     } catch (error) {
       // Revert on error
       setCurrentStatus(children.is_active || 0)
-      console.error('Failed to update status:', error)
       
       // Show error toast
       toastRef.current?.show(
@@ -102,6 +127,23 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
   }
 
   // Get special category info for display
+  // Dynamic special category mapping based on fetched data
+  const createCategoryMaps = () => {
+    const codeToId = { '': null }
+    const idToCode = {}
+    
+    if (specialCategories && specialCategories.length > 0) {
+      specialCategories.forEach(category => {
+        codeToId[category.category_code] = category.id
+        idToCode[category.id] = category.category_code
+      })
+    }
+    
+    return { codeToId, idToCode }
+  }
+
+  const { codeToId: SPECIAL_CATEGORY_MAP, idToCode: SPECIAL_CATEGORY_REVERSE_MAP } = createCategoryMaps()
+
   const getSpecialCategoryInfo = (categoryName) => {
     if (!categoryName || categoryName === 'Regular') {
       return null
@@ -111,32 +153,22 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
       case 'PWD':
         return { 
           label: 'PWD', 
-          color: 'bg-blue-100 text-blue-800 border-blue-200', 
-          icon: 'bi-universal-access'
-        }
-      case 'SENIOR CITIZEN':
-      case 'SENIOR':
-        return { 
-          label: 'Senior Citizen', 
-          color: 'bg-purple-100 text-purple-800 border-purple-200', 
-          icon: 'bi-person-walking'
+          icon: 'bi-person-wheelchair'
         }
       case 'SOLO PARENT':
+      case 'SOLO_PARENT':
         return { 
           label: 'Solo Parent', 
-          color: 'bg-pink-100 text-pink-800 border-pink-200', 
           icon: 'bi-person-heart'
         }
-      case 'INDIGENOUS':
+      case 'INDIGENT':
         return { 
-          label: 'Indigenous', 
-          color: 'bg-amber-100 text-amber-800 border-amber-200', 
-          icon: 'bi-tree'
+          label: 'Indigent', 
+          icon: 'bi-house'
         }
       default:
         return { 
           label: categoryName, 
-          color: 'bg-gray-100 text-gray-800 border-gray-200', 
           icon: 'bi-star'
         }
     }
@@ -148,13 +180,20 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
   // Initialize edit form data when entering edit mode
   React.useEffect(() => {
     if (isEditing && children) {
+      
+      // More robust gender handling
+      let genderValue = ''
+      if (children.gender !== undefined && children.gender !== null) {
+        genderValue = String(children.gender)
+      }
+      
       setEditFormData({
         first_name: children.first_name || '',
         last_name: children.last_name || '',
         middle_name: children.middle_name || '',
         suffix: children.suffix ? String(children.suffix) : '',
         birth_date: children.birth_date || '',
-        gender: children.gender !== undefined && children.gender !== null ? String(children.gender) : '',
+        gender: genderValue,
         civil_status: children.civil_status || '',
         home_number: children.home_number || '',
         mobile_number: children.mobile_number || '',
@@ -166,6 +205,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
         special_category_id: children.special_category_id ? String(children.special_category_id) : '',
         notes: children.notes || ''
       })
+      
       setEditErrors({})
     }
   }, [isEditing, children])
@@ -234,7 +274,6 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
         setShowResetPinConfirm(false)
       }
     } catch (error) {
-      console.error('Error resetting PIN:', error)
       alert('Failed to reset PIN. Please try again.')
       setShowResetPinConfirm(false)
     } finally {
@@ -258,7 +297,6 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
         setCopied(false)
       }, 2000)
     } catch (error) {
-      console.error('Failed to copy credentials:', error)
       alert('Failed to copy credentials')
     }
   }
@@ -427,17 +465,9 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
         purok: editFormData.purok !== undefined && editFormData.purok !== null && editFormData.purok !== '' ? editFormData.purok : '',
         occupation: editFormData.occupation || '',
         religion: editFormData.religion || '',
-        special_category_id: editFormData.special_category_id || null,
+        special_category_id: editFormData.special_category_id ? parseInt(editFormData.special_category_id) : null,
         notes: editFormData.notes || ''
       }
-      
-      console.log('=== UPDATE DATA BEING SENT ===')
-      console.log('Gender value:', updateData.gender, 'Type:', typeof updateData.gender)
-      console.log('Purok value:', updateData.purok, 'Type:', typeof updateData.purok)
-      console.log('Occupation value:', updateData.occupation, 'Type:', typeof updateData.occupation)
-      console.log('Religion value:', updateData.religion, 'Type:', typeof updateData.religion)
-      console.log('Special Category ID:', updateData.special_category_id, 'Type:', typeof updateData.special_category_id)
-      console.log('Full update data:', updateData)
       
       // Call API to update resident
       const response = await ApiClient.updateResident(children.id, updateData)
@@ -457,11 +487,10 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
           setEditErrors(response.errors)
           toastRef.current?.show('Please fix the validation errors', 'error')
         } else {
-          toastRef.current?.show('Failed to update resident information', 'error')
+          toastRef.current?.show(response.error || 'Failed to update resident information', 'error')
         }
       }
     } catch (error) {
-      console.error('Error updating resident:', error)
       toastRef.current?.show('Failed to update resident information', 'error')
     } finally {
       setIsUpdatingResident(false)
@@ -667,8 +696,8 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                     {/* Special Category Badge - Show if resident has special category */}
                     {specialCategoryInfo && (
                       <div className="text-right">
-                        <div className="text-xs text-gray-500 mb-1">Category</div>
-                        <span className={`inline-flex items-center px-2 py-1 text-xs font-medium tracking-normal rounded-md border ${specialCategoryInfo.color}`}>
+                        <div className="text-xs text-gray-500 mb-1">Special Category</div>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium tracking-normal rounded-md bg-gray-100 text-gray-800">
                           <i className={`${specialCategoryInfo.icon} mr-1`} />
                           {specialCategoryInfo.label}
                         </span>
@@ -859,6 +888,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                               Gender <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
+                              {console.log('=== GENDER DROPDOWN RENDER ===', 'Current gender value:', editFormData.gender, 'Type:', typeof editFormData.gender, 'editFormData:', editFormData)}
                               <select
                                 value={editFormData.gender || ''}
                                 onChange={(e) => handleFieldChange('gender', e.target.value)}
@@ -1105,15 +1135,29 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             </label>
                             <div className="relative">
                               <select
-                                value={editFormData.special_category_id || ''}
-                                onChange={(e) => handleFieldChange('special_category_id', e.target.value)}
+                                value={SPECIAL_CATEGORY_REVERSE_MAP[editFormData.special_category_id] || ''}
+                                onChange={(e) => {
+                                  const selectedCode = e.target.value
+                                  const categoryId = SPECIAL_CATEGORY_MAP[selectedCode]
+                                  console.log('Special Category Selection:', {
+                                    selectedCode,
+                                    categoryId,
+                                    currentValue: editFormData.special_category_id,
+                                    mapping: SPECIAL_CATEGORY_MAP,
+                                    reverseMapping: SPECIAL_CATEGORY_REVERSE_MAP,
+                                    specialCategories: specialCategories
+                                  })
+                                  handleFieldChange('special_category_id', categoryId)
+                                }}
                                 className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
+                                disabled={isLoadingCategories}
                               >
                                 <option value="">None</option>
-                                <option value="2">PWD</option>
-                                <option value="3">Solo Parent</option>
-                                <option value="5">Student</option>
-                                <option value="6">Indigent</option>
+                                {specialCategories.map(category => (
+                                  <option key={category.id} value={category.category_code}>
+                                    {category.category_name}
+                                  </option>
+                                ))}
                               </select>
                               <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                             </div>

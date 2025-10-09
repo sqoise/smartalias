@@ -7,7 +7,7 @@ import ToastNotification from '../../components/common/ToastNotification'
 import PublicLayout from '../../components/public/PublicLayout'
 import RegisterCard from '../../components/public/RegisterCard'
 import ChatbotButton from '../../components/common/ChatbotButton'
-import PageLoading from '../../components/common/PageLoading'
+import PageLoadingV2 from '../../components/common/PageLoadingV2'
 import ApiClient from '../../lib/apiClient'
 import { alertToast, sanitizeInput } from '../../lib/utility'
 import { USER_ROLES } from '../../lib/constants'
@@ -23,6 +23,8 @@ export default function RegisterPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+  const [hasAcceptedPrivacy, setHasAcceptedPrivacy] = useState(false)
   const [formData, setFormData] = useState({
     // Name fields
     lastName: '',
@@ -46,7 +48,6 @@ export default function RegisterPage() {
     religion: '',
     occupation: '',
     specialCategory: '',
-    notes: '',
     
     // Account credentials
     username: '',
@@ -55,11 +56,28 @@ export default function RegisterPage() {
   })
   const [errors, setErrors] = useState({}) // Boolean flags for field error states
   
+  // Special categories state
+  const [specialCategories, setSpecialCategories] = useState([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+  
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1)
 
   // Unified toast helper
   const handleAlert = (message, type = 'info') => alertToast(toastRef, message, type)
+
+  // Create mapping between category codes and IDs
+  const createCategoryMaps = (categories) => {
+    const CODE_TO_ID_MAP = {}
+    const ID_TO_CODE_MAP = {}
+    
+    categories.forEach(category => {
+      CODE_TO_ID_MAP[category.category_code] = category.id
+      ID_TO_CODE_MAP[category.id] = category.category_code
+    })
+    
+    return { CODE_TO_ID_MAP, ID_TO_CODE_MAP }
+  }
 
   // ============================================
   // CHECK IF ALREADY AUTHENTICATED
@@ -81,14 +99,38 @@ export default function RegisterPage() {
         }
       } catch (error) {
         // Not authenticated, stay on register page
-        console.log('Not authenticated, showing register page')
       } finally {
         setIsCheckingAuth(false)
+        // Always show privacy modal on every visit to /register
+        setShowPrivacyModal(true)
       }
     }
 
     checkAuth()
   }, [router])
+
+  // ============================================
+  // LOAD SPECIAL CATEGORIES
+  // ============================================
+  useEffect(() => {
+    const loadSpecialCategories = async () => {
+      try {
+        setIsLoadingCategories(true)
+        const response = await ApiClient.getPublicSpecialCategories()
+        if (response.success) {
+          setSpecialCategories(response.data)
+        } else {
+          handleAlert('Failed to load special categories', 'error')
+        }
+      } catch (error) {
+        handleAlert('Failed to load special categories', 'error')
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    loadSpecialCategories()
+  }, [])
 
   // ============================================
   // VALIDATION FUNCTIONS
@@ -211,9 +253,11 @@ export default function RegisterPage() {
       }
       
       // Special Category validation (optional but must be valid if provided)
-      const validSpecialCategories = ['', 'PWD', 'SOLO_PARENT', 'INDIGENT', 'STUDENT']
-      if (formData.specialCategory && !validSpecialCategories.includes(formData.specialCategory)) {
-        newErrors.specialCategory = 'Invalid special category selection'
+      if (formData.specialCategory && specialCategories.length > 0) {
+        const validCategoryCodes = specialCategories.map(cat => cat.category_code)
+        if (!validCategoryCodes.includes(formData.specialCategory)) {
+          newErrors.specialCategory = 'Invalid special category selection'
+        }
       }
     } else if (currentStep === 4) {
       // Step 4: Account Setup
@@ -286,11 +330,9 @@ export default function RegisterPage() {
         setErrors(prev => ({ ...prev, username: '' }))
       } else {
         // Other errors - don't show to user, just log
-        console.error('Username check error:', response.error)
       }
     } catch (error) {
       // Network or unexpected errors - don't show to user, just log
-      console.error('Username check error:', error)
     } finally {
       setIsCheckingUsername(false)
     }
@@ -370,7 +412,6 @@ export default function RegisterPage() {
       }
       // If status is not 404, some other error occurred
       if (checkResponse.status && checkResponse.status !== 404) {
-        console.error('Username check error during submission:', checkResponse.error)
         // Continue anyway, let the backend handle it
       }
       
@@ -401,8 +442,12 @@ export default function RegisterPage() {
         // Additional Information (Step 3)
         religion: formData.religion,
         occupation: formData.occupation,
-        specialCategory: formData.specialCategory || null,
-        notes: sanitizeInput(formData.notes)
+        specialCategory: formData.specialCategory ? 
+          (() => {
+            const { CODE_TO_ID_MAP } = createCategoryMaps(specialCategories)
+            return CODE_TO_ID_MAP[formData.specialCategory] || null
+          })() : null
+        // Note: notes field is only for admin use, not public registration
       }
       
       // Call backend API
@@ -417,7 +462,6 @@ export default function RegisterPage() {
       }, 2000)
       
     } catch (error) {
-      console.error('Registration error:', error)
       
       // Handle specific error messages from backend
       const errorMessage = error.message || 'Registration failed. Please try again.'
@@ -455,28 +499,90 @@ export default function RegisterPage() {
   return (
     <>
       <ToastNotification ref={toastRef} />
-      {isCheckingAuth ? (
-        <PageLoading />
-      ) : (
-        <>
-          <NavigationHeader />
-          <PublicLayout showChatbot={false}>
-            <RegisterCard
-              formData={formData}
-              onInputChange={handleInputChange}
-              onSubmit={handleSubmit}
-              onNext={handleNext}
-              onBack={handleBack}
-              currentStep={currentStep}
-              stepTitle={getStepTitle(currentStep)}
-              isLoading={isLoading}
-              errors={errors}
-              onUsernameBlur={checkUsernameAvailability}
-              isCheckingUsername={isCheckingUsername}
-            />
-          </PublicLayout>
-          <ChatbotButton />
-        </>
+      
+      {/* Show loading overlay during auth check */}
+      {isCheckingAuth && <PageLoadingV2 isLoading={true} />}
+      
+      {/* Registration page content (always render, but darken when modal is showing) */}
+      <div className={showPrivacyModal ? 'brightness-[0.3]' : ''}>
+        <NavigationHeader />
+        <PublicLayout showChatbot={false}>
+          <RegisterCard
+            formData={formData}
+            onInputChange={handleInputChange}
+            onSubmit={handleSubmit}
+            onNext={handleNext}
+            onBack={handleBack}
+            currentStep={currentStep}
+            stepTitle={getStepTitle(currentStep)}
+            isLoading={isLoading}
+            errors={errors}
+            specialCategories={specialCategories}
+            isLoadingCategories={isLoadingCategories}
+          />
+        </PublicLayout>
+        <ChatbotButton />
+      </div>
+
+      {/* Data Privacy Acknowledgement Modal */}
+      {showPrivacyModal && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[60]"
+          onClick={(e) => {
+            // Prevent closing modal by clicking outside
+            e.stopPropagation()
+          }}
+        >
+          <div className="bg-white rounded-lg w-full max-w-md shadow-lg">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <i className="bi bi-shield-check text-lg text-gray-600"></i>
+                <h2 className="text-lg font-semibold text-gray-900">Data Privacy Notice</h2>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 max-h-96 overflow-y-auto">
+              <div className="text-sm text-gray-700 space-y-4">
+                <p>
+                  I understand and concur that by clicking the SUBMIT button below, I am agreeing to the Privacy Notice and give my full consent to Barangay Lias and its affiliates as well as its partners and service providers, if any, to collect, store, access and/or process any personal data I may provide herein, such as but not limited to my name, address, telephone number and e-mail address for the period allowed under the applicable law and regulations for the purpose of processing my online application or request.
+                </p>
+                
+                <p>
+                  I acknowledge that the collection and processing of my personal data is necessary for such purpose. I also express my consent for the verification and validation of the information I have submitted related to my online application or request. I am aware of my right to be informed, to access, to object, to erasure or blocking, to damages, to file a complaint, to rectify and to data portability, and I understand that there are procedures, conditions and exceptions to be complied with in order to exercise or invoke such rights.
+                </p>
+
+                <p>
+                  I hereby agree that all Personal Data (as defined under the Data Privacy Law of 2012 and its implementing rules and regulations), customer data and account or transaction information or records (collectively, the "information") which may be with Barangay Lias from time to time relating to us may be processed, profiled or shared to requesting parties or for the purpose of any court, legal process, examination, inquiry, audit or investigation of any Authority. The aforesaid terms shall apply notwithstanding any applicable non-disclosure agreement. We acknowledge that such information may be processed or profiled by or shared with jurisdictions which do not have strict data protection or data privacy laws.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowPrivacyModal(false)
+                  router.push('/')
+                }}
+                className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              >
+                I Do Not Agree
+              </button>
+              <button
+                onClick={() => {
+                  setHasAcceptedPrivacy(true)
+                  setShowPrivacyModal(false)
+                  // Privacy acceptance required on every visit
+                }}
+                className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              >
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

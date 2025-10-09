@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ApiClient from '../../../lib/apiClient'
-import PageLoading from '../../../components/common/PageLoading'
+import PageLoadingV2 from '../../../components/common/PageLoadingV2'
 
 export default function Profile() {
   const [isLoading, setIsLoading] = useState(true)
@@ -145,7 +145,7 @@ export default function Profile() {
 
   // Show loading state
   if (isLoading || !profileData) {
-    return <PageLoading />
+    return <PageLoadingV2 isLoading={true} />
   }
 
   return (

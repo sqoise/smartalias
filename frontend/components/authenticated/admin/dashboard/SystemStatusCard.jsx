@@ -85,7 +85,7 @@ export default function SystemStatusCard() {
           setAiStatus({
             available: response.data.available,
             loading: false,
-            model: response.data.model || 'Gemini'
+            model: response.data.primaryProvider || 'Unknown'
           })
         } else {
           setAiStatus({
@@ -133,8 +133,11 @@ export default function SystemStatusCard() {
             const statusText = onlineCount === 3 ? "Online" : 
                               onlineCount === 0 ? "Offline" : "Degraded"
             
+            const statusColor = onlineCount === 3 ? "text-gray-900" :
+                               onlineCount === 0 ? "text-red-600" : "text-gray-800"
+            
             return (
-              <p className="text-2xl font-bold text-gray-900">{statusText}</p>
+              <p className={`text-2xl font-bold ${statusColor}`}>{statusText}</p>
             )
           })()}
           <div className="flex items-center gap-3 mt-1">
@@ -212,8 +215,46 @@ export default function SystemStatusCard() {
             </div>
           </div>
         </div>
-        <div className="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center">
-          <i className="bi bi-shield-check text-xl text-green-600"></i>
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+          (() => {
+            const hasLoadingServices = systemStatus.api.loading || 
+                                     systemStatus.sms.loading || 
+                                     aiStatus.loading
+            
+            if (hasLoadingServices) {
+              return "bg-gray-100"
+            }
+            
+            const onlineCount = [
+              systemStatus.api.available,
+              systemStatus.sms.available,
+              aiStatus.available
+            ].filter(Boolean).length
+            
+            return onlineCount === 3 ? "bg-green-50" :
+                   onlineCount === 0 ? "bg-red-50" : "bg-amber-50"
+          })()
+        }`}>
+          <i className={`bi bi-shield-check text-xl ${
+            (() => {
+              const hasLoadingServices = systemStatus.api.loading || 
+                                       systemStatus.sms.loading || 
+                                       aiStatus.loading
+              
+              if (hasLoadingServices) {
+                return "text-gray-400"
+              }
+              
+              const onlineCount = [
+                systemStatus.api.available,
+                systemStatus.sms.available,
+                aiStatus.available
+              ].filter(Boolean).length
+              
+              return onlineCount === 3 ? "text-green-600" :
+                     onlineCount === 0 ? "text-red-600" : "text-amber-600"
+            })()
+          }`}></i>
         </div>
       </div>
     </div>

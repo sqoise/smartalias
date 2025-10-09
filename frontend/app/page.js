@@ -1,6 +1,6 @@
 'use client'
 
-import PageLoading from '../components/common/PageLoading'
+import PageLoadingV2 from '../components/common/PageLoadingV2'
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -13,5 +13,5 @@ export default function IndexPage() {
     router.push('/home')
   }, [router])
 
-  return <PageLoading/>
+  return <PageLoadingV2 isLoading={true} />
 }

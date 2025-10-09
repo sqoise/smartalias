@@ -41,6 +41,10 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
   const [showCredentials, setShowCredentials] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
 
+  // Special categories state
+  const [specialCategories, setSpecialCategories] = React.useState([])
+  const [isLoadingCategories, setIsLoadingCategories] = React.useState(false)
+
 
 
   // Copy credentials to clipboard with feedback
@@ -85,6 +89,28 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
     }
   }, [open])
 
+  // Load special categories on component mount
+  React.useEffect(() => {
+    const loadSpecialCategories = async () => {
+      try {
+        setIsLoadingCategories(true)
+        const response = await ApiClient.get('/residents/special-categories')
+        
+        if (response.success) {
+          setSpecialCategories(response.data)
+        } else {
+          console.error('Failed to load special categories:', response.error)
+        }
+      } catch (error) {
+        console.error('Error loading special categories:', error)
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    loadSpecialCategories()
+  }, [])
+
   // Save form data to localStorage whenever it changes
   React.useEffect(() => {
     if (open) {
@@ -98,6 +124,21 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
       }
     }
   }, [formData, open])
+
+  // Create dynamic mapping from fetched categories
+  const createCategoryMaps = () => {
+    const codeToId = { '': null }
+    const idToCode = {}
+    
+    specialCategories.forEach(category => {
+      codeToId[category.category_code] = category.id
+      idToCode[category.id] = category.category_code
+    })
+    
+    return { codeToId, idToCode }
+  }
+
+  const { codeToId: SPECIAL_CATEGORY_MAP, idToCode: SPECIAL_CATEGORY_REVERSE_MAP } = createCategoryMaps()
 
   // Close on Escape key
   React.useEffect(() => {
@@ -238,8 +279,17 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
     setShowPreSubmitConfirm(false)
     
     try {
+      // Transform formData before sending - convert specialCategory code to special_category_id
+      const { CODE_TO_ID_MAP } = createCategoryMaps(specialCategories)
+      const submitData = {
+        ...formData,
+        special_category_id: formData.specialCategory ? CODE_TO_ID_MAP[formData.specialCategory] : null
+      }
+      // Remove the old specialCategory field
+      delete submitData.specialCategory
+      
       // Call backend API to create resident and user
-      const response = await ApiClient.createResident(formData)
+      const response = await ApiClient.createResident(submitData)
       
       if (response.success) {
         // Show success toast notification
@@ -798,9 +848,15 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                         disabled={loading}
                       >
                         <option value="">Not Applicable</option>
-                        <option value="PWD">PWD</option>
-                        <option value="SOLO_PARENT">Solo Parent</option>
-                        <option value="INDIGENT">Indigent</option>
+                        {isLoadingCategories ? (
+                          <option disabled>Loading categories...</option>
+                        ) : (
+                          specialCategories.map(category => (
+                            <option key={category.id} value={category.category_code}>
+                              {category.category_name}
+                            </option>
+                          ))
+                        )}
                       </select>
                       <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     </div>
