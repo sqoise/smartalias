@@ -8,6 +8,473 @@ const logger = require('../config/logger')
 
 class ChatbotRepository {
   // ============================================
+  // DYNAMIC DATA FETCHING
+  // ============================================
+
+  /**
+   * Get document catalog with current fees
+   */
+  static async getDocumentCatalog() {
+    try {
+      const query = `
+        SELECT 
+          id,
+          title,
+          description,
+          fee,
+          is_active
+        FROM document_catalog 
+        WHERE is_active = 1
+        ORDER BY title ASC
+      `
+      const result = await db.query(query)
+      return result.rows
+    } catch (error) {
+      logger.error('Error fetching document catalog:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get specific document fee by title
+   */
+  static async getDocumentFee(documentTitle) {
+    try {
+      const query = `
+        SELECT fee, title
+        FROM document_catalog 
+        WHERE LOWER(title) LIKE LOWER($1) AND is_active = 1
+        LIMIT 1
+      `
+      const result = await db.query(query, [`%${documentTitle}%`])
+      return result.rows.length > 0 ? result.rows[0] : null
+    } catch (error) {
+      logger.error('Error fetching document fee:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Format document catalog for FAQ display
+   */
+  static async getFormattedDocumentList() {
+    try {
+      const documents = await this.getDocumentCatalog()
+      return documents.map(doc => {
+        const fee = parseFloat(doc.fee) === 0 ? 'FREE' : `₱${parseFloat(doc.fee).toFixed(2)}`
+        return `• **${doc.title}**: ${fee}`
+      }).join('\n')
+    } catch (error) {
+      logger.error('Error formatting document list:', error)
+      return 'Document list temporarily unavailable. Please contact the barangay office.'
+    }
+  }
+
+  /**
+   * Get permits only from document catalog
+   */
+  static async getFormattedPermitList() {
+    try {
+      const query = `
+        SELECT title, fee, description
+        FROM document_catalog 
+        WHERE LOWER(title) LIKE '%permit%' AND is_active = 1
+        ORDER BY title ASC
+      `
+      const result = await db.query(query)
+      return result.rows.map(doc => {
+        const fee = parseFloat(doc.fee) === 0 ? 'FREE' : `₱${parseFloat(doc.fee).toFixed(2)}`
+        return `• **${doc.title}**: ${fee}\n  ${doc.description}`
+      }).join('\n\n')
+    } catch (error) {
+      logger.error('Error formatting permit list:', error)
+      return 'Permit list temporarily unavailable. Please contact the barangay office.'
+    }
+  }
+
+  /**
+   * Get formatted fees list for all documents
+   */
+  static async getFormattedFeesList() {
+    try {
+      const documents = await this.getDocumentCatalog()
+      const grouped = {
+        free: [],
+        paid: []
+      }
+
+      documents.forEach(doc => {
+        const fee = parseFloat(doc.fee)
+        if (fee === 0) {
+          grouped.free.push(doc.title)
+        } else {
+          grouped.paid.push(`• **${doc.title}**: ₱${fee.toFixed(2)}`)
+        }
+      })
+
+      let result = ''
+      
+      if (grouped.paid.length > 0) {
+        result += '**Paid Documents:**\n' + grouped.paid.join('\n') + '\n\n'
+      }
+      
+      if (grouped.free.length > 0) {
+        result += '**Free Documents:**\n' + grouped.free.map(title => `• **${title}**: FREE`).join('\n')
+      }
+
+      return result
+    } catch (error) {
+      logger.error('Error formatting fees list:', error)
+      return 'Fee information temporarily unavailable. Please contact the barangay office.'
+    }
+  }
+
+  /**
+   * Process FAQ answer with dynamic data replacement
+   */
+  static async processDynamicAnswer(answer) {
+    try {
+      let processedAnswer = answer
+
+      // Replace document catalog list
+      if (answer.includes('{{DOCUMENT_CATALOG_LIST}}')) {
+        const documentList = await this.getFormattedDocumentList()
+        processedAnswer = processedAnswer.replace('{{DOCUMENT_CATALOG_LIST}}', documentList)
+      }
+
+      // Replace document fees list
+      if (answer.includes('{{DOCUMENT_FEES_LIST}}')) {
+        const feesList = await this.getFormattedFeesList()
+        processedAnswer = processedAnswer.replace('{{DOCUMENT_FEES_LIST}}', feesList)
+      }
+
+      // Replace permit catalog list
+      if (answer.includes('{{PERMIT_CATALOG_LIST}}')) {
+        const permitList = await this.getFormattedPermitList()
+        processedAnswer = processedAnswer.replace('{{PERMIT_CATALOG_LIST}}', permitList)
+      }
+
+      // Replace specific document fees
+      const feeMatches = answer.match(/\{\{([A-Z_]+)_FEE\}\}/g)
+      if (feeMatches) {
+        for (const match of feeMatches) {
+          const documentType = match.replace('{{', '').replace('_FEE}}', '').replace(/_/g, ' ')
+          const docInfo = await this.getDocumentFee(documentType)
+          if (docInfo) {
+            const feeText = parseFloat(docInfo.fee) === 0 ? 'FREE' : `₱${parseFloat(docInfo.fee).toFixed(2)}`
+            processedAnswer = processedAnswer.replace(match, feeText)
+          } else {
+            processedAnswer = processedAnswer.replace(match, 'Contact barangay office')
+          }
+        }
+      }
+
+      return processedAnswer
+    } catch (error) {
+      logger.error('Error processing dynamic answer:', error)
+      return answer // Return original answer if processing fails
+    }
+  }
+
+  /**
+   * Get recent published announcements for AI context
+   */
+  static async getRecentAnnouncements(limit = 3) {
+    try {
+      const query = `
+        SELECT 
+          title,
+          content,
+          type,
+          published_at
+        FROM announcements 
+        WHERE published_at IS NOT NULL 
+          AND published_at <= NOW()
+        ORDER BY published_at DESC 
+        LIMIT $1
+      `
+      const result = await db.query(query, [limit])
+      return result.rows
+    } catch (error) {
+      logger.error('Error fetching recent announcements:', error)
+      return []
+    }
+  }
+
+  // ============================================
+  // CHAT MESSAGE ANALYSIS & AI IMPROVEMENT
+  // ============================================
+
+  /**
+   * Get frequently asked questions from chat messages that weren't answered by FAQs
+   */
+  static async getUnansweredQuestions(limit = 20) {
+    try {
+      const query = `
+        SELECT 
+          cm.message_text as user_question,
+          COUNT(*) as frequency,
+          AVG(CASE WHEN cm2.was_helpful = 1 THEN 1 ELSE 0 END) as satisfaction_rate,
+          MAX(cm.created_at) as last_asked
+        FROM chat_messages cm
+        LEFT JOIN chat_messages cm2 ON cm2.conversation_id = cm.conversation_id 
+          AND cm2.id > cm.id 
+          AND cm2.message_type = 'bot'
+        WHERE cm.message_type = 'user'
+          AND cm.faq_id IS NULL  -- Not answered by existing FAQ
+          AND LENGTH(cm.message_text) > 10  -- Meaningful questions
+          AND cm.created_at >= NOW() - INTERVAL '30 days'  -- Recent questions
+        GROUP BY cm.message_text
+        HAVING COUNT(*) >= 2  -- Asked multiple times
+        ORDER BY frequency DESC, last_asked DESC
+        LIMIT $1
+      `
+      const result = await db.query(query, [limit])
+      return result.rows
+    } catch (error) {
+      logger.error('Error getting unanswered questions:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get conversation context for improving AI responses
+   */
+  static async getConversationContext(conversationId, messageLimit = 10) {
+    try {
+      const query = `
+        SELECT 
+          cm.message_type,
+          cm.message_text,
+          cm.faq_id,
+          cm.was_helpful,
+          cm.created_at,
+          f.question as faq_question,
+          f.answer as faq_answer
+        FROM chat_messages cm
+        LEFT JOIN faqs f ON cm.faq_id = f.id
+        WHERE cm.conversation_id = $1
+        ORDER BY cm.created_at ASC
+        LIMIT $2
+      `
+      const result = await db.query(query, [conversationId, messageLimit])
+      return result.rows
+    } catch (error) {
+      logger.error('Error getting conversation context:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get similar user questions from chat history (with fallback for missing pg_trgm)
+   */
+  static async getSimilarUserQuestions(userQuestion, limit = 5) {
+    try {
+      // First try using similarity function (requires pg_trgm extension)
+      const similarityQuery = `
+        SELECT DISTINCT
+          cm.message_text as question,
+          cm2.message_text as bot_response,
+          cm2.faq_id,
+          cm2.was_helpful,
+          f.question as faq_question,
+          f.answer as faq_answer,
+          similarity(cm.message_text, $1) as similarity_score
+        FROM chat_messages cm
+        LEFT JOIN chat_messages cm2 ON cm2.conversation_id = cm.conversation_id 
+          AND cm2.id > cm.id 
+          AND cm2.message_type = 'bot'
+          AND cm2.id = (
+            SELECT MIN(id) FROM chat_messages 
+            WHERE conversation_id = cm.conversation_id 
+              AND id > cm.id 
+              AND message_type = 'bot'
+          )
+        LEFT JOIN faqs f ON cm2.faq_id = f.id
+        WHERE cm.message_type = 'user'
+          AND similarity(cm.message_text, $1) > 0.3
+          AND cm.created_at >= NOW() - INTERVAL '90 days'
+        ORDER BY similarity_score DESC, cm2.was_helpful DESC NULLS LAST
+        LIMIT $2
+      `
+      
+      try {
+        const result = await db.query(similarityQuery, [userQuestion, limit])
+        return result.rows
+      } catch (similarityError) {
+        // If similarity function doesn't exist, fall back to ILIKE search
+        logger.warn('Similarity function not available, using ILIKE fallback', { 
+          error: similarityError.message 
+        })
+        
+        const fallbackQuery = `
+          SELECT DISTINCT
+            cm.message_text as question,
+            cm2.message_text as bot_response,
+            cm2.faq_id,
+            cm2.was_helpful,
+            f.question as faq_question,
+            f.answer as faq_answer,
+            0.5 as similarity_score
+          FROM chat_messages cm
+          LEFT JOIN chat_messages cm2 ON cm2.conversation_id = cm.conversation_id 
+            AND cm2.id > cm.id 
+            AND cm2.message_type = 'bot'
+            AND cm2.id = (
+              SELECT MIN(id) FROM chat_messages 
+              WHERE conversation_id = cm.conversation_id 
+                AND id > cm.id 
+                AND message_type = 'bot'
+            )
+          LEFT JOIN faqs f ON cm2.faq_id = f.id
+          WHERE cm.message_type = 'user'
+            AND (
+              cm.message_text ILIKE '%' || $1 || '%'
+              OR $1 ILIKE '%' || cm.message_text || '%'
+            )
+            AND cm.created_at >= NOW() - INTERVAL '90 days'
+          ORDER BY cm2.was_helpful DESC NULLS LAST, cm.created_at DESC
+          LIMIT $2
+        `
+        
+        const fallbackResult = await db.query(fallbackQuery, [userQuestion, limit])
+        return fallbackResult.rows
+      }
+    } catch (error) {
+      logger.error('Error getting similar questions:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get feedback patterns to improve FAQ quality
+   */
+  static async getFAQFeedbackAnalysis() {
+    try {
+      const query = `
+        SELECT 
+          f.id as faq_id,
+          f.question,
+          f.answer,
+          COUNT(cm.id) as times_used,
+          COUNT(CASE WHEN cm.was_helpful = 1 THEN 1 END) as helpful_count,
+          COUNT(CASE WHEN cm.was_helpful = 0 THEN 1 END) as not_helpful_count,
+          ROUND(
+            AVG(CASE WHEN cm.was_helpful IS NOT NULL THEN cm.was_helpful::float END) * 100, 2
+          ) as satisfaction_percentage,
+          MAX(cm.created_at) as last_used
+        FROM faqs f
+        LEFT JOIN chat_messages cm ON f.id = cm.faq_id
+        WHERE f.is_active = 1
+          AND cm.created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY f.id, f.question, f.answer
+        HAVING COUNT(cm.id) > 0
+        ORDER BY satisfaction_percentage ASC NULLS LAST, times_used DESC
+      `
+      const result = await db.query(query)
+      return result.rows
+    } catch (error) {
+      logger.error('Error getting FAQ feedback analysis:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get chat message statistics for AI training insights
+   */
+  static async getChatStatistics(days = 30) {
+    try {
+      const query = `
+        SELECT 
+          DATE(created_at) as chat_date,
+          COUNT(*) as total_messages,
+          COUNT(CASE WHEN message_type = 'user' THEN 1 END) as user_messages,
+          COUNT(CASE WHEN message_type = 'bot' THEN 1 END) as bot_messages,
+          COUNT(CASE WHEN faq_id IS NOT NULL THEN 1 END) as faq_responses,
+          COUNT(CASE WHEN was_helpful = 1 THEN 1 END) as helpful_responses,
+          COUNT(CASE WHEN was_helpful = 0 THEN 1 END) as unhelpful_responses,
+          ROUND(
+            AVG(CASE WHEN was_helpful IS NOT NULL THEN was_helpful::float END) * 100, 2
+          ) as daily_satisfaction
+        FROM chat_messages
+        WHERE created_at >= NOW() - INTERVAL '$1 days'
+        GROUP BY DATE(created_at)
+        ORDER BY chat_date DESC
+      `
+      const result = await db.query(query.replace('$1', days))
+      return result.rows
+    } catch (error) {
+      logger.error('Error getting chat statistics:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Build AI context from chat history and FAQs
+   */
+  static async buildAIContext(userQuestion, conversationId = null) {
+    try {
+      const context = {
+        userQuestion,
+        documentCatalog: await this.getDocumentCatalog(),
+        recentConversation: conversationId ? await this.getConversationContext(conversationId, 5) : [],
+        similarQuestions: await this.getSimilarUserQuestions(userQuestion, 3),
+        topFAQs: await this.getFAQs(), // Get all FAQs for context
+        currentTimestamp: new Date().toISOString()
+      }
+
+      return context
+    } catch (error) {
+      logger.error('Error building AI context:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get enhanced FAQ response with chat message context
+   */
+  static async getEnhancedFAQResponse(userQuestion, conversationId = null) {
+    try {
+      // First try to find exact FAQ match
+      const faqResults = await this.searchFAQs(userQuestion)
+      
+      if (faqResults.length > 0) {
+        const bestMatch = faqResults[0]
+        
+        // Get similar conversation patterns
+        const similarQuestions = await this.getSimilarUserQuestions(userQuestion, 3)
+        
+        // Enhance the FAQ answer with context from similar conversations
+        let enhancedAnswer = bestMatch.answer
+        
+        if (similarQuestions.length > 0) {
+          const successfulResponses = similarQuestions.filter(q => q.was_helpful === 1)
+          if (successfulResponses.length > 0) {
+            enhancedAnswer += `\n\n**Additional Information Based on Similar Questions:**\n`
+            successfulResponses.slice(0, 2).forEach(response => {
+              if (response.bot_response && response.bot_response !== bestMatch.answer) {
+                enhancedAnswer += `• ${response.bot_response}\n`
+              }
+            })
+          }
+        }
+        
+        return {
+          faqId: bestMatch.id,
+          question: bestMatch.question,
+          answer: enhancedAnswer,
+          confidence: faqResults[0].relevance || 1,
+          hasEnhancement: similarQuestions.length > 0
+        }
+      }
+      
+      return null
+    } catch (error) {
+      logger.error('Error getting enhanced FAQ response:', error)
+      throw error
+    }
+  }
+  // ============================================
   // FAQ CATEGORIES
   // ============================================
 
@@ -48,7 +515,7 @@ class ChatbotRepository {
   // ============================================
 
   /**
-   * Get all active FAQs (optionally filtered by category)
+   * Get all active FAQs (optionally filtered by category) with dynamic data processing
    */
   static async getFAQs(categoryId = null) {
     let query = `
@@ -77,11 +544,17 @@ class ChatbotRepository {
     query += ` ORDER BY f.display_order ASC, f.id ASC`
 
     const result = await db.query(query, params)
+    
+    // Process dynamic content for all FAQs
+    for (const faq of result.rows) {
+      faq.answer = await this.processDynamicAnswer(faq.answer)
+    }
+    
     return result.rows
   }
 
   /**
-   * Get FAQ by ID
+   * Get FAQ by ID with dynamic data processing
    */
   static async getFAQById(faqId) {
     const query = `
@@ -100,12 +573,19 @@ class ChatbotRepository {
       WHERE f.id = $1 AND f.is_active = 1
     `
     const result = await db.query(query, [faqId])
-    return result.rows.length > 0 ? result.rows[0] : null
+    
+    if (result.rows.length > 0) {
+      const faq = result.rows[0]
+      // Process dynamic content in the answer
+      faq.answer = await this.processDynamicAnswer(faq.answer)
+      return faq
+    }
+    
+    return null
   }
 
   /**
-   * Search FAQs by query string
-   * Uses full-text search on question, answer, and keywords
+   * Search FAQs by query string with dynamic data processing
    */
   static async searchFAQs(searchQuery) {
     const query = `
@@ -139,6 +619,12 @@ class ChatbotRepository {
     `
     const likePattern = `%${searchQuery}%`
     const result = await db.query(query, [searchQuery, likePattern])
+    
+    // Process dynamic content for all results
+    for (const faq of result.rows) {
+      faq.answer = await this.processDynamicAnswer(faq.answer)
+    }
+    
     return result.rows
   }
 

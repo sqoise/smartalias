@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Spinner from '../common/Spinner'
+import CustomSelect from '../common/CustomSelect'
 
 export default function RegisterCard({ 
   formData,
@@ -89,22 +90,23 @@ export default function RegisterCard({
             Suffix <span className="text-gray-400 font-normal">(Optional)</span>
           </label>
           <div className="relative">
-            <select
-              name="suffix"
+            <CustomSelect
               value={formData.suffix}
-              onChange={onInputChange}
-              className="w-full rounded-md px-3 py-1.5 border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none bg-white hover:border-gray-400 transition-all duration-200 h-9 cursor-pointer appearance-none pr-8"
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="1">Jr.</option>
-              <option value="2">Sr.</option>
-              <option value="3">II</option>
-              <option value="4">III</option>
-              <option value="5">IV</option>
-              <option value="6">V</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+              onChange={(value) => onInputChange({ target: { name: 'suffix', value } })}
+              options={[
+                { value: '', label: 'Select' },
+                { value: '1', label: 'Jr.' },
+                { value: '2', label: 'Sr.' },
+                { value: '3', label: 'II' },
+                { value: '4', label: 'III' },
+                { value: '5', label: 'IV' },
+                { value: '6', label: 'V' }
+              ]}
+              placeholder="Select"
+              title="Select Suffix"
+              focusColor="green"
+              className="h-9"
+            />
           </div>
         </div>
       </div>

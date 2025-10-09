@@ -258,15 +258,45 @@ class ChatbotController {
         
         if (aiService.isAvailable()) {
           try {
-            logger.info('Attempting AI generation with database context', { 
+            logger.info('Attempting AI generation with enhanced context', { 
               query: query.trim(),
-              contextFAQs: contextFAQs.length
+              contextFAQs: contextFAQs.length,
+              conversationId: conversation.id
             })
             
-            // Prepare structured context for AI
-            const aiContext = {
-              faqs: contextFAQs,
-              rules: [
+            // Get enhanced context including chat history
+            const aiContext = await ChatbotRepository.buildAIContext(query.trim(), conversation.id)
+            
+            // Add FAQ context
+            aiContext.faqs = [...(aiContext.faqs || []), ...contextFAQs]
+            
+            // Add recent announcements if query is announcement-related
+            const announcementKeywords = [
+              'announcement', 'announcements', 'news', 'update', 'updates', 'event', 'events', 
+              'schedule', 'schedules', 'program', 'programs', 'activity', 'activities',
+              'balita', 'abiso', 'paalala', 'sked', 'programa', 'gawain', 'aktibidad'
+            ];
+            const isAnnouncementRelated = announcementKeywords.some(keyword => 
+              query.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            if (isAnnouncementRelated) {
+              try {
+                const recentAnnouncements = await ChatbotRepository.getRecentAnnouncements(3)
+                aiContext.recentAnnouncements = recentAnnouncements
+                logger.info('Added recent announcements to AI context', { 
+                  query: query.trim(),
+                  announcementsCount: recentAnnouncements.length
+                })
+              } catch (announcementError) {
+                logger.warn('Failed to get recent announcements for AI context', { 
+                  error: announcementError.message 
+                })
+              }
+            }
+            
+            // Add rule-based knowledge
+            aiContext.rules = [
                 // 4Ps Program
                 'For 4Ps (Pantawid Pamilyang Pilipino Program), applicants should go to the Municipal Social Welfare and Development Office (MSWDO) or the DSWD office',
                 '4Ps is a national program managed by DSWD, not the barangay - the barangay can provide supporting documents like Certificate of Indigency',
@@ -317,9 +347,7 @@ class ChatbotController {
                 'Barangay Health Stations provide basic health services, immunization, and health education programs',
                 'Maternal and child health services, family planning, and nutrition programs are available at barangay level',
                 'Solo Parent ID applications are processed through MSWD with barangay endorsement and supporting documents'
-              ],
-              db: [] // Can be populated with announcements, events, or resident-specific data in the future
-            }
+              ]
             
             const aiAnswer = await aiService.generateAnswer(query.trim(), aiContext)
             const responseTime = Date.now() - startTime

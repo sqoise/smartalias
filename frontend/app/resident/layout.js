@@ -81,10 +81,10 @@ export default function ResidentLayout({ children }) {
   // Determine page title based on current route
   const getPageTitle = () => {
     if (pathname === '/resident') {
-      return 'Document Requests'
+      return 'Resident Dashboard'
     }
     if (pathname.includes('/requests')) {
-      return 'Request History'
+      return 'View Pending Requests'
     }
     if (pathname.includes('/announcements')) {
       return 'Announcements'

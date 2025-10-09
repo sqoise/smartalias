@@ -238,7 +238,7 @@ CREATE TABLE announcement_sms_logs (
     failed_sends INTEGER DEFAULT 0, -- How many failed
     sms_content TEXT NOT NULL, -- The actual message sent
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    provider_response JSONB DEFAULT NULL, -- Batch response from SMS provider (Semaphore API response)
+    provider_response JSONB DEFAULT NULL, -- Batch response from SMS provider (IProg API response)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -425,6 +425,125 @@ COMMENT ON COLUMN document_requests.priority_set_by IS 'Admin/staff user who ass
 COMMENT ON COLUMN document_requests.priority_set_at IS 'Timestamp when priority was assigned by admin/staff';
 COMMENT ON COLUMN document_requests.purpose IS 'Reason or purpose for requesting the document';
 COMMENT ON COLUMN document_requests.attachment_path IS 'File path to supporting documents uploaded by resident';
+
+-- ============================================
+-- COMPREHENSIVE COLUMN COMMENTS
+-- ============================================
+
+-- Users Table - Authentication and Access Control
+COMMENT ON COLUMN users.id IS 'Primary key - unique identifier for user accounts';
+COMMENT ON COLUMN users.username IS 'Unique login username - format: firstname.lastname (lowercase)';
+COMMENT ON COLUMN users.password IS 'Bcrypt hashed password/PIN - 12 rounds of hashing for security';
+COMMENT ON COLUMN users.role IS '1=Admin (full access), 2=Staff (limited admin), 3=Resident (user access)';
+COMMENT ON COLUMN users.created_at IS 'Account creation timestamp - automatically set on INSERT';
+COMMENT ON COLUMN users.updated_at IS 'Last modification timestamp - updated on any changes';
+COMMENT ON COLUMN users.is_password_changed IS '0=must change password (admin-created), 1=password already changed (self-set)';
+COMMENT ON COLUMN users.failed_login_attempts IS 'Counter for failed login attempts - locks account at 10 attempts';
+COMMENT ON COLUMN users.locked_until IS 'Account lockout expiration time - NULL if not locked, 15 minutes from last failed attempt';
+COMMENT ON COLUMN users.last_login IS 'Timestamp of last successful login - used for security tracking';
+COMMENT ON COLUMN users.last_failed_login IS 'Timestamp of last failed login attempt - used for security tracking';
+
+-- Residents Table - Comprehensive Resident Information
+COMMENT ON COLUMN residents.id IS 'Primary key - unique identifier for resident records';
+COMMENT ON COLUMN residents.user_id IS 'One-to-one link to users table - NULL for residents without login accounts';
+COMMENT ON COLUMN residents.last_name IS 'Family surname - required field, stored in uppercase';
+COMMENT ON COLUMN residents.first_name IS 'Given first name - required field, stored in uppercase';
+COMMENT ON COLUMN residents.middle_name IS 'Middle name or maternal surname - optional field';
+COMMENT ON COLUMN residents.suffix IS 'Name suffix: Jr, Sr, III, IV, etc. - optional field';
+COMMENT ON COLUMN residents.birth_date IS 'Date of birth - used for age calculation and senior citizen identification';
+COMMENT ON COLUMN residents.gender IS '1=Male, 2=Female - used with family_role for relationship labels';
+COMMENT ON COLUMN residents.civil_status IS 'Marital status: Single, Married, Widowed, Separated, Live-In - affects household analysis';
+COMMENT ON COLUMN residents.home_number IS '8-digit landline number format: 8XXX XXXX - optional contact info';
+COMMENT ON COLUMN residents.mobile_number IS '11-digit mobile number format: 09XXXXXXXXX - primary contact method';
+COMMENT ON COLUMN residents.email IS 'Email address - optional, used for digital communications';
+COMMENT ON COLUMN residents.address IS 'Physical address within barangay - optional field for privacy reasons';
+COMMENT ON COLUMN residents.purok IS 'Purok number (1-7) - geographical subdivision within barangay';
+COMMENT ON COLUMN residents.street IS 'Street identifier or code - used for detailed address mapping';
+COMMENT ON COLUMN residents.family_group_id IS 'Groups residents into family units - same ID means same household';
+COMMENT ON COLUMN residents.family_role IS '1=parent/guardian, 2=child/dependent - determines hierarchy in family';
+COMMENT ON COLUMN residents.religion IS 'Religious affiliation: Catholic, Islam, Iglesia ni Cristo, Others - for demographic analysis';
+COMMENT ON COLUMN residents.occupation IS 'Job or profession - free text field for employment tracking';
+COMMENT ON COLUMN residents.special_category_id IS 'Links to special_categories table - NULL if no special classification';
+COMMENT ON COLUMN residents.notes IS 'Additional information: PWD details, health conditions, special circumstances';
+COMMENT ON COLUMN residents.is_active IS '1=active resident, 0=inactive/moved out - for record management';
+COMMENT ON COLUMN residents.created_by IS 'User who created record: NULL=self-registration, user_id=admin-created';
+COMMENT ON COLUMN residents.created_at IS 'Record creation timestamp - tracks when resident was first registered';
+COMMENT ON COLUMN residents.updated_at IS 'Last modification timestamp - updated on any field changes';
+
+-- Family Groups Table - Household Organization
+COMMENT ON COLUMN family_groups.id IS 'Primary key - unique identifier for family units';
+COMMENT ON COLUMN family_groups.family_name IS 'Family surname or household name - typically "Lastname Family"';
+COMMENT ON COLUMN family_groups.created_at IS 'Family group creation timestamp';
+COMMENT ON COLUMN family_groups.updated_at IS 'Last modification timestamp for family group';
+
+-- Special Categories Table - Government Programs and Classifications
+COMMENT ON COLUMN special_categories.id IS 'Primary key - unique identifier for special categories';
+COMMENT ON COLUMN special_categories.category_code IS 'Unique code identifier: PWD, SOLO_PARENT, INDIGENT, STUDENT, etc.';
+COMMENT ON COLUMN special_categories.category_name IS 'Human-readable category name for display purposes';
+COMMENT ON COLUMN special_categories.description IS 'Detailed explanation of category requirements and benefits';
+COMMENT ON COLUMN special_categories.created_at IS 'Category creation timestamp';
+COMMENT ON COLUMN special_categories.updated_at IS 'Last modification timestamp for category';
+
+-- Document Catalog Table - Available Document Types
+COMMENT ON COLUMN document_catalog.id IS 'Primary key - unique identifier for document types';
+COMMENT ON COLUMN document_catalog.title IS 'Official document name: Barangay Clearance, Certificate of Indigency, etc.';
+COMMENT ON COLUMN document_catalog.description IS 'Detailed description including requirements and processing info';
+COMMENT ON COLUMN document_catalog.filename IS 'Template file name for document generation - optional';
+COMMENT ON COLUMN document_catalog.fee IS 'Processing fee in Philippine Peso (₱) - 0.00 for free documents';
+COMMENT ON COLUMN document_catalog.is_active IS '1=available for request, 0=temporarily disabled/unavailable';
+COMMENT ON COLUMN document_catalog.created_at IS 'Document type creation timestamp';
+COMMENT ON COLUMN document_catalog.updated_at IS 'Last modification timestamp for document type';
+
+-- Document Requests Table - Resident Service Requests
+COMMENT ON COLUMN document_requests.id IS 'Primary key - unique identifier for document requests';
+COMMENT ON COLUMN document_requests.resident_id IS 'Links to residents table - who requested the document';
+COMMENT ON COLUMN document_requests.document_id IS 'Links to document_catalog table - what document type was requested';
+COMMENT ON COLUMN document_requests.purpose IS 'Free text - why the resident needs this document';
+COMMENT ON COLUMN document_requests.status IS 'Processing status: pending, processing, ready, completed, rejected';
+COMMENT ON COLUMN document_requests.priority IS 'Admin-assigned priority: NULL (no priority), low, normal, high, urgent';
+COMMENT ON COLUMN document_requests.priority_set_by IS 'Which admin/staff user assigned the priority level';
+COMMENT ON COLUMN document_requests.priority_set_at IS 'When the priority was assigned by admin/staff';
+COMMENT ON COLUMN document_requests.created_at IS 'Request submission timestamp - when resident submitted request';
+COMMENT ON COLUMN document_requests.updated_at IS 'Last status change timestamp - updated on any modifications';
+COMMENT ON COLUMN document_requests.processed_by IS 'Which admin/staff user processed/completed the request';
+COMMENT ON COLUMN document_requests.processed_at IS 'When the request was completed/processed';
+COMMENT ON COLUMN document_requests.notes IS 'Internal staff notes - processing details, special instructions';
+COMMENT ON COLUMN document_requests.attachment_path IS 'File path to uploaded supporting documents from resident';
+
+-- Announcements Table - Barangay Communications
+COMMENT ON COLUMN announcements.id IS 'Primary key - unique identifier for announcements';
+COMMENT ON COLUMN announcements.title IS 'Announcement headline - appears in listings and notifications';
+COMMENT ON COLUMN announcements.content IS 'Full announcement text content - supports basic formatting';
+COMMENT ON COLUMN announcements.type IS 'Announcement category: 1=General, 2=Health, 3=Activities, 4=Assistance, 5=Advisory';
+COMMENT ON COLUMN announcements.target_type IS 'SMS targeting: NULL=no SMS, "all"=SMS all, "special_category"=specific group';
+COMMENT ON COLUMN announcements.target_value IS 'SMS target value: NULL for "all", category code for specific groups';
+COMMENT ON COLUMN announcements.created_by IS 'User who created the announcement - links to users table';
+COMMENT ON COLUMN announcements.created_at IS 'Announcement creation timestamp - when draft was first created';
+COMMENT ON COLUMN announcements.updated_at IS 'Last modification timestamp - updated on content changes';
+COMMENT ON COLUMN announcements.published_by IS 'User who published the announcement - NULL if still draft';
+COMMENT ON COLUMN announcements.published_at IS 'Publication timestamp - NULL=draft, NOT NULL=published and live';
+
+-- Announcement SMS Logs Table - SMS Delivery Tracking
+COMMENT ON COLUMN announcement_sms_logs.id IS 'Primary key - unique identifier for SMS log entries';
+COMMENT ON COLUMN announcement_sms_logs.announcement_id IS 'Links to announcements table - which announcement was sent via SMS';
+COMMENT ON COLUMN announcement_sms_logs.target_groups IS 'JSON array of target groups: ["all"] or ["special_category:PWD"]';
+COMMENT ON COLUMN announcement_sms_logs.total_recipients IS 'Total number of residents who should receive SMS';
+COMMENT ON COLUMN announcement_sms_logs.successful_sends IS 'Number of SMS messages successfully delivered';
+COMMENT ON COLUMN announcement_sms_logs.failed_sends IS 'Number of SMS messages that failed to deliver';
+COMMENT ON COLUMN announcement_sms_logs.sms_content IS 'Actual SMS message text that was sent to recipients';
+COMMENT ON COLUMN announcement_sms_logs.sent_at IS 'Timestamp when SMS batch was sent to provider';
+COMMENT ON COLUMN announcement_sms_logs.provider_response IS 'JSON response from SMS provider (IProg API response)';
+COMMENT ON COLUMN announcement_sms_logs.created_at IS 'SMS log entry creation timestamp';
+
+-- Audit Logs Table - System Change Tracking
+COMMENT ON COLUMN audit_logs.id IS 'Primary key - unique identifier for audit log entries';
+COMMENT ON COLUMN audit_logs.table_name IS 'Database table name where the change occurred';
+COMMENT ON COLUMN audit_logs.record_id IS 'Primary key of the record that was changed';
+COMMENT ON COLUMN audit_logs.operation IS 'Type of operation: INSERT, UPDATE, DELETE';
+COMMENT ON COLUMN audit_logs.old_values IS 'JSON snapshot of record before change - NULL for INSERT operations';
+COMMENT ON COLUMN audit_logs.new_values IS 'JSON snapshot of record after change - NULL for DELETE operations';
+COMMENT ON COLUMN audit_logs.changed_by IS 'User who made the change - NULL for system-generated changes';
+COMMENT ON COLUMN audit_logs.changed_at IS 'Timestamp when the change occurred - automatically set';
 
 -- ============================================
 -- GRANT PERMISSIONS (adjust as needed)

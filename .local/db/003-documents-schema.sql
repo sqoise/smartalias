@@ -1,0 +1,242 @@
+-- ============================================
+-- MANUAL DATABASE UPDATE COMMAND
+-- ============================================
+-- If you have existing data with string status values, run this command first:
+-- 
+-- psql -d smartliasdb -c "ALTER TABLE document_requests ALTER COLUMN status TYPE integer USING CASE WHEN status = 'pending' THEN 0 WHEN status = 'processing' THEN 1 WHEN status = 'rejected' THEN 2 WHEN status = 'ready' THEN 3 WHEN status = 'claimed' OR status = 'completed' THEN 4 ELSE 0 END;"
+--
+-- This converts existing string status values to integers:
+-- 'pending' -> 0, 'processing' -> 1, 'rejected' -> 2, 'ready' -> 3, 'claimed'/'completed' -> 4
+--
+-- Then run: ALTER TABLE document_requests ALTER COLUMN status SET DEFAULT 0;
+-- ============================================
+
+-- ============================================
+-- 003-DOCUMENTS SCHEMA
+-- ============================================
+-- Purpose: Document management system (catalog, requests, processing)
+-- Dependencies: 001-core-tables.sql
+-- Tables: document_catalog, document_requests, document_request_logs
+
+-- Connect to database
+\c smartliasdb;
+
+-- ============================================
+-- DOCUMENT TABLES
+-- ============================================
+
+-- Drop existing tables
+DROP TABLE IF EXISTS "document_request_logs" CASCADE;
+DROP TABLE IF EXISTS "document_requests" CASCADE;
+DROP TABLE IF EXISTS "document_catalog" CASCADE;
+
+-- Document Catalog table (Available Document Types)
+CREATE TABLE "public"."document_catalog" (
+    "id" SERIAL PRIMARY KEY,
+    "title" character varying(255) NOT NULL,
+    "description" text,
+    "filename" character varying(255),
+    "fee" numeric(10,2) DEFAULT 0.00,
+    "is_active" integer DEFAULT 1,
+    "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Document Requests table (Service Management)
+CREATE TABLE "public"."document_requests" (
+    "id" SERIAL PRIMARY KEY,
+    "resident_id" integer NOT NULL,
+    "document_id" integer NOT NULL,
+    "purpose" character varying(255),
+    "remarks" text,
+    "status" integer DEFAULT 0,
+    "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "processed_by" integer,
+    "processed_at" timestamp DEFAULT NULL,
+    "notes" text
+);
+
+-- Document Request Logs table (History tracking)
+CREATE TABLE "public"."document_request_logs" (
+    "id" SERIAL PRIMARY KEY,
+    "request_id" integer NOT NULL,
+    "action" character varying(50) NOT NULL,
+    "old_status" character varying(20),
+    "new_status" character varying(20),
+    "action_by" integer NOT NULL,
+    "action_notes" text,
+    "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================
+
+-- Document Catalog indexes
+CREATE INDEX idx_document_catalog_active ON public.document_catalog USING btree (is_active);
+CREATE INDEX idx_document_catalog_title ON public.document_catalog USING btree (title);
+
+-- Document Requests indexes
+CREATE INDEX idx_document_requests_resident_id ON public.document_requests USING btree (resident_id);
+CREATE INDEX idx_document_requests_document_id ON public.document_requests USING btree (document_id);
+CREATE INDEX idx_document_requests_status ON public.document_requests USING btree (status);
+CREATE INDEX idx_document_requests_created_at ON public.document_requests USING btree (created_at);
+CREATE INDEX idx_document_requests_processed_by ON public.document_requests USING btree (processed_by);
+
+-- Document Request Logs indexes
+CREATE INDEX idx_document_request_logs_request_id ON public.document_request_logs USING btree (request_id);
+CREATE INDEX idx_document_request_logs_action ON public.document_request_logs USING btree (action);
+CREATE INDEX idx_document_request_logs_created_at ON public.document_request_logs USING btree (created_at);
+CREATE INDEX idx_document_request_logs_action_by ON public.document_request_logs USING btree (action_by);
+
+-- ============================================
+-- FOREIGN KEY CONSTRAINTS
+-- ============================================
+
+-- Document Requests foreign keys
+ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_resident_id_fkey" 
+    FOREIGN KEY (resident_id) REFERENCES residents(id) ON DELETE CASCADE NOT DEFERRABLE;
+ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_document_id_fkey" 
+    FOREIGN KEY (document_id) REFERENCES document_catalog(id) ON DELETE RESTRICT NOT DEFERRABLE;
+ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_processed_by_fkey" 
+    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL NOT DEFERRABLE;
+
+-- Document Request Logs foreign keys
+ALTER TABLE ONLY "public"."document_request_logs" ADD CONSTRAINT "document_request_logs_request_id_fkey" 
+    FOREIGN KEY (request_id) REFERENCES document_requests(id) ON DELETE CASCADE NOT DEFERRABLE;
+ALTER TABLE ONLY "public"."document_request_logs" ADD CONSTRAINT "document_request_logs_action_by_fkey" 
+    FOREIGN KEY (action_by) REFERENCES users(id) ON DELETE SET NULL NOT DEFERRABLE;
+
+-- ============================================
+-- TABLE COMMENTS
+-- ============================================
+
+COMMENT ON TABLE "public"."document_catalog" IS 'Master catalog of available document types with fees and requirements';
+COMMENT ON TABLE "public"."document_requests" IS 'Resident document requests and applications for barangay certificates and clearances';
+COMMENT ON TABLE "public"."document_request_logs" IS 'Audit trail of all changes made to document requests for transparency and compliance';
+
+-- ============================================
+-- COLUMN COMMENTS
+-- ============================================
+
+-- Document Catalog Table Comments
+COMMENT ON COLUMN "public"."document_catalog"."id" IS 'Primary key - unique identifier for document types';
+COMMENT ON COLUMN "public"."document_catalog"."title" IS 'Official document name: Barangay Clearance, Certificate of Indigency, etc.';
+COMMENT ON COLUMN "public"."document_catalog"."description" IS 'Detailed description including requirements and processing info';
+COMMENT ON COLUMN "public"."document_catalog"."filename" IS 'Template file name for document generation - optional';
+COMMENT ON COLUMN "public"."document_catalog"."fee" IS 'Processing fee in Philippine Peso (₱) - 0.00 for free documents';
+COMMENT ON COLUMN "public"."document_catalog"."is_active" IS '1=available for request, 0=temporarily disabled/unavailable';
+COMMENT ON COLUMN "public"."document_catalog"."created_at" IS 'Document type creation timestamp';
+COMMENT ON COLUMN "public"."document_catalog"."updated_at" IS 'Last modification timestamp for document type';
+
+-- Document Requests Table Comments
+COMMENT ON COLUMN "public"."document_requests"."id" IS 'Primary key - unique identifier for document requests';
+COMMENT ON COLUMN "public"."document_requests"."resident_id" IS 'Links to residents table - who requested the document';
+COMMENT ON COLUMN "public"."document_requests"."document_id" IS 'Links to document_catalog table - what document type was requested';
+COMMENT ON COLUMN "public"."document_requests"."purpose" IS 'Free text - why the resident needs this document';
+COMMENT ON COLUMN "public"."document_requests"."remarks" IS 'Internal staff/admin notes - processing details, rejection reasons, special instructions';
+COMMENT ON COLUMN "public"."document_requests"."status" IS 'Processing status (integer): 0=pending, 1=processing, 2=rejected, 3=ready, 4=claimed/completed';
+COMMENT ON COLUMN "public"."document_requests"."created_at" IS 'Request submission timestamp - when resident submitted request';
+COMMENT ON COLUMN "public"."document_requests"."updated_at" IS 'Last status change timestamp - updated on any modifications';
+COMMENT ON COLUMN "public"."document_requests"."processed_by" IS 'Which admin/staff user processed/completed the request';
+COMMENT ON COLUMN "public"."document_requests"."processed_at" IS 'When the request was completed/processed';
+COMMENT ON COLUMN "public"."document_requests"."notes" IS 'Additional information or special requests from the resident';
+
+-- Document Request Logs Table Comments
+COMMENT ON COLUMN "public"."document_request_logs"."id" IS 'Primary key - unique identifier for log entries';
+COMMENT ON COLUMN "public"."document_request_logs"."request_id" IS 'Links to document_requests table - which request this log entry is for';
+COMMENT ON COLUMN "public"."document_request_logs"."action" IS 'Action performed: created, status_changed, assigned, completed, rejected, notes_added';
+COMMENT ON COLUMN "public"."document_request_logs"."old_status" IS 'Previous status before this action (NULL for creation)';
+COMMENT ON COLUMN "public"."document_request_logs"."new_status" IS 'New status after this action (NULL if no status change)';
+COMMENT ON COLUMN "public"."document_request_logs"."action_by" IS 'Which user performed this action (resident, staff, or admin)';
+COMMENT ON COLUMN "public"."document_request_logs"."action_notes" IS 'Details about the action taken - reason for status change, notes added, etc.';
+COMMENT ON COLUMN "public"."document_request_logs"."created_at" IS 'When this action was performed';
+
+-- ============================================
+-- SAMPLE DATA
+-- ============================================
+
+-- Insert Document Catalog
+INSERT INTO "document_catalog" ("title", "description", "filename", "fee", "is_active") VALUES
+('Electrical Permit', 'Permit required for electrical installations and repairs in residential or commercial properties.', 'electrical_permit_template.pdf', 100.00, 1),
+('Fence Permit', 'Authorization to construct fences around residential or commercial properties within barangay jurisdiction.', 'fence_permit_template.pdf', 75.00, 0),
+('Excavation Permit', 'Permit for excavation activities including digging, construction foundations, and land development.', 'excavation_permit_template.pdf', 150.00, 0),
+('Barangay Clearance', 'Certificate indicating no pending cases or issues in the barangay. Required for employment and various transactions.', 'barangay_clearance_template.pdf', 50.00, 1),
+('Certificate of Residency', 'Official certificate proving residency within the barangay. Required for school enrollment and government transactions.', 'certificate_of_residency_template.pdf', 40.00, 0),
+('Certificate of Good Moral', 'Character reference certificate from barangay officials attesting to good moral standing in the community.', 'good_moral_template.pdf', 30.00, 0),
+('Certificate of Indigency (Medical)', 'Document certifying indigent status specifically for medical assistance and healthcare support programs.', 'indigency_medical_template.pdf', 0.00, 0),
+('Certificate of Indigency (Financial)', 'Document certifying indigent status for financial assistance and social services programs.', 'indigency_financial_template.pdf', 0.00, 0),
+('Business Permit Clearance', 'Barangay clearance required for small business operations and business permit applications.', 'business_permit_template.pdf', 100.00, 0);
+
+-- Insert Sample Document Requests (only if residents exist)
+INSERT INTO "document_requests" ("resident_id", "document_id", "purpose", "notes", "status") 
+SELECT 
+    r.id as resident_id,
+    dc.id as document_id,
+    CASE 
+        WHEN dc.title = 'Barangay Clearance' THEN 'Employment requirement'
+        WHEN dc.title = 'Certificate of Residency' THEN 'School enrollment'
+        WHEN dc.title = 'Business Permit Clearance' THEN 'Small business registration'
+        ELSE 'General purpose'
+    END as purpose,
+    CASE 
+        WHEN dc.title = 'Certificate of Indigency (Medical)' THEN 'Need for hospital bills assistance'
+        WHEN dc.title = 'Certificate of Good Moral' THEN 'Required for scholarship application'
+        ELSE NULL
+    END as notes,
+    CASE 
+        WHEN dc.id % 3 = 0 THEN 4
+        WHEN dc.id % 3 = 1 THEN 1
+        ELSE 0
+    END as status
+FROM residents r
+CROSS JOIN document_catalog dc
+WHERE r.id <= 3 AND dc.id <= 5  -- Limit sample data
+LIMIT 10;
+
+-- Insert Sample Document Request Logs (audit trail)
+INSERT INTO "document_request_logs" ("request_id", "action", "old_status", "new_status", "action_by", "action_notes")
+SELECT 
+    dr.id as request_id,
+    'created' as action,
+    NULL as old_status,
+    'pending' as new_status,
+    dr.resident_id as action_by,
+    'Document request submitted by resident' as action_notes
+FROM document_requests dr
+WHERE dr.id <= 5;
+
+-- Add some status change logs
+INSERT INTO "document_request_logs" ("request_id", "action", "old_status", "new_status", "action_by", "action_notes")
+SELECT 
+    dr.id as request_id,
+    'status_changed' as action,
+    'pending' as old_status,
+    CASE 
+        WHEN dr.status = 0 THEN 'pending'
+        WHEN dr.status = 1 THEN 'processing'
+        WHEN dr.status = 2 THEN 'rejected'
+        WHEN dr.status = 3 THEN 'ready'
+        WHEN dr.status = 4 THEN 'claimed'
+        ELSE 'unknown'
+    END as new_status,
+    1 as action_by,  -- Assuming admin user ID 1
+    CASE 
+        WHEN dr.status = 1 THEN 'Request approved and now being processed'
+        WHEN dr.status = 4 THEN 'Document ready for pickup'
+        ELSE 'Status updated'
+    END as action_notes
+FROM document_requests dr 
+WHERE dr.status != 0 AND dr.id <= 5;
+
+-- Reset sequences
+SELECT setval('document_catalog_id_seq', (SELECT MAX(id) FROM document_catalog));
+SELECT setval('document_requests_id_seq', COALESCE((SELECT MAX(id) FROM document_requests), 1));
+SELECT setval('document_request_logs_id_seq', COALESCE((SELECT MAX(id) FROM document_request_logs), 1));
+
+-- ============================================
+-- COMPLETION MESSAGE
+-- ============================================
+SELECT 'Documents Schema Complete!' AS status;
+SELECT 'Next: Run 004-chatbot-schema.sql' AS next_step;

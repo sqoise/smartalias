@@ -563,12 +563,12 @@ export default function RegisterPage() {
             <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
               <button
                 onClick={() => {
-                  setShowPrivacyModal(false)
                   router.push('/')
+                  setShowPrivacyModal(false)
                 }}
                 className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
               >
-                I Do Not Agree
+                Decline
               </button>
               <button
                 onClick={() => {

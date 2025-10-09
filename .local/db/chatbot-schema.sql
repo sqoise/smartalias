@@ -2,7 +2,14 @@
 -- CHATBOT FAQ SYSTEM - Database Schema
 -- ============================================
 -- Purpose: Store FAQs and chat conversations for SmartLias chatbot
--- Features: FAQ management, keyword matching, conversation history
+-- Features: FAQ management, keyword matching, conversation history, AI learning
+
+-- Connect to database
+\c smartliasdb;
+
+-- Enable required extensions for advanced text search and similarity
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 -- ============================================
 -- FAQ CATEGORIES TABLE
@@ -100,6 +107,9 @@ CREATE INDEX idx_chat_messages_conversation_id ON chat_messages(conversation_id)
 CREATE INDEX idx_chat_messages_type ON chat_messages(message_type);
 CREATE INDEX idx_chat_messages_faq_id ON chat_messages(faq_id);
 CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at);
+CREATE INDEX idx_chat_messages_helpful ON chat_messages(was_helpful) WHERE was_helpful IS NOT NULL;
+CREATE INDEX idx_chat_messages_text_search ON chat_messages USING gin(to_tsvector('english', message_text));
+CREATE INDEX idx_chat_messages_similarity ON chat_messages USING gist(message_text gist_trgm_ops);
 
 -- ============================================
 -- SAMPLE DATA
@@ -121,35 +131,41 @@ INSERT INTO faqs (category_id, question, answer, keywords, display_order) VALUES
 (1, 'What documents can I request from the barangay?', 
  'You can request the following documents from Barangay Lias:
 
-1. **Barangay Clearance** - Required for employment and various transactions
-2. **Certificate of Residency** - For school enrollment and government transactions
-3. **Certificate of Good Moral** - Character reference certificate
-4. **Certificate of Indigency - Medical** - For medical assistance
-5. **Certificate of Indigency - Financial** - For financial assistance
-6. **Business Permit Clearance** - For small business operations
-7. **Electrical Permit** - For electrical installations
-8. **Fence Permit** - For fence construction
-9. **Excavation Permit** - For excavation activities
+**Available Documents & Current Fees:**
+{{DOCUMENT_CATALOG_LIST}}
 
-To request any document, please log in to your account and go to the Documents section. For fee information, please contact the barangay office.', 
- 'document, request, available, barangay clearance, certificate, permit, requirements, what documents, fee, fees, cost, price', 
+**How to Request:**
+1. Log in to your SmartLias account
+2. Go to the "Documents" section
+3. Select your document type
+4. Current fees will be displayed
+5. Fill in purpose and upload supporting documents
+6. Submit your request
+
+**Note:** Fees are subject to change. Current fees shown above are updated in real-time from our system.', 
+ 'document, request, available, barangay clearance, certificate, permit, requirements, what documents, fee, fees, cost, price, catalog, list', 
  1),
 
 (1, 'How do I request a barangay clearance?',
  'To request a Barangay Clearance:
 
+**Current Fee:** {{BARANGAY_CLEARANCE_FEE}}
+
+**Steps:**
 1. **Log in** to your SmartLias account
-2. Go to **"Documents"** or **"Requests"** section
+2. Go to **"Documents"** section
 3. Click **"Request Document"**
 4. Select **"Barangay Clearance"** from the list
-5. Fill in the **purpose** of your request
-6. Upload any **supporting documents** (if required)
-7. Click **Submit**
+5. **Fee will be displayed** (currently {{BARANGAY_CLEARANCE_FEE}})
+6. Fill in the **purpose** of your request
+7. Upload any **supporting documents** (if required)
+8. Click **Submit**
 
-You will be notified when your document is ready for pickup at the Barangay Office. For fee information, please contact the barangay office.
+**Processing Time:** Usually 1-3 business days
+**Payment:** Pay the fee upon document pickup at the Barangay Office
 
-**Processing Time:** Usually 1-3 business days',
- 'barangay clearance, request, how to request, application, apply, requirements, process, steps',
+You will be notified when your document is ready for pickup.',
+ 'barangay clearance, request, how to request, application, apply, requirements, process, steps, fee, cost, price',
  2),
 
 (1, 'How long does it take to process document requests?',
@@ -168,14 +184,14 @@ You will receive a notification when your document status changes. You can also 
 (1, 'What are the requirements for Certificate of Indigency?',
  'For **Certificate of Indigency** (Medical or Financial):
 
+**Current Fee:** {{INDIGENCY_CERTIFICATE_FEE}} (FREE for eligible residents)
+
 **Requirements:**
 • Valid ID
 • Proof of residency in Barangay Lias
 • Supporting documents depending on purpose:
   - **Medical:** Medical certificate, hospital bills, or prescription
   - **Financial:** Proof of financial need
-
-**Fee:** FREE (no charge)
 
 **How to apply:**
 1. Log in to your account
@@ -185,8 +201,41 @@ You will receive a notification when your document status changes. You can also 
 5. Submit request
 
 The barangay will verify your eligibility before approval.',
- 'indigency, certificate of indigency, medical, financial, requirements, free, assistance, poor, low income',
- 4);
+ 'indigency, certificate of indigency, medical, financial, requirements, free, assistance, poor, low income, fee, cost',
+ 4),
+
+(1, 'How much are the fees for barangay documents?',
+ 'Here are the current fees for barangay documents:
+
+{{DOCUMENT_FEES_LIST}}
+
+**Payment Methods:**
+• Cash payment upon document pickup
+• Payment at the Barangay Office
+
+**Note:** 
+• Fees are subject to change based on local ordinances
+• Free documents are available for qualified indigent residents
+• Current fees shown above are updated in real-time',
+ 'fees, cost, price, how much, payment, document fees, barangay fees, charges',
+ 5),
+
+(1, 'What permits can I get from the barangay?',
+ 'Barangay Lias issues the following permits:
+
+{{PERMIT_CATALOG_LIST}}
+
+**General Requirements:**
+• Valid ID
+• Proof of residency
+• Specific requirements per permit type
+• Payment of applicable fees
+
+**Processing Time:** 1-5 business days depending on permit type
+
+For detailed requirements and current fees, please select the specific permit when making your request online.',
+ 'permits, permit, electrical permit, fence permit, excavation permit, business permit, construction, building',
+ 6);
 
 -- Barangay Services Category FAQs
 INSERT INTO faqs (category_id, question, answer, keywords, display_order) VALUES
@@ -309,7 +358,7 @@ INSERT INTO faqs (category_id, question, answer, keywords, display_order) VALUES
 • Log in to your account
 • Go to the "Announcements" section
 • View all published announcements
-
+z
 **3. SMS Notifications**
 • Important announcements are sent via SMS
 • Make sure your mobile number is updated in your profile

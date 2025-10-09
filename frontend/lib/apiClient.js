@@ -551,6 +551,107 @@ class ApiClient {
       method: 'POST',
     })
   }
+
+  // ============================================
+  // DOCUMENT REQUEST ENDPOINTS
+  // ============================================
+
+  /**
+   * Get document catalog with optional filtering
+   */
+  static async getDocumentCatalog(activeOnly = true) {
+    const params = activeOnly ? '?active_only=true' : ''
+    return await ApiClient.request(`/document-catalog${params}`)
+  }
+
+  /**
+   * Search document requests (with filtering, pagination, sorting)
+   * For residents: automatically filters to their requests only
+   * For admin/staff: can see all requests with optional filters
+   */
+  static async searchDocumentRequests(filters = {}) {
+    const defaultFilters = {
+      status: 'all',
+      document_type: 'all',
+      search: '',
+      date_range: 'all',
+      page: 1,
+      limit: 25,
+      sort_field: 'created_at',
+      sort_direction: 'desc'
+    }
+
+    const searchParams = { ...defaultFilters, ...filters }
+
+    return await ApiClient.request('/document-requests/search', {
+      method: 'POST',
+      body: JSON.stringify(searchParams),
+    })
+  }
+
+  /**
+   * Get user's document requests (simplified method for residents)
+   */
+  static async getMyDocumentRequests(status = 'all') {
+    return await ApiClient.searchDocumentRequests({
+      status,
+      page: 1,
+      limit: 100  // Get all user's requests
+    })
+  }
+
+  /**
+   * Create a new document request
+   */
+  static async createDocumentRequest(requestData) {
+    return await ApiClient.request('/document-requests', {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+    })
+  }
+
+  /**
+   * Get specific document request details
+   */
+  static async getDocumentRequest(requestId) {
+    return await ApiClient.request(`/document-requests/${requestId}`)
+  }
+
+  /**
+   * Update document request status (admin/staff only)
+   */
+  static async updateDocumentRequestStatus(requestId, status, notes = '') {
+    return await ApiClient.request(`/document-requests/${requestId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, notes }),
+    })
+  }
+
+  /**
+   * Check if user has ongoing requests for a specific document type
+   * Returns true if there are pending/processing requests for the document
+   */
+  static async checkOngoingDocumentRequest(documentId) {
+    const response = await ApiClient.searchDocumentRequests({
+      status: 'all',
+      page: 1,
+      limit: 100
+    })
+
+    if (response.success && response.data?.requests) {
+      const ongoingStatuses = ['pending', 'processing', 'ready']
+      const ongoingRequest = response.data.requests.find(request => 
+        request.document_id === documentId && 
+        ongoingStatuses.includes(request.status_text)
+      )
+      return {
+        hasOngoing: !!ongoingRequest,
+        request: ongoingRequest || null
+      }
+    }
+
+    return { hasOngoing: false, request: null }
+  }
 }
 
 // Expose ApiClient to window for testing

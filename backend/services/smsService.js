@@ -1,7 +1,7 @@
 /**
  * SMS Service
  * Handles SMS notifications for announcements
- * Supports multiple SMS providers (Semaphore, Twilio, etc.)
+ * Supports multiple SMS providers (IProg SMS API, Twilio, etc.)
  */
 
 const db = require('../config/db')
@@ -205,7 +205,7 @@ class SMSService {
       }
     })
 
-    // Send in batches of 1000 (Semaphore limit)
+    // Send in batches of 1000 (provider limit)
     const BATCH_SIZE = 1000
     const batches = []
     for (let i = 0; i < uniqueRecipients.length; i += BATCH_SIZE) {
@@ -396,8 +396,6 @@ class SMSService {
       switch (provider.toLowerCase()) {
         case 'iprog':
           return await this.sendBulkViaIProg(phoneNumbers, message)
-        case 'semaphore':
-          return await this.sendBulkViaSemaphore(phoneNumbers, message)
         default:
           // Default to IProg if provider not recognized
           logger.warn(`Unknown SMS provider: ${provider}, defaulting to IProg`)
@@ -408,15 +406,11 @@ class SMSService {
       
       // Fallback logic: try the other provider
       try {
-        if (provider.toLowerCase() === 'iprog') {
-          logger.info('Falling back to Semaphore SMS provider')
-          return await this.sendBulkViaSemaphore(phoneNumbers, message)
-        } else {
-          logger.info('Falling back to IProg SMS provider')
-          return await this.sendBulkViaIProg(phoneNumbers, message)
-        }
+        // Fallback to IProg if other provider fails
+        logger.info('Falling back to IProg SMS provider')
+        return await this.sendBulkViaIProg(phoneNumbers, message)
       } catch (fallbackError) {
-        logger.error('Both SMS providers failed', fallbackError)
+        logger.error('SMS provider failed', fallbackError)
         return {
           success: false,
           error: `Both SMS providers failed. Primary: ${error.message}, Fallback: ${fallbackError.message}`
@@ -542,241 +536,8 @@ class SMSService {
     }
   }
 
-  /**
-   * Send SMS via Semaphore API (Philippine SMS Provider)
-   * @param {String} phone - Recipient phone number
-   * @param {String} message - SMS message content
-   * @returns {Object} Send result
-   */
-  static async sendViaSemaphore(phone, message) {
-    try {
-      const apiKey = config.SEMAPHORE_API_KEY
-      
-      // Check if API key is configured
-      if (!apiKey || apiKey === 'your-semaphore-api-key-here') {
-        // Development mode - simulate SMS sending
-        if (config.isDevelopment) {
-          logger.info('SMS simulation (development mode)', {
-            phone: phone,
-            message: message.substring(0, 50) + '...'
-          })
-          
-          return {
-            success: true,
-            messageId: `SIM-${Date.now()}`,
-            message: 'SMS simulated in development mode'
-          }
-        }
-        
-        // Production without API key - error
-        return {
-          success: false,
-          error: 'Semaphore API key not configured'
-        }
-      }
-
-      // Normalize phone number
-      const normalizedPhone = this.normalizePhoneNumber(phone)
-
-      // Send actual SMS via Semaphore API using form data (as per documentation)
-      const formParams = {
-        apikey: apiKey,
-        number: normalizedPhone,
-        message: message
-      }
-      
-      // Only include sendername if it's configured (not empty)
-      const senderName = config.SEMAPHORE_SENDER_NAME?.trim()
-      if (senderName) {
-        formParams.sendername = senderName
-      }
-      
-      const formData = new URLSearchParams(formParams)
-      
-      const response = await fetch('https://api.semaphore.co/api/v4/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formData
-      })
-
-      // Check content type before parsing
-      const contentType = response.headers.get('content-type')
-      let result
-      
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json()
-      } else {
-        // Handle non-JSON responses (likely error messages)
-        const textResponse = await response.text()
-        logger.error('Semaphore API returned non-JSON response', { 
-          status: response.status, 
-          statusText: response.statusText,
-          response: textResponse 
-        })
-        
-        return {
-          success: false,
-          error: `API Error: ${textResponse || response.statusText || 'Unknown error'}`
-        }
-      }
-
-      if (response.ok && result.message_id) {
-        return {
-          success: true,
-          messageId: result.message_id,
-          message: 'SMS sent successfully'
-        }
-      } else {
-        const errorMessage = result?.message || result?.error || 'Failed to send SMS'
-        logger.error('Failed to send SMS via Semaphore', { 
-          phone: normalizedPhone, 
-          error: errorMessage,
-          status: response.status,
-          result 
-        })
-        
-        return {
-          success: false,
-          error: errorMessage
-        }
-      }
-    } catch (error) {
-      logger.error('Error sending SMS via Semaphore', error)
-      return {
-        success: false,
-        error: error.message
-      }
-    }
-  }
-
-  /**
-   * Send SMS to multiple recipients via Semaphore bulk API
-   * @param {String} phoneNumbers - Comma-separated phone numbers (up to 1000)
-   * @param {String} message - SMS message content
-   * @returns {Object} Send result
-   */
-  static async sendBulkViaSemaphore(phoneNumbers, message) {
-    try {
-      const apiKey = config.SEMAPHORE_API_KEY
-      
-      if (!apiKey) {
-        // Development mode - simulate bulk SMS
-        if (config.NODE_ENV === 'development') {
-          logger.info('Simulating bulk SMS in development mode', {
-            phoneCount: phoneNumbers.split(',').length,
-            message: message.substring(0, 50) + '...'
-          })
-          
-          return {
-            success: true,
-            messageId: `BULK-SIM-${Date.now()}`,
-            message: 'Bulk SMS simulated in development mode'
-          }
-        }
-        
-        // Production without API key - error
-        return {
-          success: false,
-          error: 'Semaphore API key not configured'
-        }
-      }
-
-      // Send bulk SMS via Semaphore API using form data
-      const formParams = {
-        apikey: apiKey,
-        number: phoneNumbers, // Comma-separated list
-        message: message
-      }
-      
-      // Only include sendername if it's configured (not empty)
-      const senderName = config.SEMAPHORE_SENDER_NAME?.trim()
-      if (senderName) {
-        formParams.sendername = senderName
-      }
-      
-      const formData = new URLSearchParams(formParams)
-      
-      const response = await fetch('https://api.semaphore.co/api/v4/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formData
-      })
-
-      // Check content type before parsing
-      const contentType = response.headers.get('content-type')
-      let result
-      
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json()
-      } else {
-        // Handle non-JSON responses (likely error messages)
-        const textResponse = await response.text()
-        logger.error('Semaphore bulk API returned non-JSON response', { 
-          status: response.status, 
-          statusText: response.statusText,
-          response: textResponse,
-          phoneCount: phoneNumbers.split(',').length
-        })
-        
-        return {
-          success: false,
-          error: `Bulk API Error: ${textResponse || response.statusText || 'Unknown error'}`
-        }
-      }
-
-      // Handle bulk response - could be array or single object
-      if (response.ok && result) {
-        const messages = Array.isArray(result) ? result : [result]
-        const successCount = messages.filter(msg => msg.message_id).length
-        
-        logger.info('Bulk SMS response received', {
-          totalMessages: messages.length,
-          successCount,
-          phoneCount: phoneNumbers.split(',').length
-        })
-        
-        if (successCount > 0) {
-          return {
-            success: true,
-            messageId: messages[0]?.message_id || `BULK-${Date.now()}`,
-            message: `Bulk SMS sent successfully to ${successCount} recipients`
-          }
-        } else {
-          const errorMessage = messages[0]?.error || 'No successful sends in bulk'
-          return {
-            success: false,
-            error: errorMessage
-          }
-        }
-      } else {
-        const errorMessage = result?.message || result?.error || 'Failed to send bulk SMS'
-        logger.error('Failed to send bulk SMS via Semaphore', { 
-          phoneCount: phoneNumbers.split(',').length,
-          error: errorMessage,
-          status: response.status,
-          result 
-        })
-        
-        return {
-          success: false,
-          error: errorMessage
-        }
-      }
-    } catch (error) {
-      logger.error('Error sending bulk SMS via Semaphore', {
-        error: error.message,
-        phoneCount: phoneNumbers.split(',').length
-      })
-      return {
-        success: false,
-        error: error.message
-      }
-    }
-  }
+  // Removed: Semaphore SMS methods (legacy provider)
+  // The system now uses IProg SMS API as the primary provider
 
   /**
    * Log SMS batch summary to database

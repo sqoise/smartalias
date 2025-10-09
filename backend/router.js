@@ -24,6 +24,7 @@ const ResidentRepository = require('./repositories/ResidentRepository')
 const AnnouncementRepository = require('./repositories/AnnouncementRepository')
 const DashboardRepository = require('./repositories/DashboardRepository')
 const ChatbotRepository = require('./repositories/ChatbotRepository')
+const DocumentRequestRepository = require('./repositories/DocumentRequestRepository')
 const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
@@ -134,7 +135,8 @@ router.post('/auth/login', authLimiter, async (req, res) => {
       // User has changed password - generate regular auth token
       token = jwt.sign(
         {
-          id: user.id,
+          userId: user.id,
+          id: user.id, // Keep for backward compatibility
           username: user.username,
           role: user.role
         },
@@ -1749,10 +1751,870 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, asy
 router.use('/upload', uploadRoutes)
 
 // ==========================================================================
+// DOCUMENT REQUESTS ROUTES
+// ==========================================================================
+
+// GET /api/document-catalog - Get all active documents from catalog
+router.get('/document-catalog', authenticateToken, async (req, res) => {
+  try {
+    const catalog = await db.query(`
+      SELECT id, title, description, fee, filename, is_active 
+      FROM document_catalog 
+      WHERE is_active = $1 
+      ORDER BY title ASC
+    `, [1])
+    
+    return ApiResponse.success(res, catalog.rows, 'Document catalog retrieved successfully')
+  } catch (error) {
+    logger.error('Error fetching document catalog:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document catalog')
+  }
+})
+
+// POST /api/document-requests/search - Get document requests with filters (role-based access)
+router.post('/document-requests/search', authenticateToken, async (req, res) => {
+  try {
+    const { role } = req.user
+    const userId = req.user.userId || req.user.id  // Handle both token formats
+    const { 
+      status, 
+      document_type, 
+      search, 
+      date_range, 
+      page = 1, 
+      limit = 25,
+      sort_field = 'created_at',
+      sort_direction = 'desc'
+    } = req.body
+    
+    let whereConditions = []
+    let queryParams = []
+    let paramIndex = 1
+
+    // Role-based filtering
+    if (role === USER_ROLES.RESIDENT) {
+      whereConditions.push(`dr.resident_id = $${paramIndex}`)
+      queryParams.push(parseInt(userId)) // Convert to integer for database compatibility
+      paramIndex++
+    }
+
+    // Status filtering
+    if (status && status !== 'all') {
+      const statusMap = {
+        'pending': 0,
+        'processing': 1, 
+        'rejected': 2,
+        'ready': 3,
+        'claimed': 4
+      }
+      if (statusMap[status] !== undefined) {
+        whereConditions.push(`dr.status = $${paramIndex}`)
+        queryParams.push(statusMap[status])
+        paramIndex++
+      }
+    }
+
+    // Document type filtering
+    if (document_type && document_type !== 'all') {
+      whereConditions.push(`dc.title ILIKE $${paramIndex}`)
+      queryParams.push(`%${document_type}%`)
+      paramIndex++
+    }
+
+    // Search filtering (optimized for performance)
+    if (search && search.trim()) {
+      const searchTerm = search.trim()
+      whereConditions.push(`(
+        dr.id::text ILIKE $${paramIndex} OR
+        CONCAT(r.first_name, ' ', r.last_name) ILIKE $${paramIndex + 1} OR
+        dc.title ILIKE $${paramIndex + 2}
+      )`)
+      queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`)
+      paramIndex += 3
+    }
+
+    // Date range filtering (optimized)
+    if (date_range && date_range !== 'all') {
+      const now = new Date()
+      let dateFilter
+      if (date_range === '7days') {
+        dateFilter = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
+      } else if (date_range === '30days') {
+        dateFilter = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+      } else if (date_range === '90days') {
+        dateFilter = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000))
+      }
+      
+      if (dateFilter) {
+        whereConditions.push(`dr.created_at >= $${paramIndex}`)
+        queryParams.push(dateFilter)
+        paramIndex++
+      }
+    }
+
+    // Build WHERE clause
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+
+    // Validate and sanitize sort parameters
+    const allowedSortFields = ['created_at', 'status', 'document_type', 'resident_name', 'id']
+    const sanitizedSortField = allowedSortFields.includes(sort_field) ? sort_field : 'created_at'
+    const sanitizedSortDirection = sort_direction === 'asc' ? 'ASC' : 'DESC'
+
+    // Map sort fields to actual column names
+    const sortFieldMap = {
+      'created_at': 'dr.created_at',
+      'status': 'dr.status',
+      'document_type': 'dc.title',
+      'resident_name': 'resident_name',
+      'id': 'dr.id'
+    }
+
+    const actualSortField = sortFieldMap[sanitizedSortField]
+
+    // Pagination with limits
+    const maxLimit = 100
+    const sanitizedLimit = Math.min(Math.max(1, parseInt(limit)), maxLimit)
+    const sanitizedPage = Math.max(1, parseInt(page))
+    const offset = (sanitizedPage - 1) * sanitizedLimit
+    
+    // Add pagination parameters
+    const limitParam = paramIndex
+    const offsetParam = paramIndex + 1
+    queryParams.push(sanitizedLimit, offset)
+
+      const query = `
+        SELECT 
+          dr.id,
+          dr.resident_id,
+          CONCAT(r.first_name, ' ', r.last_name) as resident_name,
+          dr.document_id,
+          dc.title as document_type,
+          dr.purpose,
+          dr.notes,
+          dr.remarks,
+          dr.status,
+          dr.created_at,
+          dr.updated_at,
+          dr.processed_by,
+          dr.processed_at,
+          dc.fee,
+          CASE 
+            WHEN dr.status = 0 THEN 'pending'
+            WHEN dr.status = 1 THEN 'processing'
+            WHEN dr.status = 2 THEN 'rejected'
+            WHEN dr.status = 3 THEN 'ready'
+            WHEN dr.status = 4 THEN 'claimed'
+            ELSE 'unknown'
+          END as status_text
+        FROM document_requests dr
+        JOIN residents r ON dr.resident_id = r.id
+        JOIN document_catalog dc ON dr.document_id = dc.id
+        ${whereClause}
+        ORDER BY ${actualSortField} ${sanitizedSortDirection}
+        LIMIT $${limitParam} OFFSET $${offsetParam}
+      `
+
+    const result = await db.query(query, queryParams)
+
+    // Get total count for pagination (optimized count query)
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM document_requests dr
+      JOIN residents r ON dr.resident_id = r.id
+      JOIN document_catalog dc ON dr.document_id = dc.id
+      ${whereClause}
+    `
+    
+    const countResult = await db.query(countQuery, queryParams.slice(0, -2))
+    const total = parseInt(countResult.rows[0].total)
+
+    return ApiResponse.success(res, {
+      requests: result.rows,
+      pagination: {
+        page: sanitizedPage,
+        limit: sanitizedLimit,
+        total,
+        totalPages: Math.ceil(total / sanitizedLimit)
+      },
+      filters: {
+        status,
+        document_type,
+        search,
+        date_range,
+        sort_field: sanitizedSortField,
+        sort_direction: sanitizedSortDirection
+      }
+    }, 'Document requests retrieved successfully')
+
+  } catch (error) {
+    logger.error('Error fetching document requests:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document requests')
+  }
+})
+
+// GET /api/document-requests - Simple GET for basic listing (deprecated - use POST /search)
+router.get('/document-requests', authenticateToken, async (req, res) => {
+  try {
+    // Redirect to POST search for better performance
+    return ApiResponse.success(res, { 
+      message: 'Please use POST /api/document-requests/search for better performance and filtering options',
+      endpoint: '/api/document-requests/search'
+    }, 'Use POST search endpoint for document requests')
+  } catch (error) {
+    logger.error('Error in GET document requests:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document requests')
+  }
+})
+
+// POST /api/document-requests - Create new document request (residents only)
+router.post('/document-requests', authenticateToken, requireResident, async (req, res) => {
+  try {
+    // Handle both legacy (id) and new (userId) token structures
+    const userId = req.user.userId || req.user.id
+    const { document_id, purpose, notes } = req.body
+
+    // Validate user ID
+    if (!userId) {
+      logger.error('No user ID found in token', { user: req.user })
+      return ApiResponse.error(res, 'Authentication error: user ID not found', 401)
+    }
+
+    // Validate required fields
+    if (!document_id || !purpose) {
+      return ApiResponse.error(res, 'Document ID and purpose are required', 400)
+    }
+
+    // Convert document_id to integer and validate
+    const documentId = parseInt(document_id)
+    if (isNaN(documentId) || documentId <= 0) {
+      return ApiResponse.error(res, 'Invalid document ID', 400)
+    }
+
+    // Validate purpose field
+    const sanitizedPurpose = Validator.sanitizeInput(purpose)
+    if (!sanitizedPurpose) {
+      return ApiResponse.error(res, 'Purpose is required and must contain valid characters', 400)
+    }
+
+    // Validate notes field (alphanumeric only)
+    const notesValidation = Validator.validateAlphanumericNotes(notes)
+    if (!notesValidation.isValid) {
+      return ApiResponse.error(res, notesValidation.errors.join(', '), 400)
+    }
+    const sanitizedNotes = notes ? Validator.sanitizeInput(notes) : null
+
+    // Check if document exists and is active
+    const documentCheck = await db.query(
+      'SELECT id, title FROM document_catalog WHERE id = $1 AND is_active = $2',
+      [documentId, 1]
+    )
+
+    if (documentCheck.rows.length === 0) {
+      return ApiResponse.error(res, 'Invalid document type or document not available', 400)
+    }
+
+    // Check if resident has pending/processing request for same document type
+    const existingRequest = await db.query(`
+      SELECT id, status FROM document_requests 
+      WHERE resident_id = $1 AND document_id = $2 AND status IN (0, 1, 3)
+    `, [parseInt(userId), documentId])
+
+    if (existingRequest.rows.length > 0) {
+      const existingStatus = existingRequest.rows[0].status
+      const statusMessage = existingStatus === 0 ? 'pending approval' : 'currently being processed'
+      return ApiResponse.error(res, `You already have a request for this document that is ${statusMessage}. Please wait for it to be completed before submitting a new request.`, 400)
+    }
+
+    // Create new request
+    const newRequest = await db.query(`
+      INSERT INTO document_requests (resident_id, document_id, purpose, notes, status, created_at)
+      VALUES ($1, $2, $3, $4, 0, CURRENT_TIMESTAMP)
+      RETURNING id, created_at
+    `, [parseInt(userId), documentId, sanitizedPurpose, sanitizedNotes])
+
+    const requestId = newRequest.rows[0].id
+
+    // Log the request creation
+    await db.query(`
+      INSERT INTO document_request_logs (request_id, action, new_status, action_by, action_notes, created_at)
+      VALUES ($1, 'created', 'pending', $2, 'Document request submitted by resident', CURRENT_TIMESTAMP)
+    `, [requestId, parseInt(userId)])
+
+    logger.info(`Document request created: ID ${requestId} by resident ${userId}`)
+
+    return ApiResponse.success(res, {
+      id: requestId,
+      status: 'pending',
+      created_at: newRequest.rows[0].created_at
+    }, 'Document request submitted successfully')
+
+  } catch (error) {
+    logger.error('Error creating document request:', error)
+    return ApiResponse.serverError(res, 'Failed to submit document request')
+  }
+})
+
+// GET /api/document-requests/:id - Get specific document request details
+router.get('/document-requests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { role, userId } = req.user
+
+    let query = `
+      SELECT 
+        dr.id,
+        dr.resident_id,
+        CONCAT(r.first_name, ' ', r.last_name) as resident_name,
+        r.address,
+        r.birth_date,
+        r.civil_status,
+        dr.document_id,
+        dc.title as document_type,
+        dc.description as document_description,
+        dc.fee,
+        dr.purpose,
+        dr.notes,
+        dr.remarks,
+        dr.status,
+        dr.created_at,
+        dr.updated_at,
+        dr.processed_by,
+        dr.processed_at,
+        CASE 
+          WHEN dr.status = 0 THEN 'pending'
+          WHEN dr.status = 1 THEN 'processing'
+          WHEN dr.status = 2 THEN 'rejected'
+          WHEN dr.status = 3 THEN 'ready'
+          WHEN dr.status = 4 THEN 'claimed'
+          ELSE 'unknown'
+        END as status_text
+      FROM document_requests dr
+      JOIN residents r ON dr.resident_id = r.id
+      JOIN document_catalog dc ON dr.document_id = dc.id
+      WHERE dr.id = $1
+    `
+
+    let queryParams = [id]
+
+    // If resident, ensure they can only see their own requests
+    if (role === USER_ROLES.RESIDENT) {
+      query += ' AND dr.resident_id = $2'
+      queryParams.push(userId)
+    }
+
+    const result = await db.query(query, queryParams)
+
+    if (result.rows.length === 0) {
+      return ApiResponse.notFound(res, 'Document request not found')
+    }
+
+    // Get request logs/timeline
+    const logsQuery = `
+      SELECT 
+        drl.status,
+        drl.action,
+        drl.remarks,
+        drl.performed_by,
+        drl.created_at,
+        CONCAT(u.first_name, ' ', u.last_name) as performed_by_name,
+        CASE 
+          WHEN drl.status = 0 THEN 'pending'
+          WHEN drl.status = 1 THEN 'processing'
+          WHEN drl.status = 2 THEN 'rejected'
+          WHEN drl.status = 3 THEN 'ready'
+          WHEN drl.status = 4 THEN 'claimed'
+          ELSE 'unknown'
+        END as status_text
+      FROM document_request_logs drl
+      LEFT JOIN users u ON drl.performed_by = u.id
+      WHERE drl.request_id = $1
+      ORDER BY drl.created_at ASC
+    `
+
+    const logsResult = await db.query(logsQuery, [id])
+
+    return ApiResponse.success(res, {
+      request: result.rows[0],
+      timeline: logsResult.rows
+    }, 'Document request details retrieved successfully')
+
+  } catch (error) {
+    logger.error('Error fetching document request details:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document request details')
+  }
+})
+
+// PUT /api/document-requests/:id/status - Update document request status (admin/staff only)
+router.put('/document-requests/:id/status', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status, remarks } = req.body
+    const { userId } = req.user
+
+    // Validate status
+    const validStatuses = ['processing', 'rejected', 'ready', 'claimed']
+    if (!validStatuses.includes(status)) {
+      return ApiResponse.error(res, 'Invalid status', 400)
+    }
+
+    const statusMap = {
+      'processing': 1,
+      'rejected': 2,
+      'ready': 3,
+      'claimed': 4
+    }
+
+    const statusValue = statusMap[status]
+
+    // If rejecting, remarks are required
+    if (status === 'rejected' && !remarks?.trim()) {
+      return ApiResponse.error(res, 'Remarks are required when rejecting a request', 400)
+    }
+
+    // Check if request exists
+    const requestCheck = await db.query(
+      'SELECT id, status FROM document_requests WHERE id = $1',
+      [id]
+    )
+
+    if (requestCheck.rows.length === 0) {
+      return ApiResponse.notFound(res, 'Document request not found')
+    }
+
+    const currentStatus = requestCheck.rows[0].status
+
+    // Validate status transitions
+    const validTransitions = {
+      0: [1, 2], // pending -> processing, rejected
+      1: [2, 3], // processing -> rejected, ready
+      3: [4]     // ready -> claimed
+    }
+
+    if (!validTransitions[currentStatus]?.includes(statusValue)) {
+      return ApiResponse.error(res, 'Invalid status transition', 400)
+    }
+
+    // Update request status
+    await db.query(`
+      UPDATE document_requests 
+      SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP, 
+          remarks = $3, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+    `, [statusValue, userId, remarks?.trim() || null, id])
+
+    // Log the status change
+    const actionMap = {
+      'processing': 'Marked as processing',
+      'rejected': 'Request rejected',
+      'ready': 'Marked as ready for pickup',
+      'claimed': 'Marked as claimed'
+    }
+
+    await db.query(`
+      INSERT INTO document_request_logs (request_id, action, old_status, new_status, action_by, action_notes, created_at)
+      VALUES ($1, 'status_changed', (SELECT status FROM document_requests WHERE id = $1), $2, $3, $4, CURRENT_TIMESTAMP)
+    `, [id, status, userId, remarks?.trim() || null])
+
+    logger.info(`Document request ${id} status updated to ${status} by user ${userId}`)
+
+    return ApiResponse.success(res, {
+      id: parseInt(id),
+      status,
+      processed_by: userId,
+      processed_at: new Date()
+    }, `Document request ${status} successfully`)
+
+  } catch (error) {
+    logger.error('Error updating document request status:', error)
+    return ApiResponse.serverError(res, 'Failed to update document request status')
+  }
+})
+
+// POST /api/document-requests/bulk-update - Bulk update multiple document requests (admin/staff only)
+router.post('/document-requests/bulk-update', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { updates } = req.body
+    const { userId } = req.user
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return ApiResponse.error(res, 'Updates array is required and cannot be empty', 400)
+    }
+
+    if (updates.length > 50) {
+      return ApiResponse.error(res, 'Maximum 50 updates allowed per request', 400)
+    }
+
+    const results = []
+    const errors = []
+
+    // Process updates in a transaction for data consistency
+    await db.query('BEGIN')
+
+    try {
+      for (const update of updates) {
+        const { id, status, remarks } = update
+
+        if (!id || !status) {
+          errors.push({ id, error: 'ID and status are required' })
+          continue
+        }
+
+        // Validate status
+        const validStatuses = ['processing', 'rejected', 'ready', 'claimed']
+        if (!validStatuses.includes(status)) {
+          errors.push({ id, error: 'Invalid status' })
+          continue
+        }
+
+        const statusMap = {
+          'processing': 1,
+          'rejected': 2,
+          'ready': 3,
+          'claimed': 4
+        }
+
+        const statusValue = statusMap[status]
+
+        // If rejecting, remarks are required
+        if (status === 'rejected' && !remarks?.trim()) {
+          errors.push({ id, error: 'Remarks are required when rejecting a request' })
+          continue
+        }
+
+        // Check if request exists and validate transition
+        const requestCheck = await db.query(
+          'SELECT id, status FROM document_requests WHERE id = $1',
+          [id]
+        )
+
+        if (requestCheck.rows.length === 0) {
+          errors.push({ id, error: 'Document request not found' })
+          continue
+        }
+
+        const currentStatus = requestCheck.rows[0].status
+
+        // Validate status transitions
+        const validTransitions = {
+          0: [1, 2], // pending -> processing, rejected
+          1: [2, 3], // processing -> rejected, ready
+          3: [4]     // ready -> claimed
+        }
+
+        if (!validTransitions[currentStatus]?.includes(statusValue)) {
+          errors.push({ id, error: 'Invalid status transition' })
+          continue
+        }
+
+        // Update request status
+        await db.query(`
+          UPDATE document_requests 
+          SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP, 
+              remarks = $3, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $4
+        `, [statusValue, userId, remarks?.trim() || null, id])
+
+        // Log the status change
+        const actionMap = {
+          'processing': 'Marked as processing',
+          'rejected': 'Request rejected',
+          'ready': 'Marked as ready for pickup',
+          'claimed': 'Marked as claimed'
+        }
+
+        await db.query(`
+          INSERT INTO document_request_logs (request_id, action, old_status, new_status, action_by, action_notes, created_at)
+          VALUES ($1, 'status_changed', (SELECT status FROM document_requests WHERE id = $1), $2, $3, $4, CURRENT_TIMESTAMP)
+        `, [id, status, userId, remarks?.trim() || null])
+
+        results.push({
+          id: parseInt(id),
+          status,
+          success: true
+        })
+      }
+
+      await db.query('COMMIT')
+
+      logger.info(`Bulk update completed: ${results.length} successful, ${errors.length} errors by user ${userId}`)
+
+      return ApiResponse.success(res, {
+        successful: results,
+        errors: errors,
+        total_processed: updates.length,
+        successful_count: results.length,
+        error_count: errors.length
+      }, `Bulk update completed: ${results.length} successful, ${errors.length} errors`)
+
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
+
+  } catch (error) {
+    logger.error('Error in bulk update document requests:', error)
+    return ApiResponse.serverError(res, 'Failed to perform bulk update')
+  }
+})
+
+// POST /api/document-requests/stats - Get document requests statistics with advanced filtering (admin/staff only)
+router.post('/document-requests/stats', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { 
+      date_range = '7days', 
+      document_type = null,
+      group_by = null,
+      include_trends = false 
+    } = req.body
+
+    // Calculate date filter
+    const now = new Date()
+    let dateFilter
+    if (date_range === '7days') {
+      dateFilter = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
+    } else if (date_range === '30days') {
+      dateFilter = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+    } else if (date_range === '90days') {
+      dateFilter = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000))
+    } else {
+      // For 'all', use a very old date
+      dateFilter = new Date('2020-01-01')
+    }
+
+    let whereConditions = ['dr.created_at >= $1']
+    let queryParams = [dateFilter]
+    let paramIndex = 2
+
+    // Document type filtering
+    if (document_type && document_type !== 'all') {
+      whereConditions.push(`dc.title ILIKE $${paramIndex}`)
+      queryParams.push(`%${document_type}%`)
+      paramIndex++
+    }
+
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`
+
+    // Basic statistics query
+    const statsQuery = `
+      SELECT 
+        COUNT(*) FILTER (WHERE dr.status = 0) as pending,
+        COUNT(*) FILTER (WHERE dr.status = 1) as processing,
+        COUNT(*) FILTER (WHERE dr.status = 2) as rejected,
+        COUNT(*) FILTER (WHERE dr.status = 3) as ready,
+        COUNT(*) FILTER (WHERE dr.status = 4) as claimed,
+        COUNT(*) as total,
+        AVG(EXTRACT(EPOCH FROM (dr.processed_at - dr.created_at))/3600) FILTER (WHERE dr.processed_at IS NOT NULL) as avg_processing_hours,
+        COUNT(*) FILTER (WHERE dr.created_at >= $${paramIndex}) as today_total
+      FROM document_requests dr
+      JOIN document_catalog dc ON dr.document_id = dc.id
+      ${whereClause}
+    `
+
+    // Add today's date for today's stats
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    queryParams.push(todayStart)
+
+    const result = await db.query(statsQuery, queryParams)
+    const stats = result.rows[0]
+
+    // Convert string numbers to integers and format avg_processing_hours
+    Object.keys(stats).forEach(key => {
+      if (key === 'avg_processing_hours') {
+        stats[key] = parseFloat(stats[key]) || 0
+      } else {
+        stats[key] = parseInt(stats[key]) || 0
+      }
+    })
+
+    let responseData = { basic: stats }
+
+    // Group by statistics if requested
+    if (group_by) {
+      let groupQuery
+      let groupParams = queryParams.slice(0, -1) // Remove today parameter
+
+      if (group_by === 'document_type') {
+        groupQuery = `
+          SELECT 
+            dc.title as label,
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE dr.status = 0) as pending,
+            COUNT(*) FILTER (WHERE dr.status = 1) as processing,
+            COUNT(*) FILTER (WHERE dr.status = 2) as rejected,
+            COUNT(*) FILTER (WHERE dr.status = 3) as ready,
+            COUNT(*) FILTER (WHERE dr.status = 4) as claimed
+          FROM document_requests dr
+          JOIN document_catalog dc ON dr.document_id = dc.id
+          ${whereClause}
+          GROUP BY dc.title
+          ORDER BY total DESC
+        `
+      } else if (group_by === 'status') {
+        groupQuery = `
+          SELECT 
+            CASE 
+              WHEN dr.status = 0 THEN 'pending'
+              WHEN dr.status = 1 THEN 'processing'
+              WHEN dr.status = 2 THEN 'rejected'
+              WHEN dr.status = 3 THEN 'ready'
+              WHEN dr.status = 4 THEN 'claimed'
+              ELSE 'unknown'
+            END as label,
+            COUNT(*) as total
+          FROM document_requests dr
+          JOIN document_catalog dc ON dr.document_id = dc.id
+          ${whereClause}
+          GROUP BY dr.status
+          ORDER BY dr.status
+        `
+      } else if (group_by === 'daily' && date_range !== 'all') {
+        groupQuery = `
+          SELECT 
+            DATE(dr.created_at) as label,
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE dr.status = 0) as pending,
+            COUNT(*) FILTER (WHERE dr.status = 1) as processing,
+            COUNT(*) FILTER (WHERE dr.status = 2) as rejected,
+            COUNT(*) FILTER (WHERE dr.status = 3) as ready,
+            COUNT(*) FILTER (WHERE dr.status = 4) as claimed
+          FROM document_requests dr
+          JOIN document_catalog dc ON dr.document_id = dc.id
+          ${whereClause}
+          GROUP BY DATE(dr.created_at)
+          ORDER BY DATE(dr.created_at) DESC
+          LIMIT 30
+        `
+      }
+
+      if (groupQuery) {
+        const groupResult = await db.query(groupQuery, groupParams)
+        responseData.grouped = groupResult.rows
+      }
+    }
+
+    // Trends data if requested
+    if (include_trends && date_range !== 'all') {
+      const trendsQuery = `
+        SELECT 
+          DATE(dr.created_at) as date,
+          COUNT(*) as requests,
+          COUNT(*) FILTER (WHERE dr.status = 4) as completed
+        FROM document_requests dr
+        JOIN document_catalog dc ON dr.document_id = dc.id
+        ${whereClause}
+        GROUP BY DATE(dr.created_at)
+        ORDER BY DATE(dr.created_at) ASC
+      `
+      
+      const trendsResult = await db.query(trendsQuery, queryParams.slice(0, -1))
+      responseData.trends = trendsResult.rows
+    }
+
+    return ApiResponse.success(res, responseData, 'Document request statistics retrieved successfully')
+
+  } catch (error) {
+    logger.error('Error fetching document request statistics:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document request statistics')
+  }
+})
+
+// GET /api/document-requests/stats - Simple GET for basic stats (deprecated - use POST)
+router.get('/document-requests/stats', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    // Redirect to POST stats for better performance
+    return ApiResponse.success(res, { 
+      message: 'Please use POST /api/document-requests/stats for better performance and advanced filtering options',
+      endpoint: '/api/document-requests/stats'
+    }, 'Use POST stats endpoint for document request statistics')
+  } catch (error) {
+    logger.error('Error in GET document request stats:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document request statistics')
+  }
+})
+
+// ==========================================================================
 // CHATBOT ROUTES
 // ==========================================================================
 
 const ChatbotController = require('./controllers/chatbotController')
+
+// GET /api/chatbot/document-fees - Get current document fees (public)
+router.get('/chatbot/document-fees', generalLimiter, async (req, res) => {
+  try {
+    const { document } = req.query
+    
+    if (document) {
+      // Get specific document fee
+      const docInfo = await ChatbotRepository.getDocumentFee(document)
+      if (docInfo) {
+        const feeText = parseFloat(docInfo.fee) === 0 ? 'FREE' : `₱${parseFloat(docInfo.fee).toFixed(2)}`
+        return ApiResponse.success(res, {
+          document: docInfo.title,
+          fee: feeText,
+          amount: parseFloat(docInfo.fee)
+        }, 'Document fee retrieved successfully')
+      } else {
+        return ApiResponse.notFound(res, 'Document not found')
+      }
+    } else {
+      // Get all document fees
+      const feesList = await ChatbotRepository.getFormattedFeesList()
+      return ApiResponse.success(res, feesList, 'All document fees retrieved successfully')
+    }
+  } catch (error) {
+    logger.error('Error getting document fees for chatbot:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document fees')
+  }
+})
+
+// GET /api/chatbot/document-catalog - Get formatted document catalog (public)
+router.get('/chatbot/document-catalog', generalLimiter, async (req, res) => {
+  try {
+    const documentList = await ChatbotRepository.getFormattedDocumentList()
+    return ApiResponse.success(res, documentList, 'Document catalog retrieved successfully')
+  } catch (error) {
+    logger.error('Error getting document catalog for chatbot:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve document catalog')
+  }
+})
+
+// GET /api/chatbot/permits - Get formatted permits list (public)
+router.get('/chatbot/permits', generalLimiter, async (req, res) => {
+  try {
+    const permitList = await ChatbotRepository.getFormattedPermitList()
+    return ApiResponse.success(res, permitList, 'Permits list retrieved successfully')
+  } catch (error) {
+    logger.error('Error getting permits list for chatbot:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve permits list')
+  }
+})
+
+// GET /api/chatbot/test-dynamic - Test dynamic data processing (public)
+router.get('/chatbot/test-dynamic', generalLimiter, async (req, res) => {
+  try {
+    const testAnswer = `Test dynamic processing:
+
+**Document Catalog:**
+{{DOCUMENT_CATALOG_LIST}}
+
+**Barangay Clearance Fee:** {{BARANGAY_CLEARANCE_FEE}}
+
+**All Fees:**
+{{DOCUMENT_FEES_LIST}}
+
+**Permits:**
+{{PERMIT_CATALOG_LIST}}`
+
+    const processedAnswer = await ChatbotRepository.processDynamicAnswer(testAnswer)
+    return ApiResponse.success(res, {
+      original: testAnswer,
+      processed: processedAnswer
+    }, 'Dynamic processing test completed')
+  } catch (error) {
+    logger.error('Error testing dynamic processing:', error)
+    return ApiResponse.serverError(res, 'Failed to test dynamic processing')
+  }
+})
 
 // GET /api/chatbot/categories - Get FAQ categories (public)
 router.get('/chatbot/categories', generalLimiter, ChatbotController.getCategories)

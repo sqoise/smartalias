@@ -197,16 +197,34 @@ class AIService {
 
   /**
    * Build prompt for all providers
+   * Build comprehensive prompt with context including chat history
    * @param {string} query - User's question
-   * @param {Object} context - Structured context object with faqs, rules, and db arrays
+   * @param {Object} context - Structured context object with faqs, rules, db, and chat data
    * @param {Array} context.faqs - FAQ entries with question/answer
    * @param {Array} context.rules - Rule-based knowledge snippets
    * @param {Array} context.db - Database records with relevant data
+   * @param {Array} context.chatHistory - Recent conversation messages
+   * @param {Array} context.similarQuestions - Similar questions from chat_messages
+   * @param {Object} context.documentCatalog - Current document fees and info
    */
   buildPrompt(query, context = {}) {
     const faqs = context.faqs || [];
     const rules = context.rules || [];
     const dbRecords = context.db || [];
+    const chatHistory = context.chatHistory || [];
+    const similarQuestions = context.similarQuestions || [];
+    const documentCatalog = context.documentCatalog || [];
+    const recentAnnouncements = context.recentAnnouncements || [];
+
+    // Check if query is announcement-related
+    const announcementKeywords = [
+      'announcement', 'announcements', 'news', 'update', 'updates', 'event', 'events', 
+      'schedule', 'schedules', 'program', 'programs', 'activity', 'activities',
+      'balita', 'abiso', 'paalala', 'sked', 'programa', 'gawain', 'aktibidad'
+    ];
+    const isAnnouncementRelated = announcementKeywords.some(keyword => 
+      query.toLowerCase().includes(keyword.toLowerCase())
+    );
 
     // Format FAQ section
     const faqContext = faqs.slice(0, 5)
@@ -234,11 +252,46 @@ class AIService {
       })
       .join('\n\n');
 
+    // Format recent conversation history
+    const chatContext = chatHistory.slice(-3)
+      .map(msg => `${msg.message_type.toUpperCase()}: ${msg.message_text}`)
+      .join('\n');
+
+    // Format similar successful conversations
+    const similarContext = similarQuestions
+      .filter(q => q.was_helpful === 1 && q.bot_response)
+      .slice(0, 3)
+      .map(q => `Similar Q: ${q.question}\nWorked Response: ${q.bot_response}`)
+      .join('\n\n');
+
+    // Format current document catalog with fees
+    const documentContext = documentCatalog.slice(0, 10)
+      .map(doc => {
+        const fee = parseFloat(doc.fee) === 0 ? 'FREE' : `₱${parseFloat(doc.fee).toFixed(2)}`;
+        return `${doc.title}: ${fee}`;
+      })
+      .join('\n');
+
+    // Format recent announcements (only if query is announcement-related)
+    let announcementContext = '';
+    if (isAnnouncementRelated && recentAnnouncements.length > 0) {
+      announcementContext = recentAnnouncements
+        .map(ann => {
+          const publishedDate = new Date(ann.published_at).toLocaleDateString('en-PH');
+          return `Title: ${ann.title}\nType: ${ann.type}\nPublished: ${publishedDate}\nContent: ${ann.content.slice(0, 200)}...`;
+        })
+        .join('\n\n');
+    }
+
     // Build layered context sections
     const contextSections = [];
     if (rulesContext) contextSections.push(`RULE-BASED KNOWLEDGE:\n${rulesContext}`);
     if (faqContext) contextSections.push(`FAQ REFERENCE:\n${faqContext}`);
     if (dbContext) contextSections.push(`DATABASE CONTEXT:\n${dbContext}`);
+    if (documentContext) contextSections.push(`CURRENT DOCUMENT FEES:\n${documentContext}`);
+    if (announcementContext) contextSections.push(`RECENT ANNOUNCEMENTS:\n${announcementContext}`);
+    if (chatContext) contextSections.push(`RECENT CONVERSATION:\n${chatContext}`);
+    if (similarContext) contextSections.push(`SIMILAR SUCCESSFUL RESPONSES:\n${similarContext}`);
 
     const layeredContext = contextSections.length > 0
       ? `${contextSections.join('\n\n')}\n\n` : '';
@@ -271,12 +324,22 @@ CORE PRINCIPLES (FOLLOW STRICTLY):
 9. Hallucination Prevention: If info not known or not in context, be transparent and recommend verifying at the Barangay Office.
 10. Disallowed: No political opinions, medical diagnosis, or speculative legal advice—only procedural help.
 11. Lists: Use simple numbered or dash lists. Only include realistic Philippine documents (valid gov ID, cedula/community tax certificate, proof of residency, etc.). Do not invent internal forms or fixed fees unless widely standard.
+12. Announcement Guidance: If the question relates to events, schedules, updates, news, or ongoing programs that might be covered in barangay announcements, suggest checking announcements and guide them to where they can find them.
 
 OUTPUT RULES:
 - Simple question: 1–2 concise paragraphs.
 - Process/document: short intro + structured list.
 - Close with helpful action (e.g., Ihanda ang valid ID / Prepare your valid ID, pumunta sa Barangay Office / visit the Barangay Office).
 - If contact number unknown, advise to visit/call Barangay Office directly.
+- For announcement-related topics (events, schedules, programs, updates, news): Include a suggestion to check announcements and provide navigation guidance:
+  * For logged-in users: "Check the Announcements section in your SmartLIAS dashboard"
+  * For public access: "Visit the SmartLIAS homepage and check the Announcements section"
+  * Always include: "or visit the Barangay Office for the latest updates"
+
+ANNOUNCEMENT GUIDANCE EXAMPLES:
+- Events/Programs: "Para sa latest schedules at programs, check ang Announcements sa SmartLIAS homepage o sa inyong dashboard kung naka-login na kayo."
+- Schedule changes: "Mga schedule changes at updates ay naka-post sa Announcements section ng SmartLIAS."
+- Community updates: "Stay updated sa mga community news through ang SmartLIAS Announcements."
 
 If information is missing or varies locally, clearly state the limitation and guide the resident to confirm in person. If not in context and cannot be responsibly inferred, recommend official verification.
 `;

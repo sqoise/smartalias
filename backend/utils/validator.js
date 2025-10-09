@@ -130,6 +130,35 @@ class Validator {
     }
   }
 
+  // Validate alphanumeric notes field
+  static validateAlphanumericNotes(notes) {
+    const errors = []
+    
+    if (notes !== null && notes !== undefined && notes !== '') {
+      if (typeof notes !== 'string') {
+        errors.push('Notes must be a string')
+      } else {
+        const trimmed = notes.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric characters, spaces, and basic punctuation
+          const alphanumericRegex = /^[a-zA-Z0-9\s.,!?()-]+$/
+          if (!alphanumericRegex.test(trimmed)) {
+            errors.push('Notes can only contain letters, numbers, spaces, and basic punctuation (.,!?()-)')
+          }
+          
+          if (trimmed.length > 500) {
+            errors.push('Notes must not exceed 500 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // Validate resident data
   static validateResident(data) {
     const errors = []

@@ -2,7 +2,7 @@
 
 ## Overview
 
-SmartLias includes an SMS notification system that sends announcements to residents when published. The system uses **Semaphore** (Philippine SMS provider) for sending messages.
+SmartLias includes an SMS notification system that sends announcements to residents when published. The system uses **IProg SMS API** (Philippine SMS provider) for sending messages.
 
 ## Features
 
@@ -17,12 +17,11 @@ SmartLias includes an SMS notification system that sends announcements to reside
 
 ## Setup Instructions
 
-### 1. **Get Semaphore API Key**
+### 1. **Get IProg SMS API Token**
 
-1. Visit [https://semaphore.co/](https://semaphore.co/)
-2. Create an account or login
-3. Navigate to **API Settings**
-4. Copy your **API Key**
+1. Contact IProg SMS service provider for API access
+2. Obtain your API token and provider configuration
+3. Get sender name approval if needed
 
 ### 2. **Configure Environment Variables**
 
@@ -30,8 +29,9 @@ Add these to your `.env` file:
 
 ```env
 # SMS Configuration
-SEMAPHORE_API_KEY=your-actual-api-key-here
-SEMAPHORE_SENDER_NAME=BARANGAY
+SMS_PROVIDER=iprog
+IPROG_API_TOKEN=your-actual-api-token-here
+IPROG_SMS_PROVIDER=0
 ```
 
 ### 3. **Database Setup** (Already configured)
@@ -48,8 +48,8 @@ The system uses these database tables:
 - No actual messages sent
 - Perfect for testing functionality
 
-#### Production Mode (With API Key):
-- Real SMS messages sent via Semaphore
+#### Production Mode (With API Token):
+- Real SMS messages sent via IProg SMS API
 - Charges apply per message
 - Recipients receive actual SMS
 
@@ -155,20 +155,20 @@ GROUP BY delivery_status;
 
 ## Cost Considerations
 
-### Semaphore Pricing (as of 2025):
-- ₱0.70 - ₱1.00 per SMS (depending on plan)
+### IProg SMS Pricing:
+- Contact IProg for current pricing rates
 - Bulk sending discounts available
-- Pre-paid credits system
+- Various payment plans available
 
 ### Cost Calculation:
 ```
-Example: 100 residents × ₱0.80/SMS = ₱80.00 per announcement
+Example: 100 residents × pricing rate = cost per announcement
 ```
 
 **Recommendations**:
 1. Use targeted groups to reduce costs
 2. Avoid sending announcements too frequently
-3. Monitor your Semaphore credit balance
+3. Monitor your IProg credit balance
 4. Consider SMS for urgent announcements only
 
 ---

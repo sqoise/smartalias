@@ -21,17 +21,7 @@ SmartLIAS now supports multiple SMS providers for sending notifications. The sys
 
 *This allows IProg to route your SMS through different telecom providers for better delivery rates and redundancy.*
 
-### 2. Semaphore SMS (Legacy)
-- **Endpoint**: `https://api.semaphore.co/api/v4/messages`
-- **Features**: Bulk SMS, Custom sender name
-- **Configuration**:
-  ```env
-  SMS_PROVIDER=semaphore
-  SEMAPHORE_API_KEY=your-api-key-here
-  SEMAPHORE_SENDER_NAME=BARANGAY
-  ```
-
-### 3. Twilio (Future Implementation)
+### 2. Twilio (Future Implementation)
 - **Status**: Planned for future releases
 - **Configuration**: TBD
 
@@ -132,15 +122,11 @@ tail -f backend/logs/error.log | grep SMS
 ```
 
 ## Switching Providers
-
-To switch SMS providers, simply update the environment variable:
+The system is configured to use IProg SMS API as the primary provider:
 
 ```bash
-# Switch to IProg
+# IProg SMS API (Primary Provider)
 SMS_PROVIDER=iprog
-
-# Switch to Semaphore
-SMS_PROVIDER=semaphore
 ```
 
 Restart the backend server for changes to take effect.

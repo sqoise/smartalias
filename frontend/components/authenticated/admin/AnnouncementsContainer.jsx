@@ -364,7 +364,7 @@ export default function AnnouncementsContainer({
                     }}
                     className="mt-4 text-sm font-medium text-gray-600 hover:text-blue-600 underline decoration-gray-600 hover:decoration-blue-600 underline-offset-2 transition-colors cursor-pointer"
                   >
-                    Clear filters
+                    Reset filters
                   </button>
                 </>
               )}
