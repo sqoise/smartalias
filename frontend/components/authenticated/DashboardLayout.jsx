@@ -83,10 +83,11 @@ export default function DashboardLayout({
         confirmText="Logout"
         cancelText="Cancel"
         onConfirm={handleLogout}
-        confirmButtonClass="text-white bg-red-600 hover:bg-red-700"
+        variant="danger"
+        size="sm"
       >
         <p className="text-gray-600">
-          Are you sure you want to logout?
+          Are you sure you want to logout? This will end your current session.
         </p>
       </Modal>
     </div>

@@ -14,14 +14,12 @@ import React, { useEffect } from 'react'
  * @param {React.Node} footer - Optional footer content (for custom layouts)
  * @param {string} type - Modal type: 'alert' | 'confirm' | 'custom' (default: 'custom')
  * @param {string} confirmText - Text for confirm button (default: 'Yes, Confirm')
- * @param {string} cancelText - Text for cancel button (default: 'Back')
+ * @param {string} cancelText - Text for cancel button (default: 'Cancel')
  * @param {function} onConfirm - Callback for confirm action
  * @param {boolean} confirmDisabled - Disable confirm button (default: false)
  * @param {boolean} confirmLoading - Show loading state on confirm button (default: false)
  * @param {string} confirmLoadingText - Text to show when loading (default: 'Please wait...')
  * @param {string} variant - Button color variant: 'safe' | 'danger' (default: 'safe')
- * @param {string} confirmButtonClass - Custom CSS classes for confirm button (overrides variant)
- * @param {string} cancelButtonClass - Custom CSS classes for cancel button
  * @param {string} size - Modal width: 'sm' | 'md' | 'lg' | 'xl' (default: 'md')
  * @param {boolean} closeOnBackdrop - Close when clicking backdrop (default: true)
  * @param {boolean} closeOnEscape - Close when pressing Escape (default: true)
@@ -36,14 +34,12 @@ export default function Modal({
   footer,
   type = 'custom', // 'alert', 'confirm', 'custom'
   confirmText = 'Yes, Confirm',
-  cancelText = 'Back',
+  cancelText = 'Cancel',
   onConfirm,
   confirmDisabled = false,
   confirmLoading = false,
   confirmLoadingText = 'Please wait...',
   variant = 'safe', // 'safe' | 'danger'
-  confirmButtonClass,
-  cancelButtonClass,
   size = 'md',
   closeOnBackdrop = true,
   closeOnEscape = true
@@ -60,30 +56,30 @@ export default function Modal({
     '2xl': 'w-full max-w-2xl'   // 672px
   }
 
-  // Button style variants
+  // Button style variants with standardized 50/50 layout
   const buttonVariants = {
     safe: {
       confirm: 'text-white bg-green-600 hover:bg-green-700 focus:ring-green-500',
-      cancel: 'text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-gray-500'
+      cancel: 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-blue-500'
     },
     danger: {
       confirm: 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500',
-      cancel: 'text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-gray-500'
+      cancel: 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-blue-500'
     }
   }
 
-  // Get button classes (allow custom override)
+  // Standard button classes - cannot be overridden
   const getConfirmButtonClass = () => {
-    if (confirmButtonClass) return confirmButtonClass
-    const baseClass = `flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 focus:ring-2 focus:ring-offset-2`
+    const baseClass = `flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors focus:ring-2 focus:ring-offset-2`
     const variantClass = buttonVariants[variant]?.confirm || buttonVariants.safe.confirm
     const disabledClass = (confirmDisabled || confirmLoading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
     return `${baseClass} ${variantClass} ${disabledClass}`
   }
 
   const getCancelButtonClass = () => {
-    if (cancelButtonClass) return cancelButtonClass
-    return `flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 focus:ring-2 focus:ring-offset-2 cursor-pointer ${buttonVariants[variant]?.cancel || buttonVariants.safe.cancel}`
+    const baseClass = `flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors focus:ring-2 focus:ring-offset-2 cursor-pointer`
+    const variantClass = buttonVariants[variant]?.cancel || buttonVariants.safe.cancel
+    return `${baseClass} ${variantClass}`
   }
 
   // Handle Escape key to close modal
@@ -138,20 +134,11 @@ export default function Modal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[99999]"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
       onClick={handleOverlayClick}
-      style={{ 
-        borderStyle: 'none',
-        height: '100vh',
-        width: '100vw',
-        top: 0,
-        left: 0,
-        position: 'fixed'
-      }}
     >
       <div 
-        className={`bg-white rounded-lg shadow-xl ${sizeConfig[size] || sizeConfig.md} mx-4`}
-        style={{ borderStyle: 'none' }}
+        className={`bg-white rounded-lg shadow-xl ${sizeConfig[size] || sizeConfig.md} mx-4 max-h-[90vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -1754,15 +1754,25 @@ router.use('/upload', uploadRoutes)
 // DOCUMENT REQUESTS ROUTES
 // ==========================================================================
 
-// GET /api/document-catalog - Get all active documents from catalog
+// GET /api/document-catalog - Get documents from catalog (active by default, or all if active_only=false)
 router.get('/document-catalog', authenticateToken, async (req, res) => {
   try {
-    const catalog = await db.query(`
+    const activeOnly = req.query.active_only !== 'false' // Default to true unless explicitly set to false
+    
+    let query = `
       SELECT id, title, description, fee, filename, is_active 
       FROM document_catalog 
-      WHERE is_active = $1 
-      ORDER BY title ASC
-    `, [1])
+    `
+    let params = []
+    
+    if (activeOnly) {
+      query += `WHERE is_active = $1 `
+      params = [1]
+    }
+    
+    query += `ORDER BY title ASC`
+    
+    const catalog = await db.query(query, params)
     
     return ApiResponse.success(res, catalog.rows, 'Document catalog retrieved successfully')
   } catch (error) {

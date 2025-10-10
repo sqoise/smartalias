@@ -187,13 +187,18 @@ export default function DocumentRequestsGrid({ toastRef }) {
             <i className="bi bi-info-circle text-blue-600 text-sm mt-0.5"></i>
           </div>
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Document Request Policy</p>
+            <p className="font-medium mb-1">Document Requests Policy</p>
             <p>You can only have one active request per document type. If you have an ongoing request, please wait for it to be completed before submitting a new one.</p>
           </div>
         </div>
       </div>
 
+      {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200"> */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900"> Document Requests</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Easily submit and process barangay document requests anytime, anywhere.</p>
+          </div>
         <div className="p-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {documents.map((document) => {

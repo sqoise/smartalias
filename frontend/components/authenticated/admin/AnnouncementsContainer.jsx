@@ -474,7 +474,7 @@ export default function AnnouncementsContainer({
                     onClick={() => setVisibleCount(prev => Math.min(prev + 5, filteredAnnouncements.length))}
                     className="text-sm font-medium text-gray-600 hover:text-blue-600 underline decoration-gray-600 hover:decoration-blue-600 underline-offset-2 transition-colors cursor-pointer bg-transparent border-none"
                   >
-                    Load More
+                  Load more
                   </button>
                 </div>
               )}

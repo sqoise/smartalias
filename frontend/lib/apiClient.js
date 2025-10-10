@@ -560,7 +560,7 @@ class ApiClient {
    * Get document catalog with optional filtering
    */
   static async getDocumentCatalog(activeOnly = true) {
-    const params = activeOnly ? '?active_only=true' : ''
+    const params = `?active_only=${activeOnly}`
     return await ApiClient.request(`/document-catalog${params}`)
   }
 

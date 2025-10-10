@@ -238,7 +238,7 @@ export default function Announcements() {
                   ))}
                 </div>
 
-                {/* Load More Skeleton Placeholders */}
+                {/* Load more Skeleton Placeholders */}
                 {isLoadingMore && (
                   <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
                     {[...Array(5)].map((_, index) => (
@@ -269,14 +269,14 @@ export default function Announcements() {
                   </div>
                 )}
 
-                {/* Load More Button */}
+                {/* Load more Button */}
                 {hasMore && !isLoadingMore && (
                   <div className="text-center pt-4 border-t border-gray-100 mt-4">
                     <button
                       onClick={loadMoreAnnouncements}
                       className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
                     >
-                      Load More
+                      Load more
                     </button>
                   </div>
                 )}

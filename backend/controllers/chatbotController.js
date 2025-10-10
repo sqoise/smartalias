@@ -132,14 +132,89 @@ class ChatbotController {
         return ApiResponse.error(res, 'Session ID is required', 400)
       }
 
+      // PII Protection: Check for queries requesting personal information
+      if (ChatbotController.detectPIIQuery(query.trim())) {
+        logger.warn('PII query detected and blocked', { 
+          query: query.trim().substring(0, 50),
+          sessionId,
+          userId 
+        })
+        
+        const piiResponse = "I can help you with general barangay information, services, and procedures. However, I cannot provide personal information about specific residents for privacy protection. If you need specific resident information, please visit the barangay office with proper identification."
+        
+        // Get or create conversation
+        let conversation = await ChatbotRepository.getConversationBySession(sessionId)
+        if (!conversation) {
+          conversation = await ChatbotRepository.createConversation(userId, sessionId)
+        }
+        
+        // Save both messages (sanitized)
+        const sanitizedQuery = ChatbotController.sanitizeChatMessage(query.trim())
+        await ChatbotRepository.saveMessage(conversation.id, 'user', sanitizedQuery)
+        await ChatbotRepository.saveMessage(conversation.id, 'bot', piiResponse, null, 'privacy_protection', 'blocked')
+        
+        return ApiResponse.success(res, {
+          answer: piiResponse,
+          source: 'privacy_protection',
+          method: 'blocked',
+          faqId: null,
+          processingTime: Date.now() - startTime
+        })
+      }
+
+      // Personal Data Sharing Protection: Check if user is sharing their own personal info
+      if (ChatbotController.detectPersonalDataSharing(query.trim())) {
+        logger.warn('Personal data sharing detected and blocked', { 
+          query: query.trim().substring(0, 50),
+          sessionId,
+          userId 
+        })
+        
+        const personalDataResponse = "⚠️ **Privacy Alert**: I noticed you might be sharing personal information. For your protection, please don't share phone numbers, addresses, full names, or other personal details in our chat. I can help you with general barangay services without needing your personal information. What can I help you with today?"
+        
+        // Get or create conversation
+        let conversation = await ChatbotRepository.getConversationBySession(sessionId)
+        if (!conversation) {
+          conversation = await ChatbotRepository.createConversation(userId, sessionId)
+        }
+        
+        // Save both messages (heavily sanitized)
+        const sanitizedQuery = ChatbotController.sanitizeChatMessage(query.trim())
+        await ChatbotRepository.saveMessage(conversation.id, 'user', sanitizedQuery)
+        await ChatbotRepository.saveMessage(conversation.id, 'bot', personalDataResponse, null, 'privacy_protection', 'personal_data_blocked')
+        
+        return ApiResponse.success(res, {
+          answer: personalDataResponse,
+          source: 'privacy_protection',
+          method: 'personal_data_blocked',
+          faqId: null,
+          processingTime: Date.now() - startTime
+        })
+      }
+
       // Get or create conversation
       let conversation = await ChatbotRepository.getConversationBySession(sessionId)
       if (!conversation) {
         conversation = await ChatbotRepository.createConversation(userId, sessionId)
+        
+        // Send initial privacy disclaimer for new conversations
+        const disclaimerMessage = await ChatbotController.getPrivacyDisclaimer()
+        await ChatbotRepository.saveMessage(conversation.id, 'bot', disclaimerMessage, null, 'system', 'disclaimer')
+        
+        // Return disclaimer as the first response
+        return ApiResponse.success(res, {
+          answer: disclaimerMessage,
+          source: 'system',
+          method: 'disclaimer',
+          faqId: null,
+          processingTime: Date.now() - startTime,
+          isNewConversation: true
+        })
       }
 
-      // Save user message
-      await ChatbotRepository.saveMessage(conversation.id, 'user', query.trim())
+      // Save user message (sanitized)
+      const sanitizedQuery = ChatbotController.sanitizeChatMessage(query.trim())
+      await ChatbotRepository.saveMessage(conversation.id, 'user', sanitizedQuery)
 
       // STEP 1: Try rule-based search (PostgreSQL + Fuse.js)
       let matchedFAQs = await ChatbotController.hybridSearch(query.trim())
@@ -353,9 +428,12 @@ class ChatbotController {
             const responseTime = Date.now() - startTime
             const provider = aiService.primaryProvider
             
+            // Filter AI response for PII protection
+            const filteredAnswer = ChatbotController.filterAIResponse(aiAnswer)
+            
             response = {
               type: 'ai',
-              answer: aiAnswer,
+              answer: filteredAnswer,
               source: `${provider}-ai`,
               method: `ai-${provider}`,
               aiGenerated: true,
@@ -691,6 +769,137 @@ Please try rephrasing your question or browse the FAQ categories below.`,
       logger.error('Error getting AI status', error)
       return ApiResponse.serverError(res, 'Failed to get AI status', error)
     }
+  }
+
+  // ============================================
+  // PII PROTECTION METHODS
+  // ============================================
+
+  /**
+   * Detect queries that might be requesting personal information
+   */
+  static detectPIIQuery(query) {
+    const piiPatterns = [
+      // Phone/contact requests
+      /\b(phone|contact|number|telepono|contact number|mobile|cellphone)\b.*\b(resident|person|name|sino|kanino)\b/i,
+      /\b(sino|who|sinong)\b.*\b(phone|contact|number|telepono)\b/i,
+      
+      // Address requests
+      /\b(address|tirahan|nakatira|tahanan|bahay)\b.*\b(sino|who|resident|person|name)\b/i,
+      /\b(sino|who|sinong)\b.*\b(nakatira|tirahan|address|bahay)\b/i,
+      
+      // Birthday/personal details
+      /\b(birthday|birth date|kapanganakan|kaarawan)\b.*\b(resident|person|sino)\b/i,
+      /\b(sino|who|sinong)\b.*\b(birthday|kaarawan|kapanganakan)\b/i,
+      
+      // List of residents
+      /\b(list|listahan|mga pangalan)\b.*\b(residents|mga residente|nakatira)\b/i,
+      /\b(residents|mga residente)\b.*\b(list|listahan|mga pangalan)\b/i,
+      
+      // Personal information
+      /\b(personal info|personal information|pribadong impormasyon)\b/i,
+      /\b(email|email address|email ni)\b.*\b(resident|person|sino)\b/i,
+      
+      // Family/household info
+      /\b(family|pamilya|household|sambahayan)\b.*\b(member|miyembro|sino|who)\b/i,
+      /\b(sino|who)\b.*\b(family|pamilya|household|miyembro)\b/i
+    ]
+    
+    return piiPatterns.some(pattern => pattern.test(query))
+  }
+
+  /**
+   * Detect if user is sharing their own personal information
+   */
+  static detectPersonalDataSharing(query) {
+    const personalSharingPatterns = [
+      // Phone numbers
+      /\b(09\d{9}|\d{3}-\d{4}|\+63\d{10})\b/,
+      // Email addresses
+      /\b[\w\.-]+@[\w\.-]+\.\w+\b/,
+      // Dates that might be birth dates
+      /\b\d{1,2}\/\d{1,2}\/\d{4}\b/,
+      /\b\d{4}-\d{1,2}-\d{1,2}\b/,
+      // Potential addresses with numbers
+      /\b\d+\s+[A-Za-z\s]+(street|st\.?|avenue|ave\.?|road|rd\.?)\b/i,
+      // ID-like patterns
+      /\b\d{4}-\d{4}-\d{4}\b/,
+      // Long number sequences
+      /\b\d{12,}\b/,
+      // Phrases indicating personal sharing
+      /\b(my name is|ako si|pangalan ko|tawag sakin)\b/i,
+      /\b(my address|address ko|nakatira ako sa)\b/i,
+      /\b(my phone|phone ko|number ko)\b/i
+    ]
+    
+    return personalSharingPatterns.some(pattern => pattern.test(query))
+  }
+
+  /**
+   * Sanitize chat messages before storing or sending to AI
+   * Uses safe replacement patterns that won't conflict with AI context
+   */
+  static sanitizeChatMessage(message) {
+    return message
+      // Remove phone numbers (11-digit mobile, 7-digit landline)
+      .replace(/\b(09\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '***PHONE***')
+      // Remove email addresses
+      .replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '***EMAIL***')
+      // Remove dates that might be birth dates
+      .replace(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, '***DATE***')
+      .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, '***DATE***')
+      // Remove potential addresses with street numbers
+      .replace(/\b\d+\s+[A-Za-z\s]+(street|st\.?|avenue|ave\.?|road|rd\.?)\b/gi, '***ADDRESS***')
+      // Remove potential ID numbers
+      .replace(/\b\d{4}-\d{4}-\d{4}\b/g, '***ID***')
+      .replace(/\b\d{12,}\b/g, '***NUMBER***')
+      // Preserve the general intent while removing specifics
+  }
+
+  /**
+   * Filter AI responses to prevent accidental PII disclosure
+   */
+  static filterAIResponse(response) {
+    if (!response) return response
+    
+    return response
+      // Remove any phone numbers that might have leaked through
+      .replace(/\b(09\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '***CONTACT***')
+      // Remove email addresses
+      .replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '***EMAIL***')
+      // Remove specific dates
+      .replace(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, '***DATE***')
+      .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, '***DATE***')
+      // Remove potential names in responses (be conservative)
+      .replace(/\b(Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+\b/g, '***NAME***')
+  }
+
+  /**
+   * Get privacy disclaimer message for new conversations
+   */
+  static async getPrivacyDisclaimer() {
+    return `🔒 **Privacy Notice & Data Protection**
+
+Hi! I'm Ka-Lias, your AI assistant for Barangay Lias. Before we start, please read this important privacy notice:
+
+**⚠️ DO NOT SHARE:**
+• Your full name, address, or personal details
+• Phone numbers, email addresses, or contact information  
+• Birth dates, ID numbers, or government IDs
+• Family member names or personal information
+• Sensitive documents or private matters
+
+**✅ I CAN HELP WITH:**
+• General barangay services and procedures
+• Document requirements and fees
+• Office hours and contact information
+• Government programs and announcements
+• Public information and guidelines
+
+**🛡️ Your Privacy:**
+Our conversation is logged for service improvement, but personal information is automatically removed for your protection. For matters requiring personal details, please visit our office.
+
+How can I help you with barangay services today?`
   }
 }
 

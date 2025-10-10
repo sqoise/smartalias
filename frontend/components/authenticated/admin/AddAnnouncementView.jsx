@@ -290,9 +290,9 @@ export default function AddAnnouncementView({ open, onClose, onSubmit, loading =
                   {/* Right Side - Status Badge and Clear Draft Button */}
                   <div className="flex items-center gap-2">
                     {/* Status Badge */}
-                    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">
+                    <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded bg-yellow-500 text-white">
                       <i className={`mr-1.5 ${
-                        isDraft ? 'bi bi-file-earmark-check' : 'bi bi-file-earmark-plus'
+                        isDraft ? 'bi bi-pencil-fill' : 'bi bi-pencil-fill'
                       }`} />
                       {isDraft ? 'Draft Saved' : 'Unpublished'}
                     </span>

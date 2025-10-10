@@ -18,14 +18,21 @@ class AIService {
     
     // Initialize providers
     this.providers = {};
-    this.initializeProviders();
     
-    logger.info('AI Service initialized', {
-      enabled: this.enabled,
-      primary: this.primaryProvider,
-      fallbacks: this.fallbackProviders,
-      availableProviders: Object.keys(this.providers)
-    });
+    try {
+      this.initializeProviders();
+      
+      logger.info('AI Service initialized', {
+        enabled: this.enabled,
+        primary: this.primaryProvider,
+        fallbacks: this.fallbackProviders,
+        availableProviders: Object.keys(this.providers)
+      });
+    } catch (error) {
+      logger.error('Error during AI Service initialization:', error);
+      this.enabled = false;
+      this.providers = {};
+    }
   }
 
   /**
@@ -252,16 +259,42 @@ class AIService {
       })
       .join('\n\n');
 
-    // Format recent conversation history
+    // Format recent conversation history (clean masked data for AI context)
     const chatContext = chatHistory.slice(-3)
-      .map(msg => `${msg.message_type.toUpperCase()}: ${msg.message_text}`)
+      .map(msg => {
+        let cleanMessage = msg.message_text
+        // Convert our privacy masks to AI-friendly placeholders
+        cleanMessage = cleanMessage
+          .replace(/\*\*\*PHONE\*\*\*/g, '[contact number]')
+          .replace(/\*\*\*EMAIL\*\*\*/g, '[email address]')
+          .replace(/\*\*\*DATE\*\*\*/g, '[date]')
+          .replace(/\*\*\*ADDRESS\*\*\*/g, '[address]')
+          .replace(/\*\*\*ID\*\*\*/g, '[ID number]')
+          .replace(/\*\*\*NUMBER\*\*\*/g, '[number]')
+          .replace(/\*\*\*NAME\*\*\*/g, '[name]')
+          .replace(/\*\*\*CONTACT\*\*\*/g, '[contact info]')
+        
+        return `${msg.message_type.toUpperCase()}: ${cleanMessage}`
+      })
       .join('\n');
 
-    // Format similar successful conversations
+    // Format similar successful conversations (clean masked data)
     const similarContext = similarQuestions
       .filter(q => q.was_helpful === 1 && q.bot_response)
       .slice(0, 3)
-      .map(q => `Similar Q: ${q.question}\nWorked Response: ${q.bot_response}`)
+      .map(q => {
+        let cleanQuestion = q.question
+          .replace(/\*\*\*PHONE\*\*\*/g, '[contact number]')
+          .replace(/\*\*\*EMAIL\*\*\*/g, '[email address]')
+          .replace(/\*\*\*DATE\*\*\*/g, '[date]')
+          .replace(/\*\*\*ADDRESS\*\*\*/g, '[address]')
+          .replace(/\*\*\*ID\*\*\*/g, '[ID number]')
+          .replace(/\*\*\*NUMBER\*\*\*/g, '[number]')
+          .replace(/\*\*\*NAME\*\*\*/g, '[name]')
+          .replace(/\*\*\*CONTACT\*\*\*/g, '[contact info]')
+        
+        return `Similar Q: ${cleanQuestion}\nWorked Response: ${q.bot_response}`
+      })
       .join('\n\n');
 
     // Format current document catalog with fees
@@ -298,6 +331,12 @@ class AIService {
 
     // Enhanced unified barangay assistance system prompt with layered knowledge sources
     return `You are Ka-Lias, a helpful AI assistant for Barangay Lias, Marilao, Bulacan, Philippines.
+
+PRIVACY PROTECTION RULES:
+- NEVER request, store, or process personal information from users
+- If you see [contact number], [email address], [date], [address], [ID number], [number], [name], or [contact info] in context, these represent redacted personal data - do not reference them specifically
+- Always direct users to visit the barangay office for matters requiring personal information
+- Focus only on providing general public information and services
 
 ${layeredContext}USER QUESTION: ${query}
 
@@ -473,5 +512,19 @@ If information is missing or varies locally, clearly state the limitation and gu
   }
 }
 
-// Export singleton instance
-module.exports = new AIService();
+// Export singleton instance with error handling
+let aiServiceInstance;
+try {
+  aiServiceInstance = new AIService();
+} catch (error) {
+  console.error('Failed to initialize AI Service:', error.message);
+  // Create a disabled AI service instance
+  aiServiceInstance = {
+    enabled: false,
+    generateAnswer: async () => { throw new Error('AI Service is disabled due to initialization error'); },
+    buildPrompt: () => '',
+    providers: {}
+  };
+}
+
+module.exports = aiServiceInstance;
