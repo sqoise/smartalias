@@ -107,11 +107,57 @@ class ModernDocxService {
     const fee = Number(residentData.fee) || 0
 
     // Return data for specific placeholders only
+    // Parse details if provided (handle multiple formats)
+    let parsedDetails = {}
+    
+    if (residentData.details) {
+      try {
+        // Handle different data types
+        if (typeof residentData.details === 'string') {
+          // Handle empty string
+          if (residentData.details.trim() === '') {
+            parsedDetails = {}
+          } else {
+            parsedDetails = JSON.parse(residentData.details)
+          }
+        } else if (typeof residentData.details === 'object' && residentData.details !== null) {
+          parsedDetails = residentData.details
+        }
+        
+        console.log('Successfully parsed details:', parsedDetails)
+      } catch (error) {
+        console.warn('Could not parse details JSON:', error)
+        console.warn('Original details value:', residentData.details)
+        parsedDetails = {}
+      }
+    }
+
+    // Calculate age if birth_date is provided
+    let age = ''
+    if (residentData.birth_date) {
+      const birthDate = new Date(residentData.birth_date)
+      const today = new Date()
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--
+      }
+      
+      // Format age with "years old" suffix
+      age = calculatedAge > 0 ? `${calculatedAge} years old` : ''
+    }
+
     return {
       // Name components
       'FIRSTNAME': firstName.toUpperCase(),
       'MI': middleInitial,
       'LASTNAME': lastName.toUpperCase(),
+      'FULLNAME': `${firstName.toUpperCase()} ${middleInitial ? middleInitial + ' ' : ''}${lastName.toUpperCase()}`.trim(),
+      
+      // Personal information
+      'AGE': age,
+      'STATUS': (residentData.civil_status || '').toUpperCase(),
       
       // Address
       'ADDRESS': residentData.address || 'Lias, Marilao, Bulacan',
@@ -124,7 +170,15 @@ class ModernDocxService {
       // Document details
       'REQID': residentData.documentId || 'N/A',
       'DATE': currentDate,
-      'FEE': fee.toFixed(2)
+      'FEE': fee.toFixed(2),
+      
+      // Document-specific details
+      'DEROGATORY': '[INPUT DEROGATORY]', // Default placeholder text for admin to manually input
+      'BUSINESSNAME': (parsedDetails.business_name || '').toUpperCase(),
+      'BUSINESSADDRESS': (parsedDetails.business_address || '').toUpperCase(),
+      
+      // Purpose (commonly used)
+      'PURPOSE': (residentData.purpose || '').toUpperCase()
     }
   }
 

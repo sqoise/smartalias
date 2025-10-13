@@ -159,6 +159,65 @@ class Validator {
     }
   }
 
+  // Validate business name field
+  static validateBusinessName(businessName) {
+    const errors = []
+    
+    if (businessName !== null && businessName !== undefined && businessName !== '') {
+      if (typeof businessName !== 'string') {
+        errors.push('Business name must be a string')
+      } else {
+        const trimmed = businessName.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric characters, spaces, and basic punctuation (similar to notes)
+          const businessNameRegex = /^[a-zA-Z0-9\s.,!?()-]+$/
+          if (!businessNameRegex.test(trimmed)) {
+            errors.push('Business name can only contain letters, numbers, spaces, and basic punctuation (.,!?()-)')
+          }
+          
+          if (trimmed.length > 200) {
+            errors.push('Business name must not exceed 200 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate address field with more special characters allowed
+  static validateAddress(address) {
+    const errors = []
+    
+    if (address !== null && address !== undefined && address !== '') {
+      if (typeof address !== 'string') {
+        errors.push('Address must be a string')
+      } else {
+        const trimmed = address.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric, spaces, and common address characters
+          // Including: period, comma, apostrophe, hyphen, slash, hash, parentheses, colon
+          const addressRegex = /^[a-zA-Z0-9\s.,'\-\/#():]+$/
+          if (!addressRegex.test(trimmed)) {
+            errors.push('Address can only contain letters, numbers, spaces, and common address characters (.,\'-/#():)')
+          }
+          
+          if (trimmed.length > 300) {
+            errors.push('Address must not exceed 300 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // Validate resident data
   static validateResident(data) {
     const errors = []

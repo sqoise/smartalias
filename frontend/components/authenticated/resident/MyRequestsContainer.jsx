@@ -30,92 +30,9 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
   // Load requests on component mount
   useEffect(() => {
     loadData()
-    // Temporarily add sample data for testing
-    setSampleData()
   }, [])
 
-  const setSampleData = () => {
-    const sampleRequests = [
-      {
-        id: 1,
-        documentId: 1,
-        document: 'Barangay Certificate',
-        purpose: 'For employment requirements',
-        status: 'completed',
-        requestDate: '2024-10-01T10:00:00Z',
-        completedDate: '2024-10-05T14:30:00Z',
-        notes: 'Please bring valid ID for pickup',
-        remarks: null,
-        fee: 50.00,
-        residentName: 'John Doe',
-        processedBy: 'Admin Staff'
-      },
-      {
-        id: 2,
-        documentId: 2,
-        document: 'Barangay Clearance',
-        purpose: 'For business permit application',
-        status: 'rejected',
-        requestDate: '2024-10-08T09:15:00Z',
-        completedDate: null,
-        notes: 'Additional requirements needed',
-        remarks: 'Missing proof of residency. Please submit updated documents and reapply.',
-        fee: 100.00,
-        residentName: 'John Doe',
-        processedBy: null
-      },
-      {
-        id: 3,
-        documentId: 3,
-        document: 'Certificate of Indigency',
-        purpose: 'For medical assistance',
-        status: 'processing',
-        requestDate: '2024-10-09T11:00:00Z',
-        completedDate: null,
-        notes: 'Under review by social services',
-        remarks: null,
-        fee: 0.00,
-        residentName: 'John Doe',
-        processedBy: 'Social Worker'
-      },
-      {
-        id: 4,
-        documentId: 4,
-        document: 'Barangay ID',
-        purpose: 'For identification purposes',
-        status: 'ready',
-        requestDate: '2024-10-10T08:30:00Z',
-        completedDate: null,
-        notes: 'Ready for pickup at barangay office. Office hours: 8AM-5PM',
-        remarks: null,
-        fee: 25.00,
-        residentName: 'John Doe',
-        processedBy: 'Registration Staff'
-      },
-      {
-        id: 5,
-        documentId: 1,
-        document: 'Barangay Certificate',
-        purpose: 'For school enrollment',
-        status: 'pending',
-        requestDate: '2024-10-10T14:00:00Z',
-        completedDate: null,
-        notes: 'Urgent request for tomorrow',
-        remarks: null,
-        fee: 50.00,
-        residentName: 'John Doe',
-        processedBy: null
-      }
-    ]
-    
-    setRequests(sampleRequests)
-    setAvailableDocuments([
-      { id: 1, title: 'Barangay Certificate' },
-      { id: 2, title: 'Barangay Clearance' },
-      { id: 3, title: 'Certificate of Indigency' },
-      { id: 4, title: 'Barangay ID' }
-    ])
-  }
+
 
   const loadData = async () => {
     setLoading(true)

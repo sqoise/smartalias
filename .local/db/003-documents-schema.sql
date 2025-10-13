@@ -1,6 +1,11 @@
 -- ============================================
 -- MANUAL DATABASE UPDATE COMMAND
 -- ============================================
+-- FIXED: Foreign key constraint corrected to reference users table instead of residents table
+-- Run this if you have the wrong foreign key: 
+-- ALTER TABLE document_requests DROP CONSTRAINT IF EXISTS document_requests_resident_id_fkey;
+-- ALTER TABLE document_requests ADD CONSTRAINT document_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+--
 -- If you have existing data with string status values, run these commands:
 -- 
 -- 1. Convert document_requests status from varchar to integer:
@@ -48,7 +53,7 @@ CREATE TABLE "public"."document_catalog" (
 -- Document Requests table (Service Management)
 CREATE TABLE "public"."document_requests" (
     "id" SERIAL PRIMARY KEY,
-    "resident_id" integer NOT NULL,
+    "user_id" integer NOT NULL,
     "document_id" integer NOT NULL,
     "purpose" character varying(255),
     "remarks" text,
@@ -57,7 +62,8 @@ CREATE TABLE "public"."document_requests" (
     "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
     "processed_by" integer,
     "processed_at" timestamp DEFAULT NULL,
-    "notes" text
+    "notes" text,
+    "details" text DEFAULT NULL
 );
 
 -- Document Requests Logs table (History tracking)
@@ -81,11 +87,12 @@ CREATE INDEX idx_document_catalog_active ON public.document_catalog USING btree 
 CREATE INDEX idx_document_catalog_title ON public.document_catalog USING btree (title);
 
 -- Document Requests indexes
-CREATE INDEX idx_document_requests_resident_id ON public.document_requests USING btree (resident_id);
+CREATE INDEX idx_document_requests_user_id ON public.document_requests USING btree (user_id);
 CREATE INDEX idx_document_requests_document_id ON public.document_requests USING btree (document_id);
 CREATE INDEX idx_document_requests_status ON public.document_requests USING btree (status);
 CREATE INDEX idx_document_requests_created_at ON public.document_requests USING btree (created_at);
 CREATE INDEX idx_document_requests_processed_by ON public.document_requests USING btree (processed_by);
+CREATE INDEX idx_document_requests_details ON public.document_requests USING btree (details);
 
 -- Document Requests Logs indexes
 CREATE INDEX idx_document_requests_logs_request_id ON public.document_requests_logs USING btree (request_id);
@@ -96,10 +103,12 @@ CREATE INDEX idx_document_requests_logs_action_by ON public.document_requests_lo
 -- ============================================
 -- FOREIGN KEY CONSTRAINTS
 -- ============================================
+-- NOTE: Fixed foreign key constraint to reference users table (not residents table)
+-- The document_requests.user_id should reference users.id since we use user_id throughout the app
 
 -- Document Requests foreign keys
-ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_resident_id_fkey" 
-    FOREIGN KEY (resident_id) REFERENCES residents(id) ON DELETE CASCADE NOT DEFERRABLE;
+ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_user_id_fkey" 
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE NOT DEFERRABLE;
 ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_document_id_fkey" 
     FOREIGN KEY (document_id) REFERENCES document_catalog(id) ON DELETE RESTRICT NOT DEFERRABLE;
 ALTER TABLE ONLY "public"."document_requests" ADD CONSTRAINT "document_requests_processed_by_fkey" 
@@ -135,7 +144,7 @@ COMMENT ON COLUMN "public"."document_catalog"."updated_at" IS 'Last modification
 
 -- Document Requests Table Comments
 COMMENT ON COLUMN "public"."document_requests"."id" IS 'Primary key - unique identifier for document requests';
-COMMENT ON COLUMN "public"."document_requests"."resident_id" IS 'Links to residents table - who requested the document';
+COMMENT ON COLUMN "public"."document_requests"."user_id" IS 'Links to users table - who requested the document';
 COMMENT ON COLUMN "public"."document_requests"."document_id" IS 'Links to document_catalog table - what document type was requested';
 COMMENT ON COLUMN "public"."document_requests"."purpose" IS 'Free text - why the resident needs this document';
 COMMENT ON COLUMN "public"."document_requests"."remarks" IS 'Internal staff/admin notes - processing details, rejection reasons, special instructions';
@@ -145,6 +154,7 @@ COMMENT ON COLUMN "public"."document_requests"."updated_at" IS 'Last status chan
 COMMENT ON COLUMN "public"."document_requests"."processed_by" IS 'Which admin/staff user processed/completed the request';
 COMMENT ON COLUMN "public"."document_requests"."processed_at" IS 'When the request was completed/processed';
 COMMENT ON COLUMN "public"."document_requests"."notes" IS 'Additional information or special requests from the resident';
+COMMENT ON COLUMN "public"."document_requests"."details" IS 'Document-specific additional fields as simple JSON string (e.g., {"business_name":"My Store","business_address":"123 Main St"})';
 
 -- Document Requests Logs Table Comments
 COMMENT ON COLUMN "public"."document_requests_logs"."id" IS 'Primary key - unique identifier for log entries';
@@ -162,69 +172,14 @@ COMMENT ON COLUMN "public"."document_requests_logs"."created_at" IS 'When this a
 
 -- Insert Document Catalog
 INSERT INTO "document_catalog" ("title", "description", "filename", "fee", "is_active") VALUES
-('Electrical Permit', 'Permit required for electrical installations and repairs in residential or commercial properties.', 'electrical_permit_template.docx', 1000.00, 1),
+('Electrical Permit', 'Permit required for electrical installations and repairs in residential or commercial properties.', 'electrical_permit_template.docx', 500.00, 1),
 ('Fence Permit', 'Authorization to construct fences around residential or commercial properties within barangay jurisdiction.', 'fence_permit_template.docx', 500.00, 1),
-('Excavation Permit', 'Permit for excavation activities including digging, construction foundations, and land development.', 'excavation_permit_template.docx', 500.00, 0),
-('Barangay Clearance', 'Certificate indicating no pending cases or issues in the barangay. Required for employment and various transactions.', 'barangay_clearance_template.docx', 100.00, 0),
-('Certificate of Residency', 'Official certificate proving residency within the barangay. Required for school enrollment and government transactions.', 'certificate_of_residency_template.docx', 1000.00, 0),
-('Certificate of Good Moral', 'Character reference certificate from barangay officials attesting to good moral standing in the community.', 'good_moral_template.docx', 500.00, 0),
-('Certificate of Indigency (Medical)', 'Document certifying indigent status specifically for medical assistance and healthcare support programs.', 'indigency_medical_template.docx', 0.00, 0),
-('Certificate of Indigency (Financial)', 'Document certifying indigent status for financial assistance and social services programs.', 'indigency_financial_template.docx', 0.00, 0),
-('Business Permit Clearance', 'Barangay clearance required for small business operations and business permit applications.', 'business_permit_template.docx', 1000.00, 0);
+('Excavation Permit', 'Permit for excavation activities including digging, construction foundations, and land development.', 'excavation_permit_template.docx', 500.00, 1),
+('Barangay Clearance', 'Certificate indicating no pending cases or issues in the barangay. Required for employment and various transactions.', 'barangay_clearance_template.docx', 50.00, 1),
+('Certificate of Indigency (Medical)', 'Document certifying indigent status specifically for medical assistance and healthcare support programs.', 'indigency_medical_template.docx', 0.00, 1),
+('Certificate of Indigency (Financial)', 'Document certifying indigent status for financial assistance and social services programs.', 'indigency_financial_template.docx', 0.00, 1),
+('Business Permit Clearance', 'Barangay clearance required for small business operations and business permit applications.', 'business_permit_template.docx', 0.00, 1);
 
--- Insert Sample Document Requests (only if residents exist)
-INSERT INTO "document_requests" ("resident_id", "document_id", "purpose", "notes", "status") 
-SELECT 
-    r.id as resident_id,
-    dc.id as document_id,
-    CASE 
-        WHEN dc.title = 'Barangay Clearance' THEN 'Employment requirement'
-        WHEN dc.title = 'Certificate of Residency' THEN 'School enrollment'
-        WHEN dc.title = 'Business Permit Clearance' THEN 'Small business registration'
-        ELSE 'General purpose'
-    END as purpose,
-    CASE 
-        WHEN dc.title = 'Certificate of Indigency (Medical)' THEN 'Need for hospital bills assistance'
-        WHEN dc.title = 'Certificate of Good Moral' THEN 'Required for scholarship application'
-        ELSE NULL
-    END as notes,
-    CASE 
-        WHEN dc.id % 3 = 0 THEN 4
-        WHEN dc.id % 3 = 1 THEN 1
-        ELSE 0
-    END as status
-FROM residents r
-CROSS JOIN document_catalog dc
-WHERE r.id <= 3 AND dc.id <= 5  -- Limit sample data
-LIMIT 10;
-
--- Insert Sample Document Requests Logs (audit trail)
-INSERT INTO "document_requests_logs" ("request_id", "action", "old_status", "new_status", "action_by", "action_notes")
-SELECT 
-    dr.id as request_id,
-    'created' as action,
-    NULL as old_status,
-    0 as new_status,
-    dr.resident_id as action_by,
-    'Document request submitted by resident' as action_notes
-FROM document_requests dr
-WHERE dr.id <= 5;
-
--- Add some status change logs
-INSERT INTO "document_requests_logs" ("request_id", "action", "old_status", "new_status", "action_by", "action_notes")
-SELECT 
-    dr.id as request_id,
-    'status_changed' as action,
-    0 as old_status,
-    dr.status as new_status,
-    1 as action_by,  -- Assuming admin user ID 1
-    CASE 
-        WHEN dr.status = 1 THEN 'Request approved and now being processed'
-        WHEN dr.status = 4 THEN 'Document ready for pickup'
-        ELSE 'Status updated'
-    END as action_notes
-FROM document_requests dr 
-WHERE dr.status != 0 AND dr.id <= 5;
 
 -- Reset sequences
 SELECT setval('document_catalog_id_seq', (SELECT MAX(id) FROM document_catalog));

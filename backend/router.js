@@ -25,6 +25,7 @@ const AnnouncementRepository = require('./repositories/AnnouncementRepository')
 const DashboardRepository = require('./repositories/DashboardRepository')
 const ChatbotRepository = require('./repositories/ChatbotRepository')
 const DocumentRequestRepository = require('./repositories/DocumentRequestRepository')
+const DocumentDetails = require('./utils/documentDetails')
 const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
@@ -1802,15 +1803,11 @@ router.post('/document-requests/search', authenticateToken, async (req, res) => 
       sort_direction = 'desc'
     } = req.body
     
-    // For residents (role 3), get their resident_id from the residents table
-    let residentId = null
+    // For residents (role 3), filter by user_id directly (not resident_id)
+    let filterUserId = null
     if (role === 3) {
-      const resident = await ResidentRepository.findByUserId(userId)
-      if (!resident) {
-        logger.error('No resident found for user in search', { userId })
-        return ApiResponse.error(res, 'Resident profile not found', 404)
-      }
-      residentId = resident.id
+      filterUserId = userId
+      logger.info('Document search for resident', { userId, role })
     }
     
     // Prepare filters for repository
@@ -1820,7 +1817,7 @@ router.post('/document-requests/search', authenticateToken, async (req, res) => 
       search,
       date_range,
       role: role,
-      residentId: residentId  // Use the actual resident_id from residents table
+      userId: filterUserId  // Use user_id for residents (direct filtering)
     }
     
     // Prepare pagination
@@ -1865,7 +1862,7 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
   try {
     // Handle both legacy (id) and new (userId) token structures
     const userId = req.user.userId || req.user.id
-    const { document_id, purpose, notes } = req.body
+    const { document_id, purpose, notes, details } = req.body
 
     // Validate user ID
     if (!userId) {
@@ -1897,6 +1894,20 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
     }
     const sanitizedNotes = notes ? Validator.sanitizeInput(notes) : null
 
+    // Validate and sanitize details field (simple approach)
+    let sanitizedDetails = null
+    if (details) {
+      // Clean and validate details
+      const sanitizationResult = DocumentDetails.sanitizeDetails(details)
+      
+      // Check for validation errors
+      if (sanitizationResult.validationErrors.length > 0) {
+        return ApiResponse.error(res, sanitizationResult.validationErrors.join(', '), 400)
+      }
+      
+      sanitizedDetails = sanitizationResult.cleaned
+    }
+
     // Get resident_id from user_id (residents table has user_id that links to users table)
     const resident = await ResidentRepository.findByUserId(userId)
     if (!resident) {
@@ -1911,18 +1922,33 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
       return ApiResponse.error(res, 'Invalid document type or document not available', 400)
     }
 
-    // Check if resident has pending/processing request for same document type (use repository method)
-    const hasExistingRequest = await DocumentRequestRepository.hasExistingRequest(residentId, documentId)
+    // Get document type for details validation
+    const documentInfo = await DocumentRequestRepository.getDocumentById(documentId)
+    if (!documentInfo) {
+      return ApiResponse.error(res, 'Document type not found', 404)
+    }
+
+    // Validate details specific to document type
+    if (sanitizedDetails) {
+      const detailsValidation = DocumentDetails.validateDetails(documentInfo.title, sanitizedDetails)
+      if (!detailsValidation.isValid) {
+        return ApiResponse.error(res, detailsValidation.errors.join(', '), 400)
+      }
+    }
+
+    // Check if user has pending/processing request for same document type (use repository method)
+    const hasExistingRequest = await DocumentRequestRepository.hasExistingRequest(userId, documentId)
     if (hasExistingRequest) {
       return ApiResponse.error(res, 'You already have a pending or processing request for this document type. Please wait for it to be completed before submitting a new request.', 400)
     }
 
-    // Create new request using repository (using resident_id, not user_id)
+    // Create new request using repository (using user_id)
     const newRequest = await DocumentRequestRepository.createRequest(
-      residentId, 
+      userId, 
       documentId, 
       sanitizedPurpose, 
-      sanitizedNotes
+      sanitizedNotes,
+      sanitizedDetails
     )
 
     // Log the request creation using repository (use integer status: 0 = pending)
@@ -2405,7 +2431,7 @@ router.get('/document-requests/pending', authenticateToken, requireStaffOrAdmin,
     const query = `
       SELECT 
         dr.id,
-        dr.resident_id,
+        dr.user_id,
         dr.document_id,
         dr.purpose,
         dr.remarks,
@@ -2424,7 +2450,7 @@ router.get('/document-requests/pending', authenticateToken, requireStaffOrAdmin,
           ELSE false 
         END as is_urgent
       FROM document_requests dr
-      JOIN residents r ON dr.resident_id = r.id
+      JOIN residents r ON dr.user_id = r.user_id
       JOIN document_catalog dc ON dr.document_id = dc.id
       WHERE dr.status = 0
       ORDER BY ${orderBy}

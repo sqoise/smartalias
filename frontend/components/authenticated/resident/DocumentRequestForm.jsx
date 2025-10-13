@@ -6,6 +6,7 @@ import CustomSelect from '../../common/CustomSelect'
 import Modal from '../../common/Modal'
 import { PURPOSES, getPurposeOptions } from '../../../lib/constants'
 import { ApiClient } from '../../../lib/apiClient'
+import { hasDetailFields, getDetailFields, validateDetails, validateDetailField, validateNotesField } from '../../../lib/documentDetails'
 
 export default function DocumentRequestForm({ 
   isOpen = false,
@@ -16,7 +17,8 @@ export default function DocumentRequestForm({
 }) {
   const [formData, setFormData] = useState({
     purpose: '',
-    notes: ''
+    notes: '',
+    details: {}
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -31,7 +33,8 @@ export default function DocumentRequestForm({
       setLoading(true)
       setFormData({
         purpose: '',
-        notes: ''
+        notes: '',
+        details: {}
       })
       setErrors({})
       
@@ -53,11 +56,11 @@ export default function DocumentRequestForm({
       newErrors.purpose = 'Purpose is required'
     }
 
-    // Validate notes field for alphanumeric characters only
+    // Validate notes field format at submit time
     if (formData.notes.trim()) {
-      const alphanumericRegex = /^[a-zA-Z0-9\s.,!?()-]+$/
-      if (!alphanumericRegex.test(formData.notes.trim())) {
-        newErrors.notes = 'Notes can only contain letters, numbers, spaces, and basic punctuation (.,!?()-)'
+      const notesValidation = validateNotesField(formData.notes)
+      if (!notesValidation.isValid) {
+        newErrors.notes = notesValidation.message
       }
     }
 
@@ -68,16 +71,43 @@ export default function DocumentRequestForm({
       }
     }
 
+    // Validate details fields if document requires them
+    if (document?.title && hasDetailFields(document.title)) {
+      const detailsValidation = validateDetails(document.title, formData.details)
+      if (!detailsValidation.isValid) {
+        Object.assign(newErrors, detailsValidation.errors)
+      }
+      
+      // Additional format validation for specific fields
+      Object.entries(formData.details).forEach(([fieldName, value]) => {
+        if (value && value.trim()) {
+          const fieldValidation = validateDetailField(fieldName, value)
+          if (!fieldValidation.isValid) {
+            newErrors[fieldName] = fieldValidation.message
+          }
+        }
+      })
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle notes input with alphanumeric validation
+  // Handle notes input - no validation, just update state
   const handleNotesChange = (e) => {
     const value = e.target.value
-    // Allow alphanumeric characters, spaces, and basic punctuation
-    const filteredValue = value.replace(/[^a-zA-Z0-9\s.,!?()-]/g, '')
-    setFormData({ ...formData, notes: filteredValue })
+    setFormData({ ...formData, notes: value })
+  }
+
+  // Handle details field changes - no validation, just update state
+  const handleDetailChange = (fieldName, value) => {
+    setFormData({
+      ...formData,
+      details: {
+        ...formData.details,
+        [fieldName]: value
+      }
+    })
   }
 
   const handleSubmit = (e) => {
@@ -100,13 +130,15 @@ export default function DocumentRequestForm({
       await onSubmit?.({
         document: document,
         purpose: formData.purpose.trim(),
-        notes: formData.notes.trim() || null
+        notes: formData.notes.trim() || null,
+        details: Object.keys(formData.details).length > 0 ? formData.details : null
       })
 
       // Reset form and close
       setFormData({
         purpose: '',
-        notes: ''
+        notes: '',
+        details: {}
       })
       setErrors({})
       onClose?.()
@@ -212,6 +244,48 @@ export default function DocumentRequestForm({
                 </p>
               </div>
 
+              {/* Additional Details Fields (Business Permit & Barangay Clearance only) */}
+              {document?.title && hasDetailFields(document.title) && (
+                <div>
+                  <div className="space-y-4">
+                    {Object.entries(getDetailFields(document.title)).map(([fieldName, fieldConfig]) => (
+                      <div key={fieldName}>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {fieldConfig.label}
+                          {fieldConfig.required && <span className="text-red-500"> *</span>}
+                        </label>
+                        {fieldConfig.type === 'textarea' ? (
+                          <textarea
+                            value={formData.details[fieldName] || ''}
+                            onChange={(e) => handleDetailChange(fieldName, e.target.value)}
+                            placeholder={fieldConfig.placeholder}
+                            rows={3}
+                            className={`w-full px-4 py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors min-h-[44px] ${
+                              errors[fieldName] ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            style={{ fontSize: '16px' }}
+                          />
+                        ) : (
+                          <input
+                            type={fieldConfig.type}
+                            value={formData.details[fieldName] || ''}
+                            onChange={(e) => handleDetailChange(fieldName, e.target.value)}
+                            placeholder={fieldConfig.placeholder}
+                            className={`w-full px-4 py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-h-[44px] ${
+                              errors[fieldName] ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            style={{ fontSize: '16px' }}
+                          />
+                        )}
+                        {errors[fieldName] && (
+                          <p className="text-xs text-red-600 mt-1">{errors[fieldName]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Processing Information */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -261,6 +335,15 @@ export default function DocumentRequestForm({
               {formData.notes && (
                 <div><strong>Notes:</strong> {formData.notes}</div>
               )}
+              {/* Show detail fields inline */}
+              {Object.entries(formData.details).map(([key, value]) => {
+                const fieldConfig = getDetailFields(document.title)[key]
+                return value && (
+                  <div key={key}>
+                    <strong>{fieldConfig?.label || key}:</strong> {value}
+                  </div>
+                )
+              })}
               {document.fee !== undefined && (
                 <div><strong>Fee:</strong> {!document.fee || document.fee === 0 ? 'Free' : `₱${Number(document.fee).toFixed(2)} (Payable on pickup)`}</div>
               )}

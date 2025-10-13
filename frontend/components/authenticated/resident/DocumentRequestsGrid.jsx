@@ -108,7 +108,8 @@ export default function DocumentRequestsGrid({ toastRef }) {
         document_id: requestData.document.id,
         document_type: requestData.document.title,
         purpose: requestData.purpose.trim(),
-        notes: requestData.notes ? requestData.notes.trim() : null
+        notes: requestData.notes ? requestData.notes.trim() : null,
+        details: requestData.details
       })
 
       // Submit document request via API
@@ -118,7 +119,8 @@ export default function DocumentRequestsGrid({ toastRef }) {
           document_id: requestData.document.id,
           document_type: requestData.document.title,
           purpose: requestData.purpose.trim(),
-          notes: requestData.notes ? requestData.notes.trim() : null
+          notes: requestData.notes ? requestData.notes.trim() : null,
+          details: requestData.details // Include details for document-specific fields
         })
       })
       

@@ -87,14 +87,15 @@ class DocumentRequestRepository {
   /**
    * Create new document request
    */
-  static async createRequest(residentId, documentId, purpose, notes = null) {
+  static async createRequest(userId, documentId, purpose, notes = null, details = null) {
     try {
       const query = `
-        INSERT INTO document_requests (resident_id, document_id, purpose, notes, status, created_at)
-        VALUES ($1, $2, $3, $4, 0, CURRENT_TIMESTAMP)
+        INSERT INTO document_requests (user_id, document_id, purpose, notes, details, status, created_at)
+        VALUES ($1, $2, $3, $4, $5, 0, CURRENT_TIMESTAMP)
         RETURNING id, created_at
       `
-      const result = await db.query(query, [residentId, documentId, purpose.trim(), notes?.trim() || null])
+      const detailsJson = details ? JSON.stringify(details) : null
+      const result = await db.query(query, [userId, documentId, purpose.trim(), notes?.trim() || null, detailsJson])
       return result.rows[0]
     } catch (error) {
       logger.error('DocumentRequestRepository.createRequest error:', error)
@@ -105,13 +106,13 @@ class DocumentRequestRepository {
   /**
    * Check for existing pending/processing requests
    */
-  static async hasExistingRequest(residentId, documentId) {
+  static async hasExistingRequest(userId, documentId) {
     try {
       const query = `
         SELECT id, status FROM document_requests 
-        WHERE resident_id = $1 AND document_id = $2 AND status IN (0, 1)
+        WHERE user_id = $1 AND document_id = $2 AND status IN (0, 1)
       `
-      const result = await db.query(query, [residentId, documentId])
+      const result = await db.query(query, [userId, documentId])
       return result.rows.length > 0
     } catch (error) {
       logger.error('DocumentRequestRepository.hasExistingRequest error:', error)
@@ -122,12 +123,12 @@ class DocumentRequestRepository {
   /**
    * Get document request by ID with resident and document details
    */
-  static async getRequestById(requestId, residentId = null) {
+  static async getRequestById(requestId, userId = null) {
     try {
       let query = `
         SELECT 
           dr.id,
-          dr.resident_id,
+          dr.user_id,
           CONCAT(r.first_name, ' ', r.last_name) as resident_name,
           r.address,
           r.birth_date,
@@ -138,6 +139,7 @@ class DocumentRequestRepository {
           dc.fee,
           dr.purpose,
           dr.notes,
+          dr.details,
           dr.remarks,
           dr.status,
           dr.created_at,
@@ -155,17 +157,17 @@ class DocumentRequestRepository {
             ELSE 'unknown'
           END as status_text
         FROM document_requests dr
-        JOIN residents r ON dr.resident_id = r.id
+        JOIN residents r ON dr.user_id = r.user_id
         JOIN document_catalog dc ON dr.document_id = dc.id
         WHERE dr.id = $1
       `
 
       let queryParams = [requestId]
 
-      // If residentId is provided, add resident filtering
-      if (residentId !== null) {
-        query += ' AND dr.resident_id = $2'
-        queryParams.push(residentId)
+      // If userId is provided, add user filtering
+      if (userId !== null) {
+        query += ' AND dr.user_id = $2'
+        queryParams.push(userId)
       }
 
       const result = await db.query(query, queryParams)
@@ -260,7 +262,8 @@ class DocumentRequestRepository {
   static async searchRequests(filters = {}, pagination = { page: 1, limit: 25 }, sorting = {}) {
     try {
       const { 
-        residentId = null, 
+        residentId = null,
+        userId = null,  // Add userId for direct user filtering 
         status = null, 
         documentType = null, 
         search = null, 
@@ -276,8 +279,13 @@ class DocumentRequestRepository {
 
       // Role-based filtering
       if (residentId) {
-        whereConditions.push(`dr.resident_id = $${paramIndex}`)
+        whereConditions.push(`dr.user_id = $${paramIndex}`)
         queryParams.push(residentId)
+        paramIndex++
+      } else if (userId) {
+        // Direct user filtering for residents 
+        whereConditions.push(`dr.user_id = $${paramIndex}`)
+        queryParams.push(userId)
         paramIndex++
       }
 
@@ -370,7 +378,7 @@ class DocumentRequestRepository {
       const query = `
         SELECT 
           dr.id,
-          dr.resident_id,
+          dr.user_id,
           CONCAT(r.first_name, ' ', r.last_name) as resident_name,
           r.address,
           dr.document_id,
@@ -378,6 +386,7 @@ class DocumentRequestRepository {
           dc.filename as template_filename,
           dr.purpose,
           dr.notes,
+          dr.details,
           dr.remarks,
           dr.status,
           dr.created_at,
@@ -396,7 +405,7 @@ class DocumentRequestRepository {
             ELSE 'unknown'
           END as status_text
         FROM document_requests dr
-        JOIN residents r ON dr.resident_id = r.id
+        JOIN residents r ON dr.user_id = r.user_id
         JOIN document_catalog dc ON dr.document_id = dc.id
         ${whereClause}
         ORDER BY ${actualSortField} ${sanitizedSortDirection}
@@ -409,7 +418,7 @@ class DocumentRequestRepository {
       const countQuery = `
         SELECT COUNT(*) as total
         FROM document_requests dr
-        JOIN residents r ON dr.resident_id = r.id
+        JOIN residents r ON dr.user_id = r.user_id
         JOIN document_catalog dc ON dr.document_id = dc.id
         ${whereClause}
       `
@@ -490,7 +499,7 @@ class DocumentRequestRepository {
           COUNT(*) as total,
           AVG(EXTRACT(EPOCH FROM (dr.processed_at - dr.created_at))/3600) FILTER (WHERE dr.processed_at IS NOT NULL) as avg_processing_hours,
           COUNT(*) FILTER (WHERE dr.created_at >= $${paramIndex}) as today_total,
-          COUNT(DISTINCT dr.resident_id) as unique_residents,
+          COUNT(DISTINCT dr.user_id) as unique_residents,
           COUNT(DISTINCT dc.id) as document_types_requested
         FROM document_requests dr
         JOIN document_catalog dc ON dr.document_id = dc.id

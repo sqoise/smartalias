@@ -211,13 +211,15 @@ export default function DocumentsContainer({
       setIsDownloadingDocument(true)
       
       const docxData = {
-        documentId: documentRequest.id,
+        documentId: documentRequest.id, // Keep formatted ID for document display
         documentType: documentRequest.documentType,
         residentName: documentRequest.residentName,
         address: documentRequest.address || 'Barangay [Your Barangay Name]',
         purpose: documentRequest.purpose,
         requestDate: documentRequest.requestDate,
-        fee: documentRequest.fee || 0 // Include fee from database
+        fee: documentRequest.fee || 0, // Include fee from database
+        requestId: documentRequest.rawId, // Use numeric rawId for database lookup
+        details: documentRequest.details // Include details if available
       }
       
       const response = await fetch(`${APP_CONFIG.API.BASE_URL}/documents/generate`, {
@@ -1287,9 +1289,6 @@ export default function DocumentsContainer({
                   <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                     <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
                   </th>
-                  <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                    <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
-                  </th>
                   <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                     <div className="w-12 h-3 bg-gray-200 rounded animate-pulse"></div>
                   </th>
@@ -1318,9 +1317,6 @@ export default function DocumentsContainer({
                     </td>
                     <td className="px-3 py-1 whitespace-nowrap w-40">
                       <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
-                    </td>
-                    <td className="px-3 py-1 whitespace-nowrap w-20">
-                      <div className="w-16 h-3 bg-gray-200 rounded animate-pulse"></div>
                     </td>
                     <td className="px-3 py-1 whitespace-nowrap w-24">
                       <div className="w-12 h-3 bg-gray-200 rounded animate-pulse"></div>
@@ -1384,12 +1380,6 @@ export default function DocumentsContainer({
                       Purpose
                     </th>
                     <th 
-                      onClick={() => handleSort('requestDate')}
-                      className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-20"
-                    >
-                      Date <SortIcon field="requestDate" />
-                    </th>
-                    <th 
                       onClick={() => handleSort('status')}
                       className="px-3 py-1 text-left text-xs font-semibold tracking-normal antialiased text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none transition-colors w-24"
                     >
@@ -1431,14 +1421,6 @@ export default function DocumentsContainer({
                       <td className="px-3 py-1 w-40">
                         <span className="text-xs font-medium tracking-normal antialiased text-gray-900 max-w-xs truncate" title={doc.purpose}>
                           {displayValue(doc.purpose)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-1 whitespace-nowrap w-20">
-                        <span className="text-xs font-medium tracking-normal antialiased text-gray-900">
-                          {new Date(doc.requestDate).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
                         </span>
                       </td>
                       <td className="px-3 py-1 whitespace-nowrap w-24">

@@ -177,11 +177,9 @@ export const DOCUMENT_TYPES = {
   'fence_permit': 'Fence Permit',
   'excavation_permit': 'Excavation Permit',
   'barangay_clearance': 'Barangay Clearance',
-  'certificate_of_residency': 'Certificate of Residency',
-  'certificate_of_good_moral': 'Certificate of Good Moral',
-  'certificate_of_indigency_medical': 'Certificate of Indigency (Medical)',
-  'certificate_of_indigency_financial': 'Certificate of Indigency (Financial)',
-  'business_permit_clearance': 'Business Permit Clearance'
+  'indigency_medical': 'Certificate of Indigency (Medical)',
+  'indigency_financial': 'Certificate of Indigency (Financial)',
+  'business_permit': 'Business Permit'
 }
 
 /**
@@ -193,11 +191,9 @@ export const DOCUMENT_TYPE_KEYS = {
   'Fence Permit': 'fence_permit',
   'Excavation Permit': 'excavation_permit',
   'Barangay Clearance': 'barangay_clearance',
-  'Certificate of Residency': 'certificate_of_residency',
-  'Certificate of Good Moral': 'certificate_of_good_moral',
-  'Certificate of Indigency (Medical)': 'certificate_of_indigency_medical',
-  'Certificate of Indigency (Financial)': 'certificate_of_indigency_financial',
-  'Business Permit Clearance': 'business_permit_clearance'
+  'Certificate of Indigency (Medical)': 'indigency_medical',
+  'Certificate of Indigency (Financial)': 'indigency_financial',
+  'Business Permit Clearance': 'business_permit'
 }
 
 /**
@@ -206,8 +202,12 @@ export const DOCUMENT_TYPE_KEYS = {
  */
 export const AVAILABLE_TEMPLATES = [
   'electrical_permit',
+  'fence_permit',
+  'excavation_permit',
+  'indigency_medical',
+  'indigency_financial',
+  'business_permit',
   'barangay_clearance',
-  'certificate_of_residency'
 ]
 
 /**
@@ -221,8 +221,6 @@ export const DOCUMENT_TYPE_OPTIONS = [
   { value: 'Fence Permit', label: 'Fence Permit' },
   { value: 'Excavation Permit', label: 'Excavation Permit' },
   { value: 'Barangay Clearance', label: 'Barangay Clearance' },
-  { value: 'Certificate of Residency', label: 'Certificate of Residency' },
-  { value: 'Certificate of Good Moral', label: 'Certificate of Good Moral' },
   { value: 'Certificate of Indigency (Medical)', label: 'Certificate of Indigency (Medical)' },
   { value: 'Certificate of Indigency (Financial)', label: 'Certificate of Indigency (Financial)' },
   { value: 'Business Permit Clearance', label: 'Business Permit Clearance' }
@@ -296,18 +294,6 @@ export const DOCUMENT_PURPOSE_OPTIONS = {
     'Business permit',
     'School enrollment',
     'Government transaction'
-  ],
-  'Certificate of Residency': [
-    'School enrollment',
-    'Employment requirement',
-    'Government transaction',
-    'Bank application'
-  ],
-  'Certificate of Good Moral': [
-    'Employment requirement',
-    'School application',
-    'Character reference',
-    'Legal purposes'
   ],
   'Certificate of Indigency (Medical)': [
     'Medical assistance',

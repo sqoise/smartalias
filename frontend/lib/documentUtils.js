@@ -143,6 +143,23 @@ export const getPurposeOptions = (documentType) => {
       'Business requirement',
       'Other'
     ],
+    'fence_permit': [
+      'Property boundary marking',
+      'Security and privacy',
+      'Livestock containment',
+      'Garden protection',
+      'Property development',
+      'Other'
+    ],
+    'excavation_permit': [
+      'Foundation construction',
+      'Septic tank installation',
+      'Water line installation',
+      'Utility connection',
+      'Drainage system',
+      'Swimming pool construction',
+      'Other'
+    ],
     'barangay_clearance': [
       'Employment requirement',
       'Business permit application',
@@ -151,31 +168,19 @@ export const getPurposeOptions = (documentType) => {
       'Government transaction',
       'Other'
     ],
-    'certificate_of_residency': [
-      'School enrollment',
-      'Government transaction',
-      'Employment requirement',
-      'Other'
-    ],
-    'certificate_of_good_moral': [
-      'Employment requirement',
-      'School application',
-      'Character reference',
-      'Other'
-    ],
-    'certificate_of_indigency_medical': [
+    'indigency_medical': [
       'Medical assistance',
       'Hospital discount',
       'Health insurance',
       'Other'
     ],
-    'certificate_of_indigency_financial': [
+    'indigency_financial': [
       'Financial assistance',
       'Educational grant',
       'Government program',
       'Other'
     ],
-    'business_permit_clearance': [
+    'business_permit': [
       'New business registration',
       'Business permit renewal',
       'Business expansion',

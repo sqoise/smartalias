@@ -201,7 +201,6 @@ Bot: "Sorry, I couldn't find an answer..."
 User: "documnets I can request"
 Bot: "You can request the following documents from Barangay Lias:
 1. Barangay Clearance (₱50.00)
-2. Certificate of Residency (₱40.00)
 ..."
 ```
 

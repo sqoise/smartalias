@@ -196,12 +196,6 @@ INSERT INTO faqs (category_id, question, answer, keywords, is_active, created_by
  'fees, cost, price, bayad, magkano, document',
  1, 1),
 
-((SELECT id FROM faq_categories WHERE category_name = 'Documents'), 
- 'What are the requirements for barangay clearance?', 
- 'For Barangay Clearance, please bring:\n• Valid government ID\n• Cedula (Community Tax Certificate)\n• Proof of residency\n• Processing fee: ₱50.00\n\nProcessing time: 1-2 working days',
- 'barangay clearance, requirements, ID, cedula, residency',
- 1, 1),
-
 -- Services Category
 ((SELECT id FROM faq_categories WHERE category_name = 'Services'), 
  'What services does the barangay offer?', 

@@ -11,8 +11,6 @@ const DOCUMENT_TYPES = {
   'fence_permit': 'Fence Permit',
   'excavation_permit': 'Excavation Permit',
   'barangay_clearance': 'Barangay Clearance',
-  'certificate_of_residency': 'Certificate of Residency',
-  'certificate_of_good_moral': 'Certificate of Good Moral',
   'certificate_of_indigency_medical': 'Certificate of Indigency (Medical)',
   'certificate_of_indigency_financial': 'Certificate of Indigency (Financial)',
   'business_permit_clearance': 'Business Permit Clearance'
@@ -26,8 +24,6 @@ const DOCUMENT_TYPE_KEYS = {
   'Fence Permit': 'fence_permit',
   'Excavation Permit': 'excavation_permit',
   'Barangay Clearance': 'barangay_clearance',
-  'Certificate of Residency': 'certificate_of_residency',
-  'Certificate of Good Moral': 'certificate_of_good_moral',
   'Certificate of Indigency (Medical)': 'certificate_of_indigency_medical',
   'Certificate of Indigency (Financial)': 'certificate_of_indigency_financial',
   'Business Permit Clearance': 'business_permit_clearance'

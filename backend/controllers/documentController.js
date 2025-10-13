@@ -45,7 +45,9 @@ const generatePDF = async (req, res) => {
       address,
       purpose,
       requestDate,
-      fee // Accept fee from request body
+      fee, // Accept fee from request body
+      details, // Include details for document-specific fields (derogatory info, business name, etc.)
+      requestId // Optional: if provided, fetch full request data from database
     } = req.body
 
     // Validate required fields
@@ -56,16 +58,39 @@ const generatePDF = async (req, res) => {
       })
     }
 
-    // Prepare resident data
+    // If requestId is provided, fetch full request data including details
+    let fullRequestData = null
+    if (requestId) {
+      fullRequestData = await DocumentRequestRepository.getRequestById(requestId)
+      if (!fullRequestData) {
+        return res.status(404).json({
+          success: false,
+          message: 'Document request not found'
+        })
+      }
+    }
+
+    // Prepare resident data (merge request data if available)
     const residentData = {
       documentId,
-      residentName,
-      address: address || 'Lias, Marilao, Bulacan',
-      purpose,
+      residentName: fullRequestData?.resident_name || residentName,
+      address: fullRequestData?.address || address || 'Lias, Marilao, Bulacan',
+      purpose: fullRequestData?.purpose || purpose,
       requestDate: requestDate || new Date().toISOString(),
-      documentType,
-      fee: fee || 0 // Pass fee from database (default to 0 if not provided)
+      documentType: fullRequestData?.document_type || documentType,
+      fee: fullRequestData?.fee || fee || 0, // Pass fee from database (default to 0 if not provided)
+      details: fullRequestData?.details || details || null, // Include details from DB or request body
+      birth_date: fullRequestData?.birth_date,
+      civil_status: fullRequestData?.civil_status
     }
+
+    // Debug log only for details to troubleshoot
+    if (documentType === 'Barangay Clearance' || documentType === 'Business Permit Clearance') {
+      console.log('Document generation for:', documentType)
+      console.log('Details from DB:', fullRequestData?.details)
+      console.log('Details from request:', details)
+      console.log('Final details:', residentData.details)
+    } 
 
     // Check if DOCX template exists and use modern service
     const templateExists = await modernDocxService.templateExists(documentType)
