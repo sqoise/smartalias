@@ -936,6 +936,20 @@ export default function DocumentsContainer({
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Request Date</label>
                 <p className="text-sm text-gray-900 mt-1">{formatDate(document.requestDate)}</p>
               </div>
+              {/* Rejected on: timestamp (only show for rejected status) */}
+              {document.status === 'rejected' && document.rejectedAt && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rejected on</label>
+                  <p className="text-sm text-gray-900 mt-1">{formatDate(document.rejectedAt)}</p>
+                </div>
+              )}
+              {/* Completed at: timestamp (only show for completed/claimed status) */}
+              {(document.status === 'completed' || document.status === 'claimed') && document.completedAt && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Completed at</label>
+                  <p className="text-sm text-gray-900 mt-1">{formatDate(document.completedAt)}</p>
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Notes</label>
                 <p className="text-sm text-gray-900 mt-1">{document.notes || '-'}</p>

@@ -84,7 +84,9 @@ export default function DocumentsPage() {
           notes: request.notes, // Include notes from request
           requestDate: request.created_at,
           status: request.status_text,
-          fee: request.fee || 0 // Document fee from catalog
+          fee: request.fee || 0, // Document fee from catalog
+          rejectedAt: request.rejected_at, // Timestamp when rejected (from logs)
+          completedAt: request.completed_at // Timestamp when completed (from logs)
         }))
       }
 
