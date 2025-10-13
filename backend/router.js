@@ -29,6 +29,9 @@ const SMSService = require('./services/smsService')
 const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
+// Import controllers
+const documentController = require('./controllers/documentController')
+
 // Import shared messages
 const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('./config/constants')
 const { USER_ROLES } = require('./config/constants')
@@ -1751,6 +1754,19 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, asy
 router.use('/upload', uploadRoutes)
 
 // ==========================================================================
+// PDF GENERATION ROUTES
+// ==========================================================================
+
+// POST /api/documents/generate - Generate filled DOCX document
+router.post('/documents/generate', authenticateToken, requireStaffOrAdmin, documentController.generatePDF)
+
+// GET /api/documents/templates - Get available templates
+router.get('/documents/templates', authenticateToken, documentController.getAvailableTemplates)
+
+// GET /api/documents/download-template/:documentType - Download DOCX template file
+router.get('/documents/download-template/:documentType', authenticateToken, documentController.downloadTemplate)
+
+// ==========================================================================
 // DOCUMENT REQUESTS ROUTES
 // ==========================================================================
 
@@ -1759,22 +1775,11 @@ router.get('/document-catalog', authenticateToken, async (req, res) => {
   try {
     const activeOnly = req.query.active_only !== 'false' // Default to true unless explicitly set to false
     
-    let query = `
-      SELECT id, title, description, fee, filename, is_active 
-      FROM document_catalog 
-    `
-    let params = []
+    const catalog = activeOnly 
+      ? await DocumentRequestRepository.getActiveCatalog()
+      : await DocumentRequestRepository.getAllCatalog()
     
-    if (activeOnly) {
-      query += `WHERE is_active = $1 `
-      params = [1]
-    }
-    
-    query += `ORDER BY title ASC`
-    
-    const catalog = await db.query(query, params)
-    
-    return ApiResponse.success(res, catalog.rows, 'Document catalog retrieved successfully')
+    return ApiResponse.success(res, catalog, 'Document catalog retrieved successfully')
   } catch (error) {
     logger.error('Error fetching document catalog:', error)
     return ApiResponse.serverError(res, 'Failed to retrieve document catalog')
@@ -1797,164 +1802,32 @@ router.post('/document-requests/search', authenticateToken, async (req, res) => 
       sort_direction = 'desc'
     } = req.body
     
-    let whereConditions = []
-    let queryParams = []
-    let paramIndex = 1
-
-    // Role-based filtering
-    if (role === USER_ROLES.RESIDENT) {
-      whereConditions.push(`dr.resident_id = $${paramIndex}`)
-      queryParams.push(parseInt(userId)) // Convert to integer for database compatibility
-      paramIndex++
+    // Prepare filters for repository
+    const filters = {
+      status,
+      document_type,
+      search,
+      date_range,
+      role: role,
+      userId: userId
     }
-
-    // Status filtering
-    if (status && status !== 'all') {
-      const statusMap = {
-        'pending': 0,
-        'processing': 1, 
-        'rejected': 2,
-        'ready': 3,
-        'claimed': 4
-      }
-      if (statusMap[status] !== undefined) {
-        whereConditions.push(`dr.status = $${paramIndex}`)
-        queryParams.push(statusMap[status])
-        paramIndex++
-      }
-    }
-
-    // Document type filtering
-    if (document_type && document_type !== 'all') {
-      whereConditions.push(`dc.title ILIKE $${paramIndex}`)
-      queryParams.push(`%${document_type}%`)
-      paramIndex++
-    }
-
-    // Search filtering (optimized for performance)
-    if (search && search.trim()) {
-      const searchTerm = search.trim()
-      whereConditions.push(`(
-        dr.id::text ILIKE $${paramIndex} OR
-        CONCAT(r.first_name, ' ', r.last_name) ILIKE $${paramIndex + 1} OR
-        dc.title ILIKE $${paramIndex + 2}
-      )`)
-      queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`)
-      paramIndex += 3
-    }
-
-    // Date range filtering (optimized)
-    if (date_range && date_range !== 'all') {
-      const now = new Date()
-      let dateFilter
-      if (date_range === '7days') {
-        dateFilter = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
-      } else if (date_range === '30days') {
-        dateFilter = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
-      } else if (date_range === '90days') {
-        dateFilter = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000))
-      }
-      
-      if (dateFilter) {
-        whereConditions.push(`dr.created_at >= $${paramIndex}`)
-        queryParams.push(dateFilter)
-        paramIndex++
-      }
-    }
-
-    // Build WHERE clause
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
-
-    // Validate and sanitize sort parameters
-    const allowedSortFields = ['created_at', 'status', 'document_type', 'resident_name', 'id']
-    const sanitizedSortField = allowedSortFields.includes(sort_field) ? sort_field : 'created_at'
-    const sanitizedSortDirection = sort_direction === 'asc' ? 'ASC' : 'DESC'
-
-    // Map sort fields to actual column names
-    const sortFieldMap = {
-      'created_at': 'dr.created_at',
-      'status': 'dr.status',
-      'document_type': 'dc.title',
-      'resident_name': 'resident_name',
-      'id': 'dr.id'
-    }
-
-    const actualSortField = sortFieldMap[sanitizedSortField]
-
-    // Pagination with limits
-    const maxLimit = 100
-    const sanitizedLimit = Math.min(Math.max(1, parseInt(limit)), maxLimit)
-    const sanitizedPage = Math.max(1, parseInt(page))
-    const offset = (sanitizedPage - 1) * sanitizedLimit
     
-    // Add pagination parameters
-    const limitParam = paramIndex
-    const offsetParam = paramIndex + 1
-    queryParams.push(sanitizedLimit, offset)
-
-      const query = `
-        SELECT 
-          dr.id,
-          dr.resident_id,
-          CONCAT(r.first_name, ' ', r.last_name) as resident_name,
-          dr.document_id,
-          dc.title as document_type,
-          dr.purpose,
-          dr.notes,
-          dr.remarks,
-          dr.status,
-          dr.created_at,
-          dr.updated_at,
-          dr.processed_by,
-          dr.processed_at,
-          dc.fee,
-          CASE 
-            WHEN dr.status = 0 THEN 'pending'
-            WHEN dr.status = 1 THEN 'processing'
-            WHEN dr.status = 2 THEN 'rejected'
-            WHEN dr.status = 3 THEN 'ready'
-            WHEN dr.status = 4 THEN 'claimed'
-            ELSE 'unknown'
-          END as status_text
-        FROM document_requests dr
-        JOIN residents r ON dr.resident_id = r.id
-        JOIN document_catalog dc ON dr.document_id = dc.id
-        ${whereClause}
-        ORDER BY ${actualSortField} ${sanitizedSortDirection}
-        LIMIT $${limitParam} OFFSET $${offsetParam}
-      `
-
-    const result = await db.query(query, queryParams)
-
-    // Get total count for pagination (optimized count query)
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM document_requests dr
-      JOIN residents r ON dr.resident_id = r.id
-      JOIN document_catalog dc ON dr.document_id = dc.id
-      ${whereClause}
-    `
+    // Prepare pagination
+    const pagination = {
+      page: Math.max(1, parseInt(page)),
+      limit: Math.min(Math.max(1, parseInt(limit)), 100) // Max 100 items per page
+    }
     
-    const countResult = await db.query(countQuery, queryParams.slice(0, -2))
-    const total = parseInt(countResult.rows[0].total)
-
-    return ApiResponse.success(res, {
-      requests: result.rows,
-      pagination: {
-        page: sanitizedPage,
-        limit: sanitizedLimit,
-        total,
-        totalPages: Math.ceil(total / sanitizedLimit)
-      },
-      filters: {
-        status,
-        document_type,
-        search,
-        date_range,
-        sort_field: sanitizedSortField,
-        sort_direction: sanitizedSortDirection
-      }
-    }, 'Document requests retrieved successfully')
+    // Prepare sorting
+    const sorting = {
+      field: sort_field,
+      direction: sort_direction
+    }
+    
+    // Use repository method
+    const result = await DocumentRequestRepository.searchRequests(filters, pagination, sorting)
+    
+    return ApiResponse.success(res, result, 'Document requests retrieved successfully')
 
   } catch (error) {
     logger.error('Error fetching document requests:', error)
@@ -2013,49 +1886,41 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
     }
     const sanitizedNotes = notes ? Validator.sanitizeInput(notes) : null
 
-    // Check if document exists and is active
-    const documentCheck = await db.query(
-      'SELECT id, title FROM document_catalog WHERE id = $1 AND is_active = $2',
-      [documentId, 1]
-    )
-
-    if (documentCheck.rows.length === 0) {
+    // Check if document exists and is active (use repository method)
+    const isDocumentActive = await DocumentRequestRepository.isDocumentActive(documentId)
+    if (!isDocumentActive) {
       return ApiResponse.error(res, 'Invalid document type or document not available', 400)
     }
 
-    // Check if resident has pending/processing request for same document type
-    const existingRequest = await db.query(`
-      SELECT id, status FROM document_requests 
-      WHERE resident_id = $1 AND document_id = $2 AND status IN (0, 1, 3)
-    `, [parseInt(userId), documentId])
-
-    if (existingRequest.rows.length > 0) {
-      const existingStatus = existingRequest.rows[0].status
-      const statusMessage = existingStatus === 0 ? 'pending approval' : 'currently being processed'
-      return ApiResponse.error(res, `You already have a request for this document that is ${statusMessage}. Please wait for it to be completed before submitting a new request.`, 400)
+    // Check if resident has pending/processing request for same document type (use repository method)
+    const hasExistingRequest = await DocumentRequestRepository.hasExistingRequest(parseInt(userId), documentId)
+    if (hasExistingRequest) {
+      return ApiResponse.error(res, 'You already have a pending or processing request for this document type. Please wait for it to be completed before submitting a new request.', 400)
     }
 
-    // Create new request
-    const newRequest = await db.query(`
-      INSERT INTO document_requests (resident_id, document_id, purpose, notes, status, created_at)
-      VALUES ($1, $2, $3, $4, 0, CURRENT_TIMESTAMP)
-      RETURNING id, created_at
-    `, [parseInt(userId), documentId, sanitizedPurpose, sanitizedNotes])
+    // Create new request using repository
+    const newRequest = await DocumentRequestRepository.createRequest(
+      parseInt(userId), 
+      documentId, 
+      sanitizedPurpose, 
+      sanitizedNotes
+    )
 
-    const requestId = newRequest.rows[0].id
+    // Log the request creation using repository (use integer status: 0 = pending)
+    await DocumentRequestRepository.logAction(
+      newRequest.id, 
+      'Request created by resident', 
+      null, 
+      0,  // pending status as integer
+      parseInt(userId)
+    )
 
-    // Log the request creation
-    await db.query(`
-      INSERT INTO document_request_logs (request_id, action, new_status, action_by, action_notes, created_at)
-      VALUES ($1, 'created', 'pending', $2, 'Document request submitted by resident', CURRENT_TIMESTAMP)
-    `, [requestId, parseInt(userId)])
-
-    logger.info(`Document request created: ID ${requestId} by resident ${userId}`)
+    logger.info(`Document request created: ID ${newRequest.id} by resident ${userId}`)
 
     return ApiResponse.success(res, {
-      id: requestId,
+      id: newRequest.id,
       status: 'pending',
-      created_at: newRequest.rows[0].created_at
+      created_at: newRequest.created_at
     }, 'Document request submitted successfully')
 
   } catch (error) {
@@ -2070,82 +1935,22 @@ router.get('/document-requests/:id', authenticateToken, async (req, res) => {
     const { id } = req.params
     const { role, userId } = req.user
 
-    let query = `
-      SELECT 
-        dr.id,
-        dr.resident_id,
-        CONCAT(r.first_name, ' ', r.last_name) as resident_name,
-        r.address,
-        r.birth_date,
-        r.civil_status,
-        dr.document_id,
-        dc.title as document_type,
-        dc.description as document_description,
-        dc.fee,
-        dr.purpose,
-        dr.notes,
-        dr.remarks,
-        dr.status,
-        dr.created_at,
-        dr.updated_at,
-        dr.processed_by,
-        dr.processed_at,
-        CASE 
-          WHEN dr.status = 0 THEN 'pending'
-          WHEN dr.status = 1 THEN 'processing'
-          WHEN dr.status = 2 THEN 'rejected'
-          WHEN dr.status = 3 THEN 'ready'
-          WHEN dr.status = 4 THEN 'claimed'
-          ELSE 'unknown'
-        END as status_text
-      FROM document_requests dr
-      JOIN residents r ON dr.resident_id = r.id
-      JOIN document_catalog dc ON dr.document_id = dc.id
-      WHERE dr.id = $1
-    `
+    // For residents, ensure they can only see their own requests
+    const residentId = role === USER_ROLES.RESIDENT ? userId : null
 
-    let queryParams = [id]
-
-    // If resident, ensure they can only see their own requests
-    if (role === USER_ROLES.RESIDENT) {
-      query += ' AND dr.resident_id = $2'
-      queryParams.push(userId)
-    }
-
-    const result = await db.query(query, queryParams)
-
-    if (result.rows.length === 0) {
+    // Get request details using repository
+    const request = await DocumentRequestRepository.getRequestById(id, residentId)
+    
+    if (!request) {
       return ApiResponse.notFound(res, 'Document request not found')
     }
 
-    // Get request logs/timeline
-    const logsQuery = `
-      SELECT 
-        drl.status,
-        drl.action,
-        drl.remarks,
-        drl.performed_by,
-        drl.created_at,
-        CONCAT(u.first_name, ' ', u.last_name) as performed_by_name,
-        CASE 
-          WHEN drl.status = 0 THEN 'pending'
-          WHEN drl.status = 1 THEN 'processing'
-          WHEN drl.status = 2 THEN 'rejected'
-          WHEN drl.status = 3 THEN 'ready'
-          WHEN drl.status = 4 THEN 'claimed'
-          ELSE 'unknown'
-        END as status_text
-      FROM document_request_logs drl
-      LEFT JOIN users u ON drl.performed_by = u.id
-      WHERE drl.request_id = $1
-      ORDER BY drl.created_at ASC
-    `
-
-    const logsResult = await db.query(logsQuery, [id])
+    // Get request timeline using repository
+    const timeline = await DocumentRequestRepository.getRequestTimeline(id)
 
     return ApiResponse.success(res, {
-      request: result.rows[0],
-      timeline: logsResult.rows
+      request: request,
+      timeline: timeline
     }, 'Document request details retrieved successfully')
 
   } catch (error) {
@@ -2162,76 +1967,85 @@ router.put('/document-requests/:id/status', authenticateToken, requireStaffOrAdm
     const { userId } = req.user
 
     // Validate status
-    const validStatuses = ['processing', 'rejected', 'ready', 'claimed']
+    const validStatuses = ['processing', 'rejected', 'ready', 'claimed', 'completed']
     if (!validStatuses.includes(status)) {
       return ApiResponse.error(res, 'Invalid status', 400)
     }
-
-    const statusMap = {
-      'processing': 1,
-      'rejected': 2,
-      'ready': 3,
-      'claimed': 4
-    }
-
-    const statusValue = statusMap[status]
 
     // If rejecting, remarks are required
     if (status === 'rejected' && !remarks?.trim()) {
       return ApiResponse.error(res, 'Remarks are required when rejecting a request', 400)
     }
 
-    // Check if request exists
-    const requestCheck = await db.query(
-      'SELECT id, status FROM document_requests WHERE id = $1',
-      [id]
-    )
+    // Validate remarks length (max 255 characters)
+    if (remarks && remarks.trim().length > 255) {
+      return ApiResponse.error(res, 'Remarks cannot exceed 255 characters', 400)
+    }
 
-    if (requestCheck.rows.length === 0) {
+    // Map string status to numeric status for repository
+    const statusMap = {
+      'processing': 1,
+      'rejected': 2,
+      'ready': 3,
+      'claimed': 4,
+      'completed': 4 // Alias for claimed (status 4)
+    }
+
+    const statusValue = statusMap[status]
+
+    // Get current status before updating (for logging)
+    const currentRequest = await DocumentRequestRepository.getRequestById(id)
+    if (!currentRequest) {
       return ApiResponse.notFound(res, 'Document request not found')
     }
+    
+    // Map old status text to numeric value
+    const oldStatusText = currentRequest.status_text
+    const reverseStatusMap = {
+      'pending': 0,
+      'processing': 1,
+      'rejected': 2,
+      'ready': 3,
+      'claimed': 4,
+      'completed': 4 // Alias for claimed
+    }
+    const oldStatusValue = reverseStatusMap[oldStatusText] || 0
 
-    const currentStatus = requestCheck.rows[0].status
+    // Use repository method to update status
+    const result = await DocumentRequestRepository.updateStatus(
+      id, 
+      statusValue, 
+      userId, 
+      remarks?.trim() || null
+    )
 
-    // Validate status transitions
-    const validTransitions = {
-      0: [1, 2], // pending -> processing, rejected
-      1: [2, 3], // processing -> rejected, ready
-      3: [4]     // ready -> claimed
+    if (!result) {
+      return ApiResponse.notFound(res, 'Document request not found or invalid status transition')
     }
 
-    if (!validTransitions[currentStatus]?.includes(statusValue)) {
-      return ApiResponse.error(res, 'Invalid status transition', 400)
-    }
-
-    // Update request status
-    await db.query(`
-      UPDATE document_requests 
-      SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP, 
-          remarks = $3, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
-    `, [statusValue, userId, remarks?.trim() || null, id])
-
-    // Log the status change
+    // Log the action to document_requests_logs
     const actionMap = {
       'processing': 'Marked as processing',
       'rejected': 'Request rejected',
       'ready': 'Marked as ready for pickup',
-      'claimed': 'Marked as claimed'
+      'claimed': 'Marked as completed',
+      'completed': 'Marked as completed'
     }
 
-    await db.query(`
-      INSERT INTO document_request_logs (request_id, action, old_status, new_status, action_by, action_notes, created_at)
-      VALUES ($1, 'status_changed', (SELECT status FROM document_requests WHERE id = $1), $2, $3, $4, CURRENT_TIMESTAMP)
-    `, [id, status, userId, remarks?.trim() || null])
+    await DocumentRequestRepository.logAction(
+      id,
+      actionMap[status],
+      oldStatusValue,  // Use numeric value instead of string
+      statusValue,     // Use numeric value instead of string
+      userId
+    )
 
     logger.info(`Document request ${id} status updated to ${status} by user ${userId}`)
 
     return ApiResponse.success(res, {
-      id: parseInt(id),
-      status,
-      processed_by: userId,
-      processed_at: new Date()
+      id: result.id,
+      status: status,
+      processed_at: result.processed_at
     }, `Document request ${status} successfully`)
 
   } catch (error) {
@@ -2270,7 +2084,7 @@ router.post('/document-requests/bulk-update', authenticateToken, requireStaffOrA
         }
 
         // Validate status
-        const validStatuses = ['processing', 'rejected', 'ready', 'claimed']
+        const validStatuses = ['processing', 'rejected', 'ready', 'claimed', 'completed']
         if (!validStatuses.includes(status)) {
           errors.push({ id, error: 'Invalid status' })
           continue
@@ -2280,7 +2094,8 @@ router.post('/document-requests/bulk-update', authenticateToken, requireStaffOrA
           'processing': 1,
           'rejected': 2,
           'ready': 3,
-          'claimed': 4
+          'claimed': 4,
+          'completed': 4 // Alias for claimed (status 4)
         }
 
         const statusValue = statusMap[status]
@@ -2288,6 +2103,12 @@ router.post('/document-requests/bulk-update', authenticateToken, requireStaffOrA
         // If rejecting, remarks are required
         if (status === 'rejected' && !remarks?.trim()) {
           errors.push({ id, error: 'Remarks are required when rejecting a request' })
+          continue
+        }
+
+        // Validate remarks length (max 255 characters)
+        if (remarks && remarks.trim().length > 255) {
+          errors.push({ id, error: 'Remarks cannot exceed 255 characters' })
           continue
         }
 
@@ -2333,9 +2154,10 @@ router.post('/document-requests/bulk-update', authenticateToken, requireStaffOrA
         }
 
         await db.query(`
-          INSERT INTO document_request_logs (request_id, action, old_status, new_status, action_by, action_notes, created_at)
-          VALUES ($1, 'status_changed', (SELECT status FROM document_requests WHERE id = $1), $2, $3, $4, CURRENT_TIMESTAMP)
-        `, [id, status, userId, remarks?.trim() || null])
+          INSERT INTO document_requests_logs (
+            request_id, action, old_status, new_status, action_by, created_at
+          ) VALUES ($1, 'status_changed', $2, $3, $4, CURRENT_TIMESTAMP)
+        `, [id, currentStatus, statusValue, userId])
 
         results.push({
           id: parseInt(id),
@@ -2539,6 +2361,381 @@ router.get('/document-requests/stats', authenticateToken, requireStaffOrAdmin, a
   } catch (error) {
     logger.error('Error in GET document request stats:', error)
     return ApiResponse.serverError(res, 'Failed to retrieve document request statistics')
+  }
+})
+
+// GET /api/document-requests/pending - Get pending requests for processing (admin/staff only)
+router.get('/document-requests/pending', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, priority = 'oldest' } = req.query
+
+    // Build ORDER BY clause based on priority
+    let orderBy = 'dr.created_at ASC' // Default: oldest first
+    if (priority === 'newest') {
+      orderBy = 'dr.created_at DESC'
+    } else if (priority === 'urgent') {
+      // Urgent: older than 3 days, then by creation date
+      orderBy = `
+        CASE 
+          WHEN dr.created_at < NOW() - INTERVAL '3 days' THEN 0 
+          ELSE 1 
+        END ASC, dr.created_at ASC
+      `
+    }
+
+    const query = `
+      SELECT 
+        dr.id,
+        dr.resident_id,
+        dr.document_id,
+        dr.purpose,
+        dr.remarks,
+        dr.status,
+        dr.created_at,
+        dr.notes,
+        CONCAT(r.first_name, ' ', r.last_name) as resident_name,
+        r.mobile_number,
+        r.email,
+        dc.title as document_title,
+        dc.fee,
+        dc.description as document_description,
+        EXTRACT(DAYS FROM NOW() - dr.created_at) as days_pending,
+        CASE 
+          WHEN dr.created_at < NOW() - INTERVAL '3 days' THEN true 
+          ELSE false 
+        END as is_urgent
+      FROM document_requests dr
+      JOIN residents r ON dr.resident_id = r.id
+      JOIN document_catalog dc ON dr.document_id = dc.id
+      WHERE dr.status = 0
+      ORDER BY ${orderBy}
+      LIMIT $1 OFFSET $2
+    `
+
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM document_requests dr
+      WHERE dr.status = 0
+    `
+
+    const [pendingResult, countResult] = await Promise.all([
+      db.query(query, [limit, offset]),
+      db.query(countQuery)
+    ])
+
+    const pending = pendingResult.rows.map(row => ({
+      ...row,
+      id: parseInt(row.id),
+      resident_id: parseInt(row.resident_id),
+      document_id: parseInt(row.document_id),
+      status: parseInt(row.status),
+      fee: parseFloat(row.fee || 0),
+      days_pending: parseInt(row.days_pending || 0),
+      is_urgent: row.is_urgent || false
+    }))
+
+    const total = parseInt(countResult.rows[0].total)
+
+    logger.info(`Retrieved ${pending.length} pending document requests`)
+
+    return ApiResponse.success(res, {
+      pending,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      has_more: (parseInt(offset) + pending.length) < total
+    }, 'Pending document requests retrieved successfully')
+
+  } catch (error) {
+    logger.error('Error retrieving pending document requests:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve pending document requests')
+  }
+})
+
+// POST /api/document-requests/process - Process single pending request (admin/staff only)
+router.post('/document-requests/process', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { id, action, remarks } = req.body
+    const { userId } = req.user
+
+    // Validate required fields
+    if (!id || !action) {
+      return ApiResponse.error(res, 'Request ID and action are required', 400)
+    }
+
+    // Validate action
+    const validActions = ['process', 'reject', 'ready']
+    if (!validActions.includes(action)) {
+      return ApiResponse.error(res, 'Invalid action. Must be: process, reject, or ready', 400)
+    }
+
+    // Map actions to status values
+    const actionStatusMap = {
+      'process': 1,   // processing
+      'reject': 2,    // rejected
+      'ready': 3      // ready for pickup
+    }
+
+    const newStatus = actionStatusMap[action]
+
+    // If rejecting, remarks are required
+    if (action === 'reject' && !remarks?.trim()) {
+      return ApiResponse.error(res, 'Remarks are required when rejecting a request', 400)
+    }
+
+    // Validate remarks length (max 255 characters)
+    if (remarks && remarks.trim().length > 255) {
+      return ApiResponse.error(res, 'Remarks cannot exceed 255 characters', 400)
+    }
+
+    // Check if request exists and is pending
+    const requestCheck = await db.query(
+      'SELECT id, status, resident_id FROM document_requests WHERE id = $1',
+      [id]
+    )
+
+    if (requestCheck.rows.length === 0) {
+      return ApiResponse.notFound(res, 'Document request not found')
+    }
+
+    const currentStatus = requestCheck.rows[0].status
+    if (currentStatus !== 0) {
+      return ApiResponse.error(res, 'Only pending requests can be processed', 400)
+    }
+
+    // Begin transaction
+    await db.query('BEGIN')
+
+    try {
+      // Update request status
+      await db.query(`
+        UPDATE document_requests 
+        SET 
+          status = $1, 
+          processed_by = $2, 
+          processed_at = CURRENT_TIMESTAMP,
+          remarks = $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `, [newStatus, userId, remarks?.trim() || null, id])
+
+      // Log the status change
+      const actionMessages = {
+        'process': 'Marked as processing',
+        'reject': 'Request rejected',
+        'ready': 'Marked as ready for pickup'
+      }
+
+      await db.query(`
+        INSERT INTO document_requests_logs (
+          request_id, action, old_status, new_status, action_by, created_at
+        ) VALUES ($1, 'status_changed', 0, $2, $3, CURRENT_TIMESTAMP)
+      `, [id, newStatus, userId])
+
+      await db.query('COMMIT')
+
+      const actionStatusText = {
+        'process': 'processing',
+        'reject': 'rejected', 
+        'ready': 'ready'
+      }
+
+      logger.info(`Document request ${id} ${actionMessages[action].toLowerCase()} by user ${userId}`)
+
+      return ApiResponse.success(res, {
+        id: parseInt(id),
+        status: actionStatusText[action],
+        processed_by: userId,
+        processed_at: new Date(),
+        remarks: remarks?.trim() || null
+      }, actionMessages[action])
+
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
+
+  } catch (error) {
+    logger.error('Error processing document request:', error)
+    return ApiResponse.serverError(res, 'Failed to process document request')
+  }
+})
+
+// POST /api/document-requests/batch-process - Process multiple pending requests (admin/staff only)
+router.post('/document-requests/batch-process', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { requests, default_action, default_remarks } = req.body
+    const { userId } = req.user
+
+    if (!Array.isArray(requests) || requests.length === 0) {
+      return ApiResponse.error(res, 'Requests array is required and cannot be empty', 400)
+    }
+
+    if (requests.length > 20) {
+      return ApiResponse.error(res, 'Maximum 20 requests allowed per batch', 400)
+    }
+
+    const validActions = ['process', 'reject', 'ready']
+    if (default_action && !validActions.includes(default_action)) {
+      return ApiResponse.error(res, 'Invalid default_action. Must be: process, reject, or ready', 400)
+    }
+
+    const results = []
+    const errors = []
+
+    // Begin transaction
+    await db.query('BEGIN')
+
+    try {
+      for (const request of requests) {
+        const { id, action, remarks } = request
+        const finalAction = action || default_action
+        const finalRemarks = remarks || default_remarks
+
+        if (!id || !finalAction) {
+          errors.push({ id, error: 'ID and action are required' })
+          continue
+        }
+
+        if (!validActions.includes(finalAction)) {
+          errors.push({ id, error: 'Invalid action' })
+          continue
+        }
+
+        // Map action to status
+        const actionStatusMap = {
+          'process': 1,
+          'reject': 2,
+          'ready': 3
+        }
+
+        const newStatus = actionStatusMap[finalAction]
+
+        // If rejecting, remarks are required
+        if (finalAction === 'reject' && !finalRemarks?.trim()) {
+          errors.push({ id, error: 'Remarks are required when rejecting a request' })
+          continue
+        }
+
+        // Validate remarks length (max 255 characters)
+        if (finalRemarks && finalRemarks.trim().length > 255) {
+          errors.push({ id, error: 'Remarks cannot exceed 255 characters' })
+          continue
+        }
+
+        // Check if request exists and is pending
+        const requestCheck = await db.query(
+          'SELECT id, status FROM document_requests WHERE id = $1',
+          [id]
+        )
+
+        if (requestCheck.rows.length === 0) {
+          errors.push({ id, error: 'Document request not found' })
+          continue
+        }
+
+        if (requestCheck.rows[0].status !== 0) {
+          errors.push({ id, error: 'Only pending requests can be processed' })
+          continue
+        }
+
+        // Update request status
+        await db.query(`
+          UPDATE document_requests 
+          SET 
+            status = $1, 
+            processed_by = $2, 
+            processed_at = CURRENT_TIMESTAMP,
+            remarks = $3,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $4
+        `, [newStatus, userId, finalRemarks?.trim() || null, id])
+
+        // Log the status change
+        await db.query(`
+          INSERT INTO document_requests_logs (
+            request_id, action, old_status, new_status, action_by, created_at
+          ) VALUES ($1, 'status_changed', 0, $2, $3, CURRENT_TIMESTAMP)
+        `, [id, newStatus, userId])
+
+        const actionStatusText = {
+          'process': 'processing',
+          'reject': 'rejected',
+          'ready': 'ready'
+        }
+
+        results.push({
+          id: parseInt(id),
+          status: actionStatusText[finalAction],
+          action: finalAction,
+          success: true
+        })
+      }
+
+      await db.query('COMMIT')
+
+      logger.info(`Batch processing completed: ${results.length} successful, ${errors.length} errors by user ${userId}`)
+
+      return ApiResponse.success(res, {
+        successful: results,
+        errors: errors,
+        total_processed: requests.length,
+        successful_count: results.length,
+        error_count: errors.length
+      }, `Batch processing completed: ${results.length} successful, ${errors.length} errors`)
+
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
+
+  } catch (error) {
+    logger.error('Error in batch processing document requests:', error)
+    return ApiResponse.serverError(res, 'Failed to perform batch processing')
+  }
+})
+
+// GET /api/document-requests/processing-queue - Get processing queue summary (admin/staff only)
+router.get('/document-requests/processing-queue', authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        COUNT(CASE WHEN status = 0 THEN 1 END) as pending_count,
+        COUNT(CASE WHEN status = 1 THEN 1 END) as processing_count,
+        COUNT(CASE WHEN status = 3 THEN 1 END) as ready_count,
+        COUNT(CASE WHEN status = 0 AND created_at < NOW() - INTERVAL '3 days' THEN 1 END) as urgent_count,
+        COUNT(CASE WHEN status = 0 AND created_at::date = CURRENT_DATE THEN 1 END) as today_submissions,
+        AVG(EXTRACT(DAYS FROM NOW() - created_at)) FILTER (WHERE status = 0) as avg_pending_days,
+        MIN(created_at) FILTER (WHERE status = 0) as oldest_pending,
+        COUNT(CASE WHEN status = 2 AND processed_at::date = CURRENT_DATE THEN 1 END) as today_rejections,
+        COUNT(CASE WHEN status = 3 AND processed_at::date = CURRENT_DATE THEN 1 END) as today_ready
+      FROM document_requests
+      WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+    `
+
+    const result = await db.query(query)
+    const stats = result.rows[0]
+
+    // Format the response
+    const queueSummary = {
+      pending_count: parseInt(stats.pending_count || 0),
+      processing_count: parseInt(stats.processing_count || 0),
+      ready_count: parseInt(stats.ready_count || 0),
+      urgent_count: parseInt(stats.urgent_count || 0),
+      today_submissions: parseInt(stats.today_submissions || 0),
+      today_rejections: parseInt(stats.today_rejections || 0),
+      today_ready: parseInt(stats.today_ready || 0),
+      avg_pending_days: parseFloat(stats.avg_pending_days || 0).toFixed(1),
+      oldest_pending: stats.oldest_pending
+    }
+
+    logger.info('Processing queue summary retrieved')
+
+    return ApiResponse.success(res, queueSummary, 'Processing queue summary retrieved successfully')
+
+  } catch (error) {
+    logger.error('Error retrieving processing queue summary:', error)
+    return ApiResponse.serverError(res, 'Failed to retrieve processing queue summary')
   }
 })
 

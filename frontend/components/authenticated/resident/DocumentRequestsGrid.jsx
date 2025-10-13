@@ -90,7 +90,7 @@ export default function DocumentRequestsGrid({ toastRef }) {
 
   const handleViewOngoingRequest = (documentId) => {
     // Navigate to My Requests page
-    router.push('/resident/requests')
+    router.push('/resident/my-requests')
   }
 
   const handleFormSubmit = async (requestData) => {
@@ -160,16 +160,18 @@ export default function DocumentRequestsGrid({ toastRef }) {
   if (loading || checkingRequests) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-3">
+        <div className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(8)].map((_, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg mb-3"></div>
-                  <div className="w-20 h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="w-24 h-3 bg-gray-200 rounded mb-1"></div>
-                  <div className="w-16 h-3 bg-gray-200 rounded"></div>
+              <div key={index} className="flex flex-col p-4 rounded-lg border border-gray-200 shadow-sm animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="w-full h-4 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="w-4 h-4 bg-gray-200 rounded flex-shrink-0"></div>
                 </div>
+                <div className="w-3/4 h-3 bg-gray-200 rounded"></div>
               </div>
             ))}
           </div>
@@ -194,12 +196,12 @@ export default function DocumentRequestsGrid({ toastRef }) {
       </div>
 
       {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200"> */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm">
           <div className="px-6 py-4 border-b border-gray-100">
             <h3 className="text-lg font-semibold text-gray-900"> Document Requests</h3>
             <p className="text-sm text-gray-500 mt-0.5">Easily submit and process barangay document requests anytime, anywhere.</p>
           </div>
-        <div className="p-3">
+        <div className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {documents.map((document) => {
               const hasOngoingRequest = ongoingRequests[document.id]
@@ -207,10 +209,10 @@ export default function DocumentRequestsGrid({ toastRef }) {
               return (
                 <div
                   key={document.id}
-                  className={`group relative bg-white border rounded-lg p-4 transition-all duration-200 ${
+                  className={`group transition-all duration-200 ${
                     hasOngoingRequest 
-                      ? 'border-gray-300' 
-                      : 'border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
+                      ? 'flex flex-col p-4 rounded-lg border border-gray-200 bg-gray-50 cursor-not-allowed opacity-70 shadow-sm' 
+                      : 'flex flex-col p-4 rounded-lg border border-gray-200 cursor-pointer shadow-sm hover:shadow-md'
                   }`}
                   onClick={() => {
                     if (!hasOngoingRequest) {
@@ -218,37 +220,58 @@ export default function DocumentRequestsGrid({ toastRef }) {
                     }
                   }}
                 >
-                  {/* Simple Status Badge */}
-                  {hasOngoingRequest && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <div className="bg-gray-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 shadow-sm">
-                        <i className="bi bi-lock text-white text-xs"></i>
-                        <span>{ongoingRequests[document.id].status.charAt(0).toUpperCase() + ongoingRequests[document.id].status.slice(1)}</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex flex-col items-center text-center">
-                    <div className={`w-12 h-12 ${
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 ${
                       hasOngoingRequest 
-                        ? 'bg-gray-100 text-gray-400' 
-                        : document.iconColor || 'bg-gray-100 text-gray-600'
-                    } rounded-lg flex items-center justify-center mb-3 ${
-                      hasOngoingRequest ? '' : 'group-hover:scale-105'
-                    } transition-transform duration-200`}>
-                      <i className={`bi ${document.icon || 'bi-file-earmark-text'} text-lg`}></i>
+                        ? 'bg-gray-100' 
+                        : 'bg-gray-100'
+                    } rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <i className={`bi ${document.icon || 'bi-file-earmark-text'} ${
+                        hasOngoingRequest ? 'text-gray-400' : 'text-gray-600'
+                      }`}></i>
                     </div>
-                    <h4 className="font-medium mb-2 text-sm leading-tight text-gray-900">{document.title}</h4>
-                    <p className="text-xs leading-relaxed line-clamp-2 text-gray-600">{document.description}</p>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium text-sm leading-tight ${
+                        hasOngoingRequest ? 'text-gray-600' : 'text-gray-900'
+                      }`}>
+                        {document.title}
+                      </p>
+                    </div>
+                    
+                    {!hasOngoingRequest && (
+                      <i className="bi bi-arrows-angle-expand text-gray-400 flex-shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200"></i>
+                    )}
+                    
+                    {hasOngoingRequest && (
+                      <i className="bi bi-lock text-gray-400 flex-shrink-0"></i>
+                    )}
                   </div>
+                  
+                  {hasOngoingRequest ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500 leading-relaxed">{document.description}</p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleViewOngoingRequest(document.id)
+                        }}
+                        className="cursor-pointer text-gray-600 hover:text-gray-800 font-medium text-xs hover:underline"
+                      >
+                        View Pending Request →
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 leading-relaxed">{document.description}</p>
+                  )}
                 </div>
               )
             })}
           </div>
           
           {documents.length === 0 && (
-            <div className="text-center py-8 col-span-full">
-              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <div className="col-span-full text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <i className="bi bi-file-earmark-text text-gray-400 text-2xl"></i>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No documents available</h3>

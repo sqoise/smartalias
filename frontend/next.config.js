@@ -35,7 +35,31 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        // Allow PDF files to be displayed in iframes (for PDF viewer)
+        source: '/documents/(.*).pdf',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/pdf',
+          },
+          // Explicitly allow iframe embedding for PDFs
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+        ],
+      },
+      {
+        // Apply strict security headers to all other routes
+        source: '/((?!documents/).*)',
         headers: [
           {
             key: 'X-Frame-Options',

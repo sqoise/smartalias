@@ -7,25 +7,25 @@
  * Format request ID for display
  * @param {number} id - Request ID from database
  * @param {string|Date} createdAt - Creation date
- * @returns {string} Formatted ID like "REQ-2025-001"
+ * @returns {string} Formatted ID like "REQ-2025-0001"
  */
 export const formatRequestId = (id, createdAt) => {
-  if (!id || !createdAt) return 'REQ-0000-000'
+  if (!id || !createdAt) return 'REQ-0000-0000'
   
   const year = new Date(createdAt).getFullYear()
-  const paddedId = String(id).padStart(3, '0')
+  const paddedId = String(id).padStart(4, '0')
   return `REQ-${year}-${paddedId}`
 }
 
 /**
  * Parse request ID to get numeric ID
- * @param {string} formattedId - Formatted ID like "REQ-2025-001"
+ * @param {string} formattedId - Formatted ID like "REQ-2025-0001"
  * @returns {number|null} Numeric ID or null if invalid
  */
 export const parseRequestId = (formattedId) => {
   if (!formattedId || typeof formattedId !== 'string') return null
   
-  const match = formattedId.match(/^REQ-\d{4}-(\d{3})$/)
+  const match = formattedId.match(/^REQ-\d{4}-(\d{4})$/)
   return match ? parseInt(match[1], 10) : null
 }
 
@@ -40,12 +40,12 @@ export const formatRequestStatus = (status) => {
     1: { text: 'Processing', color: 'blue', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
     2: { text: 'Rejected', color: 'red', bgColor: 'bg-red-100', textColor: 'text-red-800' },
     3: { text: 'Ready for Pickup', color: 'green', bgColor: 'bg-green-100', textColor: 'text-green-800' },
-    4: { text: 'Claimed', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
+    4: { text: 'Completed', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
     'pending': { text: 'Pending', color: 'orange', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
     'processing': { text: 'Processing', color: 'blue', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
     'rejected': { text: 'Rejected', color: 'red', bgColor: 'bg-red-100', textColor: 'text-red-800' },
     'ready': { text: 'Ready for Pickup', color: 'green', bgColor: 'bg-green-100', textColor: 'text-green-800' },
-    'claimed': { text: 'Claimed', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
+    'completed': { text: 'Completed', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
   }
   
   return statusMap[status] || { text: 'Unknown', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
@@ -62,7 +62,7 @@ export const formatFeeDisplay = (fee, status) => {
   
   const amount = parseFloat(fee).toFixed(2)
   
-  if (status === 'claimed' || status === 4) {
+  if (status === 'completed' || status === 4) {
     return `₱${amount} (Paid)`
   }
   
@@ -85,7 +85,7 @@ export const getAvailableStatusTransitions = (currentStatus, userRole = 'residen
   }
   
   const statusValue = typeof currentStatus === 'string' ? 
-    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'claimed': 4 }[currentStatus] : 
+    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'completed': 4 }[currentStatus] : 
     currentStatus
   
   const transitions = {
@@ -98,7 +98,7 @@ export const getAvailableStatusTransitions = (currentStatus, userRole = 'residen
       { value: 'rejected', label: 'Reject Request', color: 'red', requiresRemarks: true }
     ],
     3: [
-      { value: 'claimed', label: 'Mark as Claimed', color: 'gray' }
+      { value: 'completed', label: 'Mark as Completed', color: 'gray' }
     ]
   }
   
@@ -113,17 +113,17 @@ export const getAvailableStatusTransitions = (currentStatus, userRole = 'residen
  */
 export const isValidStatusTransition = (fromStatus, toStatus) => {
   const fromValue = typeof fromStatus === 'string' ? 
-    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'claimed': 4 }[fromStatus] : 
+    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'completed': 4 }[fromStatus] : 
     fromStatus
     
   const toValue = typeof toStatus === 'string' ? 
-    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'claimed': 4 }[toStatus] : 
+    { 'pending': 0, 'processing': 1, 'rejected': 2, 'ready': 3, 'completed': 4 }[toStatus] : 
     toStatus
   
   const validTransitions = {
     0: [1, 2], // pending -> processing, rejected
     1: [2, 3], // processing -> rejected, ready
-    3: [4]     // ready -> claimed
+    3: [4]     // ready -> completed
   }
   
   return validTransitions[fromValue]?.includes(toValue) || false

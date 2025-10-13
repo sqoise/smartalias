@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import SlidePanel from '../../common/SlidePanel'
 import ApiClient from '../../../lib/apiClient'
+import { formatDocumentRequestID } from '../../../lib/utility'
 
 export default function RequestDetailView({ 
   isOpen = false,
@@ -32,7 +33,7 @@ export default function RequestDetailView({
         // Transform backend data to frontend format
         const transformedRequest = {
           id: response.data.id,
-          requestNumber: formatRequestId(response.data.id),
+          requestNumber: formatDocumentRequestID(response.data.id, response.data.created_at),
           document: {
             title: response.data.document_type,
             description: response.data.document_description || 'Document details',
@@ -62,16 +63,6 @@ export default function RequestDetailView({
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatRequestId = (id) => {
-    // Format ID as REQ-YYYY-NNN if it's just a number
-    if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
-      const year = new Date().getFullYear()
-      const paddedId = String(id).padStart(3, '0')
-      return `REQ-${year}-${paddedId}`
-    }
-    return id
   }
 
   const getStatusConfig = (status) => {

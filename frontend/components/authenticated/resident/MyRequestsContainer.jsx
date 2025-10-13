@@ -2,20 +2,120 @@
 
 import { useState, useEffect } from 'react'
 import ApiClient from '../../../lib/apiClient'
-import CustomSelect from '../../../components/common/CustomSelect'
+import CustomSelect from '../../common/CustomSelect'
+import SlidePanel from '../../common/SlidePanel'
+import { formatDocumentRequestID } from '../../../lib/utility'
 
 export default function MyRequestsContainer({ toastRef, selectedDocumentType: initialDocumentType = 'all' }) {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
-  const [expandedDocuments, setExpandedDocuments] = useState({}) // Track which documents are expanded
-  const [expandedRequestDetails, setExpandedRequestDetails] = useState({}) // Track which requests show details
   const [selectedDocumentType, setSelectedDocumentType] = useState(initialDocumentType)
   const [availableDocuments, setAvailableDocuments] = useState([]) // All available documents from database
+  
+  // Timeline slide panel state
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [showTimelinePanel, setShowTimelinePanel] = useState(false)
+
+  // Timeline panel handlers
+  const openTimeline = (request) => {
+    setSelectedRequest(request)
+    setShowTimelinePanel(true)
+  }
+
+  const closeTimeline = () => {
+    setShowTimelinePanel(false)
+    setSelectedRequest(null)
+  }
 
   // Load requests on component mount
   useEffect(() => {
     loadData()
+    // Temporarily add sample data for testing
+    setSampleData()
   }, [])
+
+  const setSampleData = () => {
+    const sampleRequests = [
+      {
+        id: 1,
+        documentId: 1,
+        document: 'Barangay Certificate',
+        purpose: 'For employment requirements',
+        status: 'completed',
+        requestDate: '2024-10-01T10:00:00Z',
+        completedDate: '2024-10-05T14:30:00Z',
+        notes: 'Please bring valid ID for pickup',
+        remarks: null,
+        fee: 50.00,
+        residentName: 'John Doe',
+        processedBy: 'Admin Staff'
+      },
+      {
+        id: 2,
+        documentId: 2,
+        document: 'Barangay Clearance',
+        purpose: 'For business permit application',
+        status: 'rejected',
+        requestDate: '2024-10-08T09:15:00Z',
+        completedDate: null,
+        notes: 'Additional requirements needed',
+        remarks: 'Missing proof of residency. Please submit updated documents and reapply.',
+        fee: 100.00,
+        residentName: 'John Doe',
+        processedBy: null
+      },
+      {
+        id: 3,
+        documentId: 3,
+        document: 'Certificate of Indigency',
+        purpose: 'For medical assistance',
+        status: 'processing',
+        requestDate: '2024-10-09T11:00:00Z',
+        completedDate: null,
+        notes: 'Under review by social services',
+        remarks: null,
+        fee: 0.00,
+        residentName: 'John Doe',
+        processedBy: 'Social Worker'
+      },
+      {
+        id: 4,
+        documentId: 4,
+        document: 'Barangay ID',
+        purpose: 'For identification purposes',
+        status: 'ready',
+        requestDate: '2024-10-10T08:30:00Z',
+        completedDate: null,
+        notes: 'Ready for pickup at barangay office. Office hours: 8AM-5PM',
+        remarks: null,
+        fee: 25.00,
+        residentName: 'John Doe',
+        processedBy: 'Registration Staff'
+      },
+      {
+        id: 5,
+        documentId: 1,
+        document: 'Barangay Certificate',
+        purpose: 'For school enrollment',
+        status: 'pending',
+        requestDate: '2024-10-10T14:00:00Z',
+        completedDate: null,
+        notes: 'Urgent request for tomorrow',
+        remarks: null,
+        fee: 50.00,
+        residentName: 'John Doe',
+        processedBy: null
+      }
+    ]
+    
+    setRequests(sampleRequests)
+    setAvailableDocuments([
+      { id: 1, title: 'Barangay Certificate' },
+      { id: 2, title: 'Barangay Clearance' },
+      { id: 3, title: 'Certificate of Indigency' },
+      { id: 4, title: 'Barangay ID' }
+    ])
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -89,9 +189,7 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
       return {
         documentType,
         activeRequest,
-        allRequests: sortedRequests,
-        isOngoing,
-        hasHistory: sortedRequests.length > 1
+        isOngoing
       }
     }).sort((a, b) => {
       // Sort by: ongoing first, then by most recent request date
@@ -103,53 +201,54 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
 
   const getStatusConfig = (status) => {
     const configs = {
+      submitted: {
+        color: 'text-gray-600 bg-gray-50 border-gray-200',
+        icon: 'bi-plus-circle',
+        label: 'Submitted',
+        iconColor: 'text-gray-600'
+      },
       pending: {
-        color: 'text-blue-600 bg-blue-50 border-blue-200',
+        color: 'text-amber-600 bg-amber-50 border-amber-200',
         icon: 'bi-clock',
         label: 'Pending Review',
-        iconColor: 'text-blue-600'
-      },
-      processing: {
-        color: 'text-orange-600 bg-orange-50 border-orange-200',
-        icon: 'bi-gear',
-        label: 'Being Processed',
-        iconColor: 'text-orange-600'
-      },
-      ready: {
-        color: 'text-green-600 bg-green-50 border-green-200',
-        icon: 'bi-check-circle',
-        label: 'Ready for Pickup',
-        iconColor: 'text-green-600'
-      },
-      completed: {
-        color: 'text-gray-600 bg-gray-50 border-gray-200',
-        icon: 'bi-check-circle-fill',
-        label: 'Completed',
-        iconColor: 'text-gray-600'
-      },
-      claimed: {
-        color: 'text-gray-600 bg-gray-50 border-gray-200',
-        icon: 'bi-check-circle-fill',
-        label: 'Claimed',
-        iconColor: 'text-gray-600'
+        iconColor: 'text-amber-600'
       },
       rejected: {
         color: 'text-red-600 bg-red-50 border-red-200',
         icon: 'bi-x-circle',
         label: 'Rejected',
         iconColor: 'text-red-600'
+      },
+      processing: {
+        color: 'text-blue-600 bg-blue-50 border-blue-200',
+        icon: 'bi-gear',
+        label: 'Processing',
+        iconColor: 'text-blue-600'
+      },
+      ready: {
+        color: 'text-violet-600 bg-violet-50 border-violet-200',
+        icon: 'bi-check-circle',
+        label: 'Ready for pick up',
+        iconColor: 'text-violet-600'
+      },
+      completed: {
+        color: 'text-green-600 bg-green-50 border-green-200',
+        icon: 'bi-check-circle-fill',
+        label: 'Claimed',
+        iconColor: 'text-green-600'
+      },
+      claimed: { // Legacy support
+        color: 'text-green-600 bg-green-50 border-green-200',
+        icon: 'bi-check-circle-fill',
+        label: 'Claimed',
+        iconColor: 'text-green-600'
       }
     }
     return configs[status] || configs.pending
   }
 
-  const formatRequestId = (id) => {
-    if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
-      const year = new Date().getFullYear()
-      const paddedId = String(id).padStart(3, '0')
-      return `REQ-${year}-${paddedId}`
-    }
-    return id
+  const formatRequestId = (id, requestDate = null) => {
+    return formatDocumentRequestID(id, requestDate)
   }
 
   const formatDate = (dateString) => {
@@ -168,20 +267,6 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
     })
   }
 
-  const toggleDocumentHistory = (documentType) => {
-    setExpandedDocuments(prev => ({
-      ...prev,
-      [documentType]: !prev[documentType]
-    }))
-  }
-
-  const toggleRequestDetails = (requestId) => {
-    setExpandedRequestDetails(prev => ({
-      ...prev,
-      [requestId]: !prev[requestId]
-    }))
-  }
-
   // Get document types from database catalog
   const getDocumentTypeOptions = () => {
     // Get ALL available documents from database catalog (active and inactive)
@@ -197,6 +282,223 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
     ]
     
     return options
+  }
+
+  // Timeline content component
+  const TimelineContent = ({ request }) => {
+    if (!request) return null
+
+    const generateTimeline = (req) => {
+      const steps = []
+      const baseTime = new Date(req.requestDate)
+
+      // Always start with submitted
+      steps.push({
+        id: 1,
+        status: 'submitted',
+        label: 'Submitted',
+        icon: 'bi-plus-circle-fill',
+        iconColor: 'text-gray-600',
+        timestamp: req.requestDate,
+        subtitle: `Submitted at: ${formatDate(req.requestDate)} at ${formatTime(req.requestDate)}`,
+        content: null
+      })
+
+      // Add pending review if not immediately rejected/completed
+      if (req.status !== 'submitted') {
+        steps.push({
+          id: 2,
+          status: 'pending',
+          label: 'Pending Review',
+          icon: 'bi-clock-fill',
+          iconColor: 'text-amber-600',
+          timestamp: new Date(baseTime.getTime() + 30 * 60 * 1000),
+          subtitle: null,
+          content: {
+            type: 'panel',
+            data: [
+              { label: 'Purpose', value: req.purpose },
+              ...(req.notes ? [{ label: 'Notes', value: req.notes }] : [])
+            ]
+          }
+        })
+      }
+
+      // Add processing if status reached that stage
+      if (['processing', 'ready', 'claimed', 'completed'].includes(req.status)) {
+        steps.push({
+          id: 3,
+          status: 'processing',
+          label: 'Processing',
+          icon: 'bi-gear-fill',
+          iconColor: 'text-blue-600',
+          timestamp: new Date(baseTime.getTime() + 2 * 60 * 60 * 1000),
+          subtitle: 'Request is being processed',
+          content: {
+            type: 'panel',
+            data: [
+              { label: 'Processing started', value: formatDate(new Date(baseTime.getTime() + 2 * 60 * 60 * 1000)) }
+            ]
+          }
+        })
+      }
+
+      // Add ready status if applicable
+      if (['ready', 'claimed', 'completed'].includes(req.status)) {
+        steps.push({
+          id: 4,
+          status: 'ready',
+          label: 'Ready for pick up',
+          icon: 'bi-file-earmark-check-fill',
+          iconColor: 'text-violet-600',
+          timestamp: req.completedDate || new Date(baseTime.getTime() + 4 * 60 * 60 * 1000),
+          subtitle: 'Requested document is ready for pickup at the barangay office',
+          content: {
+            type: 'panel',
+            data: [
+              { label: 'Ready since', value: formatDate(req.completedDate || new Date(baseTime.getTime() + 4 * 60 * 60 * 1000)) + ' at ' + formatTime(req.completedDate || new Date(baseTime.getTime() + 4 * 60 * 60 * 1000)) },
+              { label: 'Pickup hours', value: '8:00 AM - 5:00 PM (Mon-Fri)' }
+            ]
+          }
+        })
+      }
+
+      // Add completed status if applicable (handle both 'claimed' and 'completed')
+      if (req.status === 'claimed' || req.status === 'completed') {
+        steps.push({
+          id: 5,
+          status: 'completed',
+          label: 'Claimed',
+          icon: 'bi-check-circle-fill',
+          iconColor: 'text-green-600',
+          timestamp: req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000),
+          subtitle: `Claimed at: ${formatDate(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))} at ${formatTime(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))}`,
+          content: null
+        })
+      }
+
+      // Add rejected status if applicable
+      if (req.status === 'rejected') {
+        steps.push({
+          id: steps.length + 1,
+          status: 'rejected',
+          label: 'Rejected',
+          icon: 'bi-x-circle-fill',
+          iconColor: 'text-red-600',
+          timestamp: req.completedDate || new Date(baseTime.getTime() + 2 * 60 * 60 * 1000),
+          subtitle: null,
+          content: {
+            type: 'panel',
+            isRejected: true,
+            data: [
+              { label: 'Reason', value: req.remarks || 'No reason provided' },
+              { label: 'Rejected on', value: formatDate(req.completedDate || new Date()) + ' at ' + formatTime(req.completedDate || new Date()) }
+            ]
+          }
+        })
+      }
+
+      return steps.reverse() // Show newest first
+    }
+
+    const timeline = generateTimeline(request)
+
+    const TimelineStep = ({ step, isFirst, isLast }) => (
+      <div className="relative flex items-start space-x-3">
+        {/* Status Icon */}
+        <div className="relative z-10 flex-shrink-0 mt-1">
+          <div className="w-8 h-8 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center shadow-sm">
+            <i className={`bi ${step.icon} text-lg ${step.iconColor}`}></i>
+          </div>
+        </div>
+        
+        {/* Timeline Content */}
+        <div className={`flex-1 min-w-0 ${isLast ? 'pb-1' : 'pb-4'}`}>
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="text-sm font-medium text-gray-900">{step.label}</span>
+            {isFirst && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-white text-gray-700 border border-gray-300">
+                Current
+              </span>
+            )}
+          </div>
+          
+          {/* Subtitle */}
+          {step.subtitle && (
+            <p className="text-xs text-gray-500 mb-2">{step.subtitle}</p>
+          )}
+          
+          {/* Content Panel */}
+          {step.content && step.content.type === 'panel' && (
+            <div className={`p-3 rounded-lg border-2 border-dotted text-xs space-y-2 ${
+              step.content.isRejected 
+                ? 'bg-red-50 border-red-200' 
+                : 'bg-gray-100 border-gray-200'
+            }`}>
+              {step.content.data.map((item, index) => (
+                <div key={index}>
+                  <div className={`font-medium mb-1 ${
+                    step.content.isRejected && item.label === 'Reason' 
+                      ? 'text-red-700' 
+                      : 'text-gray-700'
+                  }`}>
+                    {item.label}:
+                  </div>
+                  <div className={`${
+                    step.content.isRejected && item.label === 'Reason' 
+                      ? 'text-red-600' 
+                      : 'text-gray-600'
+                  }`}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* Request Header */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+              <i className="bi bi-file-earmark text-lg" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{request.document}</h3>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>ID: {formatRequestId(request.id, request.requestDate)}</span>
+                <span className="font-bold">
+                  Fee: <span className="font-bold">{request.fee === 0 ? 'FREE' : `₱${request.fee.toFixed(2)}`}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 bg-white">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Status History</h4>
+          <div className="relative">
+            {/* Vertical timeline line for status history - precisely centered through circles */}
+            <div className="absolute bg-gray-300 top-0" style={{ left: '14.5px', width: '3px', bottom: '10px'}}></div>
+            
+            <div className="space-y-3">
+              {timeline.map((step, index) => (
+                <TimelineStep 
+                  key={step.id}
+                  step={step}
+                  isFirst={index === 0}
+                  isLast={index === timeline.length - 1}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -270,250 +572,65 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
               <p className="text-sm text-gray-600">You haven't submitted any document requests yet.</p>
             </div>
           ) : (
-            <div className="relative">
-              {/* Vertical Timeline Line */}
-              <div className="absolute left-4 top-2 bottom-0 w-px bg-gray-200"></div>
-              
-              <div className="space-y-6">
-                {/* Document Groups with Timeline */}
-                {documentGroups.map(({ documentType, activeRequest, allRequests, isOngoing, hasHistory }, groupIndex) => {
-                  const statusConfig = getStatusConfig(activeRequest.status)
-                  const isExpanded = expandedDocuments[documentType]
-                  
-                  return (
-                    <div key={documentType} className="relative flex gap-4">
-                      {/* Simple Timeline Icon */}
-                      <div className="relative z-10 flex-shrink-0">
-                        <div className="w-8 h-8 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center shadow-sm">
-                          <i className={`bi ${statusConfig.icon} text-sm ${statusConfig.iconColor}`}></i>
-                        </div>
-                      </div>
-                      
-                      {/* Content Card - Clickable */}
-                      <div className="flex-1 min-w-0 pb-2">
-                        <div className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-                          {/* Main Request Content - Clickable for details */}
-                          <div 
-                            className="p-4 cursor-pointer"
-                            onClick={() => toggleRequestDetails(activeRequest.id)}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <h3 className="font-medium text-gray-900 truncate">{documentType}</h3>
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${statusConfig.color}`}>
-                                    {statusConfig.label}
-                                  </span>
-                                </div>
-                                
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  <div className="flex items-center space-x-4">
-                                    <span className="font-medium">ID: {formatRequestId(activeRequest.id)}</span>
-                                    <span>Requested: {formatDate(activeRequest.requestDate)}</span>
-                                    {activeRequest.fee > 0 && (
-                                      <span className="font-medium text-green-600">Fee: ₱{activeRequest.fee.toFixed(2)}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center space-x-2">
-                                {/* Details Toggle */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleRequestDetails(activeRequest.id)
-                                  }}
-                                  className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                                >
-                                  <i className={`bi bi-chevron-${expandedRequestDetails[activeRequest.id] ? 'up' : 'down'} text-sm`}></i>
-                                </button>
-                                
-                                {/* History Toggle */}
-                                {hasHistory && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleDocumentHistory(documentType)
-                                    }}
-                                    className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                                  >
-                                    <i className={`bi bi-${isExpanded ? 'clock-history' : 'clock-history'} text-sm`}></i>
-                                  </button>
+            <div className="space-y-3">
+              {/* Document Groups */}
+              {documentGroups.map(({ documentType, activeRequest, isOngoing }, groupIndex) => {
+                const statusConfig = getStatusConfig(activeRequest.status)
+                
+                return (
+                  <div key={documentType} className="relative">
+                    {/* Document Card */}
+                    <div className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                      {/* Main Request Content - Clickable for timeline */}
+                      <div 
+                        className="p-4 cursor-pointer transition-colors duration-200 group"
+                        onClick={() => openTimeline(activeRequest)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="font-medium text-gray-900 truncate">{documentType}</h3>
+                              <span className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${statusConfig.color}`}>
+                                {statusConfig.label}
+                              </span>
+                            </div>
+                            
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div className="flex items-center space-x-4">
+                                <span className="font-medium">ID: {formatRequestId(activeRequest.id, activeRequest.requestDate)}</span>
+                                <span>Requested: {formatDate(activeRequest.requestDate)}</span>
+                                {activeRequest.fee > 0 && (
+                                  <span className="font-medium text-green-600">Fee: ₱{activeRequest.fee.toFixed(2)}</span>
                                 )}
                               </div>
                             </div>
                           </div>
                           
-                          {/* Request Details (Inline) */}
-                          {expandedRequestDetails[activeRequest.id] && (
-                            <div className="border-t border-gray-200 bg-white p-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-3">Request Details</h4>
-                              <div className="space-y-3 text-sm">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-500 mb-1">Purpose</label>
-                                  <p className="text-gray-900">{activeRequest.purpose}</p>
-                                </div>
-                                
-                                {activeRequest.notes && (
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                                    <p className="text-gray-900">{activeRequest.notes}</p>
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-500 mb-1">Request Date</label>
-                                  <p className="text-gray-900">{formatDate(activeRequest.requestDate)} at {formatTime(activeRequest.requestDate)}</p>
-                                </div>
-                                
-                                {activeRequest.completedDate && (
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Completed Date</label>
-                                    <p className="text-gray-900">{formatDate(activeRequest.completedDate)} at {formatTime(activeRequest.completedDate)}</p>
-                                  </div>
-                                )}
-
-                                {activeRequest.processedBy && (
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Processed By</label>
-                                    <p className="text-gray-900">{activeRequest.processedBy}</p>
-                                  </div>
-                                )}
-
-                                {activeRequest.remarks && (
-                                  <div>
-                                    <label className="block text-xs font-medium text-orange-600 mb-1">Remarks</label>
-                                    <p className="text-orange-900 bg-orange-50 p-2 rounded border border-orange-200">{activeRequest.remarks}</p>
-                                  </div>
-                                )}
-                              </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="text-gray-400 group-hover:text-gray-600 transition-colors duration-200">
+                              <i className="bi bi-chevron-right text-lg"></i>
                             </div>
-                          )}
-                          
-                          {/* Request History Timeline (Collapsible) */}
-                          {hasHistory && isExpanded && (
-                            <div className="border-t border-gray-200 bg-gray-50 p-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-3">Complete History</h4>
-                              <div className="relative">
-                                {/* Mini timeline line for history */}
-                                <div className="absolute left-3 top-2 bottom-0 w-px bg-gray-300"></div>
-                                
-                                <div className="space-y-4">
-                                  {allRequests.map((request, index) => {
-                                    const requestStatusConfig = getStatusConfig(request.status)
-                                    const isFirst = index === 0
-                                    
-                                    return (
-                                      <div key={request.id} className="relative">
-                                        <div 
-                                          className="relative flex items-start space-x-3 cursor-pointer shadow-sm hover:shadow-md rounded-md p-2 -m-2 transition-shadow duration-200"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            toggleRequestDetails(request.id)
-                                          }}
-                                        >
-                                          {/* Simple Mini Timeline Icon */}
-                                          <div className="relative z-10 flex-shrink-0 mt-1">
-                                            <div className={`w-6 h-6 bg-white border-2 ${isFirst ? 'border-blue-300' : 'border-gray-300'} rounded-full flex items-center justify-center shadow-sm`}>
-                                              <i className={`bi ${requestStatusConfig.icon} text-xs ${requestStatusConfig.iconColor}`}></i>
-                                            </div>
-                                          </div>
-                                          
-                                          {/* Timeline Content */}
-                                          <div className="flex-1 min-w-0 pb-2">
-                                            <div className="flex items-center justify-between">
-                                              <div className="flex items-center space-x-2 mb-1">
-                                                <span className="text-sm font-medium text-gray-900">
-                                                  {formatRequestId(request.id)}
-                                                </span>
-                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${requestStatusConfig.color}`}>
-                                                  {requestStatusConfig.label}
-                                                </span>
-                                                {isFirst && (
-                                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                                                    Current
-                                                  </span>
-                                                )}
-                                              </div>
-                                              
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation()
-                                                  toggleRequestDetails(request.id)
-                                                }}
-                                                className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                              >
-                                                <i className={`bi bi-chevron-${expandedRequestDetails[request.id] ? 'up' : 'down'} text-xs`}></i>
-                                              </button>
-                                            </div>
-                                            
-                                            <div className="text-xs text-gray-600">
-                                              Submitted: {formatDate(request.requestDate)} at {formatTime(request.requestDate)}
-                                              {request.fee > 0 && (
-                                                <span className="ml-2 font-medium text-green-600">• Fee: ₱{request.fee.toFixed(2)}</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Historical Request Details (Inline) */}
-                                        {expandedRequestDetails[request.id] && (
-                                          <div className="ml-9 mt-2 bg-gray-50 p-3 rounded border border-gray-200">
-                                            <h5 className="text-xs font-medium text-gray-700 mb-2">Request Details</h5>
-                                            <div className="space-y-2 text-xs">
-                                              <div>
-                                                <label className="block text-xs font-medium text-gray-500 mb-1">Purpose</label>
-                                                <p className="text-gray-900">{request.purpose}</p>
-                                              </div>
-                                              
-                                              {request.notes && (
-                                                <div>
-                                                  <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                                                  <p className="text-gray-900">{request.notes}</p>
-                                                </div>
-                                              )}
-                                              
-                                              {request.completedDate && (
-                                                <div>
-                                                  <label className="block text-xs font-medium text-gray-500 mb-1">Completed Date</label>
-                                                  <p className="text-gray-900">{formatDate(request.completedDate)} at {formatTime(request.completedDate)}</p>
-                                                </div>
-                                              )}
-
-                                              {request.processedBy && (
-                                                <div>
-                                                  <label className="block text-xs font-medium text-gray-500 mb-1">Processed By</label>
-                                                  <p className="text-gray-900">{request.processedBy}</p>
-                                                </div>
-                                              )}
-
-                                              {request.remarks && (
-                                                <div>
-                                                  <label className="block text-xs font-medium text-orange-600 mb-1">Remarks</label>
-                                                  <p className="text-orange-900 bg-orange-50 p-2 rounded border border-orange-200">{request.remarks}</p>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Timeline Slide Panel */}
+      <SlidePanel
+        open={showTimelinePanel}
+        onClose={closeTimeline}
+        title="Request Timeline Details"
+        subtitle=""
+      >
+        {selectedRequest && <TimelineContent request={selectedRequest} />}
+      </SlidePanel>
     </div>
   )
 }

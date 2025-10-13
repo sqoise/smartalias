@@ -74,22 +74,29 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
 
   const menus = {
     resident: [
-      { name: 'Online Services', href: '/resident', icon: 'bi-clipboard-check' },
-      { name: 'My Requests', href: '/resident/requests', icon: 'bi-clock-history' },
+      { 
+        name: 'Online Services', 
+        icon: 'bi-clipboard-check',
+        key: 'online-services',
+        children: [
+          { name: 'Document Requests', href: '/resident/document-requests', icon: 'bi-file-earmark-plus' }
+        ]
+      },
+      { name: 'My Requests', href: '/resident/my-requests', icon: 'bi-clock-history' },
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
       { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
     ],
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
-      { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
       // { name: 'Households', href: '/admin/households', icon: 'bi-house' },
-      { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
       { 
         name: 'Managed Services', 
         icon: 'bi-file-earmark-text',
         key: 'documents',
         children: [
-          { name: 'Document Requests', href: '/admin/documents', icon: 'bi-file-earmark-plus' }
+          { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
+          { name: 'Document Requests', href: '/admin/documents', icon: 'bi-file-earmark-plus' },
+          { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
         ]
       },
       { 
@@ -199,7 +206,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
                 <div className="relative group">
                   <button
                     onClick={() => !isCollapsed && toggleSubmenu(item.key)}
-                    className={`w-full flex items-center justify-between text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-4 py-2.5 text-sm cursor-pointer ${
+                    className={`w-full flex items-center justify-between text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-3 py-2.5 text-sm cursor-pointer ${
                       isParentActive ? 'text-gray-900 bg-gray-100 font-bold' : ''
                     }`}
                   >
@@ -227,7 +234,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
                 
                 {/* Submenu Items */}
                 {!isCollapsed && isExpanded && (
-                  <div className="ml-5.5 mt-1 relative">
+                  <div className="ml-4.5 mt-1 relative">
                     {item.children.map((child, index) => {
                       const childActive = pathname === child.href || pathname.startsWith(child.href + '/')
                       const isLastChild = index === item.children.length - 1
@@ -250,7 +257,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
                           )}
                           <div className="flex-1 ml-2">
                             {childActive ? (
-                              <div className="text-gray-900 bg-gray-100 rounded-md px-3 py-2.5 text-sm font-bold cursor-default">
+                              <div className="text-gray-900 bg-gray-100 rounded-md px-3.5 py-2.5 text-sm font-bold cursor-default">
                                 {child.name}
                               </div>
                             ) : (
@@ -278,7 +285,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
             <div key={item.href} className="relative group">
               {active ? (
                 <div 
-                  className={`flex items-center text-gray-900 bg-gray-100 rounded-md px-4 py-2.5 text-sm font-bold cursor-default`}
+                  className={`flex items-center text-gray-900 bg-gray-100 rounded-md px-3 py-2.5 text-sm font-bold cursor-default`}
                 >
                   <div className="flex justify-center flex-shrink-0 w-6">
                     <i className={`bi ${item.icon} text-base font-black text-black drop-shadow-md`}></i>
@@ -288,7 +295,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
               ) : (
                 <Link 
                   href={item.href} 
-                  className={`flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-4 py-2.5 text-sm cursor-pointer`}
+                  className={`flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-150 rounded-md px-3 py-2.5 text-sm cursor-pointer`}
                   onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
                 >
                   <div className="flex justify-center flex-shrink-0 w-6">

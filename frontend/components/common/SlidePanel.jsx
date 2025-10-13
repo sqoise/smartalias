@@ -11,11 +11,20 @@ import React from 'react'
  * @param {string} title - Panel header title
  * @param {string} subtitle - Optional panel header subtitle  
  * @param {React.Node} children - Panel body content
- * @param {React.Node} footer - Optional footer content (buttons, actions)
+ * @param {React.Node} footer - Optional custom footer content (buttons, actions)
  * @param {string} size - Panel width: 'sm' | 'md' | 'lg' | 'xl' (default: 'lg')
  * @param {string} headerIcon - Optional Bootstrap icon class for header
  * @param {boolean} showHeaderCloseButton - Show close button in header on mobile (default: true)
  * @param {boolean} loading - Show skeleton loading state (default: false)
+ * @param {boolean} showFooter - Show built-in footer with cancel/confirm buttons (default: false)
+ * @param {string} cancelText - Cancel button text (default: 'Cancel')
+ * @param {string} confirmText - Confirm button text (default: 'Confirm')
+ * @param {string} confirmIcon - Bootstrap icon class for confirm button
+ * @param {function} onConfirm - Callback for confirm button click
+ * @param {boolean} confirmDisabled - Disable confirm button (default: false)
+ * @param {boolean} confirmLoading - Show loading state on confirm button (default: false)
+ * @param {string} confirmLoadingText - Loading text for confirm button (default: 'Loading...')
+ * @param {boolean} closeOnEscape - Close when pressing Escape (default: false)
  */
 export default function SlidePanel({
   open = false,
@@ -27,7 +36,16 @@ export default function SlidePanel({
   size = 'lg',
   headerIcon,
   showHeaderCloseButton = true,
-  loading = false
+  loading = false,
+  showFooter = false,
+  cancelText = 'Cancel',
+  confirmText = 'Confirm',
+  confirmIcon,
+  onConfirm,
+  confirmDisabled = false,
+  confirmLoading = false,
+  confirmLoadingText = 'Loading...',
+  closeOnEscape = false
 }) {
   // Size configurations based on AnnouncementDetailView pattern
   const sizeConfig = {
@@ -45,9 +63,9 @@ export default function SlidePanel({
     xl: 'right-[720px] sm:right-[720px] lg:right-[850px] xl:right-[950px]'
   }
 
-  // Handle Escape key to close panel
+  // Handle Escape key to close panel (only if closeOnEscape is true)
   React.useEffect(() => {
-    if (!open) return
+    if (!open || !closeOnEscape) return
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -57,7 +75,7 @@ export default function SlidePanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
+  }, [open, onClose, closeOnEscape])
 
   // Skeleton Loading Components
   const SkeletonHeader = () => (
@@ -123,38 +141,38 @@ export default function SlidePanel({
   )
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex ${open ? '' : 'pointer-events-none'}`}
-      aria-modal={open ? "true" : "false"}
-      aria-hidden={!open}
-      role="dialog"
-      style={{ borderStyle: 'none' }}
-    >
+    <>
       {/* Overlay - Click to close */}
-      <div
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
-        onClick={open ? onClose : undefined}
-      >
-        {/* Floating Close Button next to Panel */}
-        <button
-          className={`absolute top-2 ${closeButtonPosition[size]} w-9 h-9 bg-white/30 hover:bg-white/45 text-white hover:text-gray-100 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md transform -translate-x-4 cursor-pointer shadow-md hover:shadow-lg ${
-            open ? 'opacity-100 scale-100' : 'opacity-10 scale-90'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          title="Close"
+      {open && (
+        <div
+          className="fixed inset-0 w-full h-full bg-black/50 transition-opacity duration-300 z-50"
+          style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          onClick={onClose}
         >
-          <i className="bi bi-x text-3xl text-white/90" />
-        </button>
-      </div>
+          {/* Floating Close Button next to Panel */}
+          <button
+            className={`absolute top-2 ${closeButtonPosition[size]} w-9 h-9 bg-white/30 hover:bg-white/45 text-white hover:text-gray-100 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md transform -translate-x-4 cursor-pointer shadow-md hover:shadow-lg ${
+              open ? 'opacity-100 scale-100' : 'opacity-10 scale-90'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            title="Close"
+          >
+            <i className="bi bi-x text-3xl text-white/90" />
+          </button>
+        </div>
+      )}
       
       {/* Slide Panel from Right */}
       <div
-        className={`relative ml-auto h-full ${sizeConfig[size]} bg-gray-100 shadow-2xl transition-transform duration-300 ease-out transform ${
+        className={`fixed right-0 top-0 h-full ${sizeConfig[size]} bg-gray-50 shadow-2xl transition-transform duration-300 ease-out transform z-50 ${
           open ? 'translate-x-0' : 'translate-x-full'
         } overflow-hidden flex flex-col`}
+        aria-modal={open ? "true" : "false"}
+        aria-hidden={!open}
+        role="dialog"
       >
         {/* Panel Header */}
         {loading ? (
@@ -204,13 +222,43 @@ export default function SlidePanel({
         {loading ? (
           <SkeletonFooter />
         ) : (
-          footer && (
+          (footer || showFooter) && (
             <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3">
-              {footer}
+              {footer || (
+                <div className="flex items-center justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer h-9"
+                  >
+                    {cancelText}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={confirmDisabled}
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {confirmLoading ? (
+                      <>
+                        <div className="w-3 h-3 mr-2">
+                          <div className="w-full h-full border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        {confirmLoadingText}
+                      </>
+                    ) : (
+                      <>
+                        {confirmIcon && <i className={`${confirmIcon} text-md mr-1`} />}
+                        {confirmText}
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )
         )}
       </div>
-    </div>
+    </>
   )
 }

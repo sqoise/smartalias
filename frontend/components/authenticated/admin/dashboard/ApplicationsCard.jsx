@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import ApiClient from '../../../../lib/apiClient'
 
 const StatCardSkeleton = () => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -25,13 +26,25 @@ export default function ApplicationsCard() {
     const loadApplications = async () => {
       try {
         setLoading(true)
-        // Mock data for now since no real endpoint
-        setTimeout(() => {
-          setApplicationsData({ pending: 12 })
-          setLoading(false)
-        }, 300)
+        
+        // Fetch real document request statistics
+        const response = await ApiClient.getDocumentRequestStats({
+          dateRange: 'all' // Get all pending requests
+        })
+        
+        if (response.success && response.data?.basic) {
+          setApplicationsData({ 
+            pending: response.data.basic.pending || 0 
+          })
+        } else {
+          // Fallback to 0 if API fails
+          setApplicationsData({ pending: 0 })
+        }
+        
+        setLoading(false)
       } catch (error) {
         console.error('Error loading applications:', error)
+        setApplicationsData({ pending: 0 })
         setLoading(false)
       }
     }
@@ -52,7 +65,7 @@ export default function ApplicationsCard() {
           </p>
           <p className="text-sm text-purple-600 mt-1">
             <i className="bi bi-file-earmark-text mr-1"></i>
-            Certificates & documents
+            Documents & Certificates
           </p>
         </div>
         <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center">

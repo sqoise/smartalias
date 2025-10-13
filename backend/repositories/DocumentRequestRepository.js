@@ -27,6 +27,64 @@ class DocumentRequestRepository {
   }
 
   /**
+   * Get all documents from catalog (including inactive)
+   */
+  static async getAllCatalog() {
+    try {
+      const query = `
+        SELECT id, title, description, fee, filename, is_active 
+        FROM document_catalog 
+        ORDER BY title ASC
+      `
+      const result = await db.query(query)
+      return result.rows
+    } catch (error) {
+      logger.error('DocumentRequestRepository.getAllCatalog error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get document from catalog by title
+   * @param {string} title - Document title
+   * @returns {Object|null} - Document catalog entry or null
+   */
+  static async getDocumentByTitle(title) {
+    try {
+      const query = `
+        SELECT id, title, description, fee, filename, is_active 
+        FROM document_catalog 
+        WHERE title = $1
+      `
+      const result = await db.query(query, [title])
+      return result.rows[0] || null
+    } catch (error) {
+      logger.error('DocumentRequestRepository.getDocumentByTitle error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get document from catalog by ID
+   * @param {number} documentId - Document ID
+   * @returns {Object|null} - Document catalog entry or null
+   */
+  static async getDocumentById(documentId) {
+    try {
+      const query = `
+        SELECT id, title, description, fee, filename, is_active 
+        FROM document_catalog 
+        WHERE id = $1
+      `
+      const result = await db.query(query, [documentId])
+      return result.rows[0] || null
+    } catch (error) {
+      logger.error('DocumentRequestRepository.getDocumentById error:', error)
+      throw error
+    }
+  }
+
+  /**
    * Create new document request
    */
   static async createRequest(residentId, documentId, purpose, notes = null) {
@@ -137,7 +195,7 @@ class DocumentRequestRepository {
             WHEN drl.status = 4 THEN 'claimed'
             ELSE 'unknown'
           END as status_text
-        FROM document_request_logs drl
+        FROM document_requests_logs drl
         LEFT JOIN users u ON drl.performed_by = u.id
         WHERE drl.request_id = $1
         ORDER BY drl.created_at ASC
@@ -177,17 +235,16 @@ class DocumentRequestRepository {
    * @param {string} oldStatus - Previous status (optional)
    * @param {string} newStatus - New status (optional)  
    * @param {number} performedBy - User ID who performed the action
-   * @param {string} remarks - Optional remarks/notes
    * @returns {Object} The created log entry
    */
-  static async logAction(requestId, action, oldStatus = null, newStatus = null, performedBy, remarks = null) {
+  static async logAction(requestId, action, oldStatus = null, newStatus = null, performedBy) {
     try {
       const query = `
-        INSERT INTO document_request_logs (request_id, action, old_status, new_status, action_by, action_notes, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        INSERT INTO document_requests_logs (request_id, action, old_status, new_status, action_by, created_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
         RETURNING id
       `
-      const result = await db.query(query, [requestId, action, oldStatus, newStatus, performedBy, remarks?.trim() || null])
+      const result = await db.query(query, [requestId, action, oldStatus, newStatus, performedBy])
       return result.rows[0]
     } catch (error) {
       logger.error('DocumentRequestRepository.logAction error:', error)
@@ -229,7 +286,8 @@ class DocumentRequestRepository {
           'processing': 1, 
           'rejected': 2,
           'ready': 3,
-          'claimed': 4
+          'claimed': 4,
+          'completed': 4 // Alias for claimed (status 4)
         }
         if (statusMap[status] !== undefined) {
           whereConditions.push(`dr.status = $${paramIndex}`)
@@ -303,6 +361,8 @@ class DocumentRequestRepository {
       const sanitizedPage = Math.max(1, parseInt(page))
       const offset = (sanitizedPage - 1) * sanitizedLimit
       
+      const limitParamIndex = paramIndex
+      const offsetParamIndex = paramIndex + 1
       queryParams.push(sanitizedLimit, offset)
 
       const query = `
@@ -310,8 +370,10 @@ class DocumentRequestRepository {
           dr.id,
           dr.resident_id,
           CONCAT(r.first_name, ' ', r.last_name) as resident_name,
+          r.address,
           dr.document_id,
           dc.title as document_type,
+          dc.filename as template_filename,
           dr.purpose,
           dr.notes,
           dr.remarks,
@@ -334,7 +396,7 @@ class DocumentRequestRepository {
         JOIN document_catalog dc ON dr.document_id = dc.id
         ${whereClause}
         ORDER BY ${actualSortField} ${sanitizedSortDirection}
-        LIMIT $${paramIndex - 1} OFFSET $${paramIndex}
+        LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
       `
 
       const result = await db.query(query, queryParams)
@@ -564,7 +626,8 @@ class DocumentRequestRepository {
             'processing': 1,
             'rejected': 2,
             'ready': 3,
-            'claimed': 4
+            'claimed': 4,
+            'completed': 4 // Alias for claimed (status 4)
           }
 
           if (!statusMap[status]) {
@@ -607,10 +670,11 @@ class DocumentRequestRepository {
             'processing': 'Marked as processing',
             'rejected': 'Request rejected',
             'ready': 'Marked as ready for pickup',
-            'claimed': 'Marked as claimed'
+            'claimed': 'Marked as completed',
+            'completed': 'Marked as completed' // Alias for claimed
           }
 
-          await this.logAction(id, actionMap[status], currentStatus, status, performedBy, remarks)
+          await this.logAction(id, actionMap[status], currentStatus, statusValue, performedBy)
 
           results.push({
             id: parseInt(id),
@@ -699,7 +763,8 @@ class DocumentRequestRepository {
       'processing': 1,
       'rejected': 2,
       'ready': 3,
-      'claimed': 4
+      'claimed': 4,
+      'completed': 4 // Alias for claimed (status 4)
     }
 
     const currentStatusValue = typeof currentStatus === 'string' ? statusMap[currentStatus] : currentStatus
@@ -708,7 +773,7 @@ class DocumentRequestRepository {
     const validTransitions = {
       0: [1, 2], // pending -> processing, rejected
       1: [2, 3], // processing -> rejected, ready
-      3: [4]     // ready -> claimed
+      3: [4]     // ready -> claimed/completed
     }
 
     return validTransitions[currentStatusValue]?.includes(newStatusValue) || false

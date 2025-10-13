@@ -88,7 +88,7 @@ export default function AdminLayout({ children }) {
       return 'Announcements Management'
     }
     if (pathname.includes('/documents')) {
-      return 'Document Services Management'
+      return 'Document Requests Management'
     }
     return 'Admin Dashboard'
   }

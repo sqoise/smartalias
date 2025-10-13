@@ -653,14 +653,14 @@ class ChatbotController {
       type: 'fallback',
       answer: `I'm sorry, I couldn't find a specific answer to your question. 
 
-Here are some things I can help you with:
-• Document requests and requirements
-• Barangay services and programs
-• Office hours and contact information
-• Registration and account questions
-• Announcements and updates
+      Here are some things I can help you with:
+      • Document requests and requirements
+      • Barangay services and programs
+      • Office hours and contact information
+      • Registration and account questions
+      • Announcements and updates
 
-Please try rephrasing your question or browse the FAQ categories below.`,
+      Please try rephrasing your question or browse the FAQ categories below.`,
       suggestions: [
         { id: null, question: 'What documents can I request?' },
         { id: null, question: 'What services does the barangay provide?' },

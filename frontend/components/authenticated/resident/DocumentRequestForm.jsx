@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import SlidePanel from '../../common/SlidePanel'
 import CustomSelect from '../../common/CustomSelect'
 import Modal from '../../common/Modal'
-import { PURPOSES } from '../../../lib/constants'
+import { PURPOSES, getPurposeOptions } from '../../../lib/constants'
 import { ApiClient } from '../../../lib/apiClient'
 
 export default function DocumentRequestForm({ 
@@ -23,83 +23,7 @@ export default function DocumentRequestForm({
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Purpose options based on document type
-  const getPurposeOptions = (documentType) => {
-    const purposes = {
-      'Electrical Permit': [
-        'Home renovation',
-        'New electrical installation',
-        'Electrical repair',
-        'Business establishment'
-      ],
-      'Fence Permit': [
-        'Property boundary',
-        'Security purposes',
-        'Privacy fence',
-        'Property development'
-      ],
-      'Excavation Permit': [
-        'Foundation construction',
-        'Utility installation',
-        'Landscaping project',
-        'Property development'
-      ],
-      'Barangay Clearance': [
-        'Employment requirement',
-        'Travel abroad',
-        'Bank loan application',
-        'Business permit',
-        'School enrollment',
-        'Government transaction'
-      ],
-      'Certificate of Residency': [
-        'School enrollment',
-        'Employment requirement',
-        'Government transaction',
-        'Bank application'
-      ],
-      'Certificate of Good Moral': [
-        'Employment requirement',
-        'School application',
-        'Character reference',
-        'Legal purposes'
-      ],
-      'Certificate of Indigency (Medical)': [
-        'Medical assistance',
-        'Hospital bills',
-        'Medicine assistance',
-        'Health services'
-      ],
-      'Certificate of Indigency (Financial)': [
-        'Financial assistance',
-        'Educational support',
-        'Emergency aid',
-        'Social services'
-      ],
-      'Business Permit Clearance': [
-        'New business',
-        'Business renewal',
-        'Business expansion',
-        'Franchise application'
-      ]
-    }
-    
-    const purposeList = purposes[documentType] || ['General purpose']
-    
-    // Convert to options format for CustomSelect
-    const options = purposeList.map(purpose => ({
-      value: purpose,
-      label: purpose
-    }))
-    
-    // Add "Other" option
-    options.push({
-      value: 'Other',
-      label: 'Other (specify in notes)'
-    })
-    
-    return options
-  }
+
 
     // Reset form when document changes or modal opens
   useEffect(() => {
@@ -207,37 +131,14 @@ export default function DocumentRequestForm({
         headerIcon=""
         size="md"
         loading={loading}
-        footer={
-          <div className="flex items-center justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-1 focus:ring-gray-500 transition-colors cursor-pointer h-9"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer h-9 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3 h-3 mr-2">
-                    <div className="w-full h-full border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check text-md mr-1" />
-                  Submit Request
-                </>
-              )}
-            </button>
-          </div>
-        }
+        showFooter={true}
+        cancelText="Cancel"
+        confirmText="Submit Request"
+        confirmIcon="bi-check"
+        onConfirm={handleSubmit}
+        confirmDisabled={isSubmitting}
+        confirmLoading={isSubmitting}
+        confirmLoadingText="Submitting..."
       >
         {document && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4">

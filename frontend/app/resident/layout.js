@@ -80,17 +80,17 @@ export default function ResidentLayout({ children }) {
   
   // Determine page title based on current route
   const getPageTitle = () => {
-    if (pathname === '/resident') {
-      return 'SmartLIAS Online Services'
+    if (pathname.includes('/document-requests')) {
+      return 'Online Services'
     }
-    if (pathname.includes('/requests')) {
+    if (pathname.includes('/my-requests')) {
       return 'My Document Requests'
     }
     if (pathname.includes('/announcements')) {
       return 'Announcements'
     }
     if (pathname.includes('/profile')) {
-      return 'Profile'
+      return 'My Profile'
     }
     return 'Resident Dashboard'
   }

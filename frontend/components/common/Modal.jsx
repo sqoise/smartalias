@@ -21,8 +21,8 @@ import React, { useEffect } from 'react'
  * @param {string} confirmLoadingText - Text to show when loading (default: 'Please wait...')
  * @param {string} variant - Button color variant: 'safe' | 'danger' (default: 'safe')
  * @param {string} size - Modal width: 'sm' | 'md' | 'lg' | 'xl' (default: 'md')
- * @param {boolean} closeOnBackdrop - Close when clicking backdrop (default: true)
- * @param {boolean} closeOnEscape - Close when pressing Escape (default: true)
+ * @param {boolean} closeOnBackdrop - Close when clicking backdrop (default: false)
+ * @param {boolean} closeOnEscape - Close when pressing Escape (default: false)
  */
 export default function Modal({
   isOpen = false, // Legacy prop
@@ -41,8 +41,8 @@ export default function Modal({
   confirmLoadingText = 'Please wait...',
   variant = 'safe', // 'safe' | 'danger'
   size = 'md',
-  closeOnBackdrop = true,
-  closeOnEscape = true
+  closeOnBackdrop = false,
+  closeOnEscape = false
 }) {
   // Support both prop names for backward compatibility
   const modalOpen = open !== undefined ? open : isOpen
@@ -123,9 +123,17 @@ export default function Modal({
     }
   }
 
-  const handleConfirm = () => {
-    onConfirm?.()
-    onClose?.()
+  const handleConfirm = async () => {
+    if (onConfirm) {
+      // Call onConfirm and check if it returns a promise that resolves to false
+      const result = await onConfirm()
+      // Only close if onConfirm doesn't return false (or doesn't return anything)
+      if (result !== false) {
+        onClose?.()
+      }
+    } else {
+      onClose?.()
+    }
   }
 
   const handleCancel = () => {
@@ -134,7 +142,7 @@ export default function Modal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]"
       onClick={handleOverlayClick}
     >
       <div 

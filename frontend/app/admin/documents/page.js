@@ -1,7 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import DocumentsContainer from '../../../components/authenticated/admin/DocumentsContainer'
+import ToastNotification from '../../../components/common/ToastNotification'
+import ApiClient from '../../../lib/apiClient'
+import { alertToast, formatDocumentRequestID } from '../../../lib/utility'
 
 export default function DocumentsPage() {
   const [documentsData, setDocumentsData] = useState({
@@ -15,66 +18,93 @@ export default function DocumentsPage() {
   })
   
   const [loading, setLoading] = useState(true)
+  const toastRef = useRef()
+
+  // Toast helper
+  const handleAlert = (message, type = 'info') => alertToast(toastRef, message, type)
+
+  // Function to fetch documents statistics
+  const fetchDocumentsStats = async () => {
+    try {
+      const response = await ApiClient.getDocumentRequestStats({
+        dateRange: '7days' // Default to last 7 days for overview
+      })
+      
+      if (response.success && response.data?.basic) {
+        const stats = response.data.basic
+        return {
+          total: stats.total,
+          pending: stats.pending,
+          approved: stats.claimed, // Completed documents (backend status=4)
+          rejected: stats.rejected
+        }
+      } else {
+        throw new Error(response.error || 'Failed to fetch statistics')
+      }
+    } catch (error) {
+      console.error('Error fetching document stats:', error)
+      handleAlert('Failed to load document statistics', 'error')
+      // Return fallback data
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0
+      }
+    }
+  }
 
   // Function to fetch documents data
   const fetchDocumentsData = async () => {
     try {
       setLoading(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock data
-      const mockData = {
-        stats: {
-          total: 247,
-          pending: 23,
-          approved: 198,
-          rejected: 26
-        },
-          applications: [
-          {
-            id: "DOC-2024-001",
-            residentId: 123,
-            residentName: "Juan Dela Cruz",
-            documentType: "barangay_certificate",
-            purpose: "Employment requirement",
-            requestDate: "2024-10-06",
-            status: "pending"
-          },
-          {
-            id: "DOC-2024-002", 
-            residentId: 124,
-            residentName: "Maria Santos",
-            documentType: "barangay_clearance",
-            purpose: "Travel abroad",
-            requestDate: "2024-10-05",
-            status: "processing"
-          },
-          {
-            id: "DOC-2024-003",
-            residentId: 125, 
-            residentName: "Jose Garcia",
-            documentType: "indigency_certificate",
-            purpose: "Medical assistance",
-            requestDate: "2024-10-04",
-            status: "ready"
-          },
-        ]
+      // Fetch both statistics and applications in parallel
+      const [statsData, applicationsResponse] = await Promise.all([
+        fetchDocumentsStats(),
+        ApiClient.searchDocumentRequests({
+          page: 1,
+          limit: 100,
+          sort_by: 'created_at',
+          sort_order: 'desc'
+        })
+      ])
+
+      let applications = []
+      if (applicationsResponse.success && applicationsResponse.data?.requests) {
+        applications = applicationsResponse.data.requests.map(request => ({
+          id: formatDocumentRequestID(request.id, request.created_at), // Formatted ID for display
+          rawId: request.id, // Raw numeric ID for API calls
+          residentId: request.resident_id,
+          residentName: request.resident_name,
+          address: request.address, // Include resident address
+          documentType: request.document_type,
+          templateFilename: request.template_filename, // Template filename from database
+          purpose: request.purpose,
+          notes: request.notes, // Include notes from request
+          requestDate: request.created_at,
+          status: request.status_text,
+          fee: request.fee || 0 // Document fee from catalog
+        }))
       }
+
+      setDocumentsData({
+        stats: statsData,
+        applications: applications
+      })
       
-      setDocumentsData(mockData)
     } catch (error) {
       console.error('Error fetching documents data:', error)
-      } finally {
-        setLoading(false)
-      }
+      handleAlert('Failed to load documents data', 'error')
+    } finally {
+      setLoading(false)
     }
+  }
 
   // Load data on component mount
   useEffect(() => {
     fetchDocumentsData()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle refresh
   const handleRefresh = () => {
@@ -85,7 +115,6 @@ export default function DocumentsPage() {
     <div className="space-y-4">
       {/* MERGED SECTION: Document Services & Analytics */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
@@ -142,7 +171,7 @@ export default function DocumentsPage() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center mb-1">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Approved</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Completed</p>
                 </div>
                 <p className="text-xl font-bold text-gray-900 mb-1">
                   {loading ? (
@@ -152,7 +181,7 @@ export default function DocumentsPage() {
                   )}
                 </p>
                 <div className="flex items-center text-xs text-gray-600 font-medium">
-                  <span>Ready & completed</span>
+                  <span>Claimed</span>
                 </div>
               </div>
               <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -176,7 +205,7 @@ export default function DocumentsPage() {
                   )}
                 </p>
                 <div className="flex items-center text-xs text-gray-600 font-medium">
-                  <span>Denied or declined</span>
+                  <span>Denied or Rejected</span>
                 </div>
               </div>
               <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -186,7 +215,7 @@ export default function DocumentsPage() {
           </div>
         </div>
 
-        {/* Quick Analytics & Actions */}
+        {/* Quick Analytics & Actions - Commented out for now
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
           <div className="bg-gray-50 rounded-lg p-3">
             <div className="flex items-center space-x-2">
@@ -238,6 +267,7 @@ export default function DocumentsPage() {
             </div>
           </div>
         </div>
+        */}
       </div>
 
       {/* Documents Table */}
@@ -247,6 +277,9 @@ export default function DocumentsPage() {
           loading={loading}
           onRefresh={handleRefresh}
         />
+
+      {/* Toast Notifications */}
+      <ToastNotification ref={toastRef} />
     </div>
   )
 }

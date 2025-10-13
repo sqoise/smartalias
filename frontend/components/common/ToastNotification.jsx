@@ -21,12 +21,12 @@ const ToastNotification = forwardRef(function ToastNotificationComponent(props, 
         return updatedToasts.length > 3 ? updatedToasts.slice(-3) : updatedToasts
       })
       
-      // Auto hide after 5 seconds
+      // Auto hide after 7 seconds
       setTimeout(() => {
         setToasts(prev => prev.filter(toast => toast.id !== newToast.id))
         // Call onClose if provided
         props.onClose?.()
-      }, 5000)
+      }, 7500)
     }
   }, [props.show, props.message, props.type])
 
@@ -44,10 +44,10 @@ useImperativeHandle(ref, () => ({
       return updatedToasts.length > 3 ? updatedToasts.slice(-3) : updatedToasts
     })
     
-    // Auto hide after 5 seconds
+    // Auto hide after 7 seconds
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== newToast.id))
-    }, 5000)
+    }, 7500)
   }
 }))
 
@@ -141,7 +141,7 @@ useImperativeHandle(ref, () => ({
         return (
           <div 
             key={toast.id}
-            className={`flex items-center w-full lg:w-90 p-3 px-2 rounded-xl ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in relative overflow-hidden`} 
+            className={`flex items-center w-full lg:w-90 p-3 px-2.5 rounded-xl ${getBackgroundClass(toast.type)} ${getBorderClass(toast.type)} ${getShadowClass(toast.type)} transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-2 fade-in relative overflow-hidden`} 
             role="alert"
             style={{ 
               animationDelay: `${index * 100}ms`,
@@ -152,13 +152,13 @@ useImperativeHandle(ref, () => ({
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
             }}
           >
-            <div className={`flex items-center justify-center flex-shrink-0 mx-2 w-8 h-8 rounded-lg ${getIconBorderClass(toast.type)} shadow-sm`}>
-              <i className={`bi ${getIconClass(toast.type)} transition-all duration-300 ease-in-out text-lg leading-none`}></i>
+            <div className={`flex items-center justify-center flex-shrink-0 mx-2 w-9 h-9 rounded-lg ${getIconBorderClass(toast.type)} shadow-sm`}>
+              <i className={`bi ${getIconClass(toast.type)} transition-all duration-300 ease-in-out text-xl leading-none`}></i>
             </div>
             <div 
               className={`ml-2 font-normal ${getTextClass(toast.type)} flex-1 py-1 ${isTruncatable ? 'cursor-pointer' : ''} transition-all duration-300 ease-out overflow-hidden`} 
               style={{
-                fontSize: '13px',
+                fontSize: '14px',
                 textShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
                 transition: 'max-height 0.3s ease-out'
               }}

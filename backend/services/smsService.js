@@ -317,15 +317,14 @@ class SMSService {
   static formatSMSMessage(announcement) {
     const maxLength = 1000 // Standard SMS length
     const prefix = '[SMARTLIAS]\n'
-    const suffix = '\n\nThis is an auto-generated message. Do not reply.'
     
-    let message = `${prefix}\n${announcement.content}${suffix}`
+    let message = `${prefix}\n${announcement.content}`
     
     // Truncate if too long
     if (message.length > maxLength) {
       const availableLength = maxLength - prefix.length - suffix.length - 3 // 3 for "..."
       const truncatedContent = announcement.content.substring(0, availableLength)
-      message = `${prefix}\n${truncatedContent}...${suffix}`
+      message = `${prefix}\n${truncatedContent}`
     }
     
     return message

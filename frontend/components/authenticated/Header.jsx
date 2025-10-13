@@ -24,7 +24,7 @@ export default function Header({
   // Role-based header styling
   const getHeaderClasses = () => {
     if (role === 'resident') {
-      return "bg-slate-900 border-b border-slate-800 relative z-30 h-12"
+      return "border-b relative z-30 h-12"
     }
     // Default admin styling
     return "bg-green-800 border-b border-green-700 relative z-30 h-12"
@@ -32,21 +32,21 @@ export default function Header({
 
   const getHamburgerClasses = () => {
     if (role === 'resident') {
-      return "lg:hidden p-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer"
+      return "lg:hidden p-1 rounded-md text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 cursor-pointer"
     }
     return "lg:hidden p-1 rounded-md text-green-200 hover:text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 cursor-pointer"
   }
 
   const getUserMenuButtonClasses = () => {
     if (role === 'resident') {
-      return "flex items-center space-x-2 px-2 py-2 rounded hover:bg-slate-700 cursor-pointer transition-colors duration-150"
+      return "flex items-center space-x-2 px-2 py-2 rounded hover:bg-slate-800 hover:text-slate-100 cursor-pointer transition-colors duration-150"
     }
     return "flex items-center space-x-2 px-2 py-2 rounded hover:bg-green-700 cursor-pointer transition-colors duration-150"
   }
 
   const getUserNameClasses = () => {
     if (role === 'resident') {
-      return "text-sm text-slate-200 hidden sm:block"
+      return "text-sm text-gray-200 hidden sm:block"
     }
     return "text-sm text-green-100 hidden sm:block"
   }
@@ -92,7 +92,10 @@ export default function Header({
 
   return (
     <>
-      <header className={getHeaderClasses()}>
+      <header 
+        className={getHeaderClasses()}
+        style={role === 'resident' ? { backgroundColor: '#333843', borderColor: '#2a2e37' } : {}}
+      >
         <div className="flex items-center justify-between px-6 py-2 h-full">
           <div className="flex items-center space-x-3">
             {/* Mobile Hamburger Menu */}

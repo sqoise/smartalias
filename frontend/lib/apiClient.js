@@ -652,6 +652,101 @@ class ApiClient {
 
     return { hasOngoing: false, request: null }
   }
+
+  /**
+   * Get document request statistics (admin/staff only)
+   * @param {Object} options - Filter options
+   * @param {string} options.dateRange - '7days', '30days', '90days', or 'all'
+   * @param {string} options.documentType - Filter by document type
+   * @param {string} options.groupBy - 'document_type', 'status', 'daily'
+   * @param {boolean} options.includeTrends - Include trend data
+   */
+  static async getDocumentRequestStats(options = {}) {
+    const {
+      dateRange = '7days',
+      documentType = null,
+      groupBy = null,
+      includeTrends = false
+    } = options
+
+    return await ApiClient.request('/document-requests/stats', {
+      method: 'POST',
+      body: JSON.stringify({
+        date_range: dateRange,
+        document_type: documentType,
+        group_by: groupBy,
+        include_trends: includeTrends
+      })
+    })
+  }
+
+  // ================================
+  // DOCUMENT REQUEST PROCESSING ENDPOINTS
+  // ================================
+
+  /**
+   * Get pending document requests for processing (admin/staff only)
+   * @param {Object} options - Query options
+   * @param {number} options.limit - Number of requests to fetch
+   * @param {number} options.offset - Offset for pagination
+   * @param {string} options.priority - 'oldest', 'newest', 'urgent'
+   */
+  static async getPendingDocumentRequests(options = {}) {
+    const {
+      limit = 50,
+      offset = 0,
+      priority = 'oldest'
+    } = options
+
+    const queryParams = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+      priority
+    })
+
+    return await ApiClient.request(`/document-requests/pending?${queryParams}`)
+  }
+
+  /**
+   * Process a single document request (admin/staff only)
+   * @param {number} requestId - Document request ID
+   * @param {string} action - 'process', 'reject', or 'ready'
+   * @param {string} remarks - Optional remarks/notes
+   */
+  static async processDocumentRequest(requestId, action, remarks = '') {
+    return await ApiClient.request('/document-requests/process', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: requestId,
+        action,
+        remarks
+      })
+    })
+  }
+
+  /**
+   * Process multiple document requests in batch (admin/staff only)
+   * @param {Array} requests - Array of request objects
+   * @param {string} defaultAction - Default action for requests without specific action
+   * @param {string} defaultRemarks - Default remarks for requests without specific remarks
+   */
+  static async batchProcessDocumentRequests(requests, defaultAction = null, defaultRemarks = '') {
+    return await ApiClient.request('/document-requests/batch-process', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests,
+        default_action: defaultAction,
+        default_remarks: defaultRemarks
+      })
+    })
+  }
+
+  /**
+   * Get processing queue summary (admin/staff only)
+   */
+  static async getProcessingQueueSummary() {
+    return await ApiClient.request('/document-requests/processing-queue')
+  }
 }
 
 // Expose ApiClient to window for testing

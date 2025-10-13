@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import ApiClient from '../../../lib/apiClient'
 import ToastNotification from '../../../components/common/ToastNotification'
 import { ANNOUNCEMENT_TYPE_NAMES } from '../../../lib/constants'
@@ -75,7 +76,7 @@ export default function Announcements() {
           published_at: announcement.published_at,
           date: announcement.published_at ? new Date(announcement.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           time: announcement.published_at ? new Date(announcement.published_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '00:00',
-          isNew: announcement.published_at ? (new Date() - new Date(announcement.published_at)) < 3 * 24 * 60 * 60 * 1000 : false, // New if published within 3 days
+          isNew: announcement.published_at ? (new Date() - new Date(announcement.published_at)) < 7 * 24 * 60 * 60 * 1000 : false, // New if published within 7 days (1 week)
           image: '/images/barangay_logo.png' // Default image
         }))
         
@@ -136,6 +137,20 @@ export default function Announcements() {
   return (
     <>
       <div className="space-y-6">
+        {/* Breadcrumbs */}
+        <nav className="flex" aria-label="Breadcrumb">
+          <ol className="flex items-center space-x-1 text-sm text-gray-500">
+            <li>
+              <Link href="/resident" className="hover:text-gray-700">
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <span className="mx-2">/</span>
+              <span className="font-medium text-gray-900">Announcements</span>
+            </li>
+          </ol>
+        </nav>
 
         {/* Announcements List */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -188,7 +203,7 @@ export default function Announcements() {
                       className="group cursor-pointer"
                       onClick={() => openAnnouncementModal(announcement)}
                     >
-                      <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200">
+                      <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200 shadow-sm hover:shadow-md">
                         {/* Published Date Column */}
                         <div className="flex-shrink-0 w-16 text-center">
                           <div className="text-xs text-gray-500 font-medium">
@@ -208,7 +223,7 @@ export default function Announcements() {
                                   {announcement.title}
                                 </h3>
                                 {announcement.isNew && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 flex-shrink-0">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">
                                     New
                                   </span>
                                 )}
@@ -274,7 +289,7 @@ export default function Announcements() {
                   <div className="text-center pt-4 border-t border-gray-100 mt-4">
                     <button
                       onClick={loadMoreAnnouncements}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                      className="text-sm text-gray-800 hover:text-blue-800 underline underline-offset-2 transition-colors"
                     >
                       Load more
                     </button>
@@ -305,7 +320,7 @@ export default function Announcements() {
               {/* Status Badges */}
               <div className="absolute top-3 left-3 flex gap-2">
                 {selectedAnnouncement.isNew && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white shadow-sm">
                     New
                   </span>
                 )}
