@@ -453,16 +453,14 @@ export default function ResidentsContainer({
           {onAdd && (
             <button
               onClick={() => onAdd?.()}
-              className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-sm font-medium tracking-normal rounded-md hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center w-8 h-8 text-white font-medium tracking-normal bg-green-600 border border-green-600 rounded-md hover:bg-green-700 focus:ring-1 focus:ring-green-500 transition-colors cursor-pointer"
               title="Add new resident"
             >
-              <i className="bi bi-person-plus mr-1 text-xs"></i>
-              Add Resident
+              <i className="bi bi-person-plus text-md"></i>
             </button>
           )}
 
           {/* Refresh Button */}
-                    {/* Refresh Button */}
           {onRefresh && (
             <button
               onClick={() => onRefresh?.()}

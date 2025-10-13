@@ -1614,7 +1614,7 @@ export default function DocumentsContainer({
         type="confirm"
         size="sm"
         variant="success"
-        confirmText={isSettingCompleted ? "Confirming..." : "Yes, Complete"}
+        confirmText={isSettingCompleted ? "Confirming..." : "Yes, Confirm"}
         cancelText="Cancel"
         onConfirm={confirmMarkAsCompleted}
         confirmDisabled={isSettingCompleted}

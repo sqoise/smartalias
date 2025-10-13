@@ -1802,6 +1802,17 @@ router.post('/document-requests/search', authenticateToken, async (req, res) => 
       sort_direction = 'desc'
     } = req.body
     
+    // For residents (role 3), get their resident_id from the residents table
+    let residentId = null
+    if (role === 3) {
+      const resident = await ResidentRepository.findByUserId(userId)
+      if (!resident) {
+        logger.error('No resident found for user in search', { userId })
+        return ApiResponse.error(res, 'Resident profile not found', 404)
+      }
+      residentId = resident.id
+    }
+    
     // Prepare filters for repository
     const filters = {
       status,
@@ -1809,7 +1820,7 @@ router.post('/document-requests/search', authenticateToken, async (req, res) => 
       search,
       date_range,
       role: role,
-      userId: userId
+      residentId: residentId  // Use the actual resident_id from residents table
     }
     
     // Prepare pagination
@@ -1886,6 +1897,14 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
     }
     const sanitizedNotes = notes ? Validator.sanitizeInput(notes) : null
 
+    // Get resident_id from user_id (residents table has user_id that links to users table)
+    const resident = await ResidentRepository.findByUserId(userId)
+    if (!resident) {
+      logger.error('No resident found for user', { userId })
+      return ApiResponse.error(res, 'Resident profile not found. Please contact the barangay office.', 404)
+    }
+    const residentId = resident.id
+
     // Check if document exists and is active (use repository method)
     const isDocumentActive = await DocumentRequestRepository.isDocumentActive(documentId)
     if (!isDocumentActive) {
@@ -1893,14 +1912,14 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
     }
 
     // Check if resident has pending/processing request for same document type (use repository method)
-    const hasExistingRequest = await DocumentRequestRepository.hasExistingRequest(parseInt(userId), documentId)
+    const hasExistingRequest = await DocumentRequestRepository.hasExistingRequest(residentId, documentId)
     if (hasExistingRequest) {
       return ApiResponse.error(res, 'You already have a pending or processing request for this document type. Please wait for it to be completed before submitting a new request.', 400)
     }
 
-    // Create new request using repository
+    // Create new request using repository (using resident_id, not user_id)
     const newRequest = await DocumentRequestRepository.createRequest(
-      parseInt(userId), 
+      residentId, 
       documentId, 
       sanitizedPurpose, 
       sanitizedNotes
@@ -1915,7 +1934,7 @@ router.post('/document-requests', authenticateToken, requireResident, async (req
       parseInt(userId)
     )
 
-    logger.info(`Document request created: ID ${newRequest.id} by resident ${userId}`)
+    logger.info(`Document request created: ID ${newRequest.id} by resident_id ${residentId} (user_id ${userId})`)
 
     return ApiResponse.success(res, {
       id: newRequest.id,

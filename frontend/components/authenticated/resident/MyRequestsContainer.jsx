@@ -372,7 +372,7 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
           icon: 'bi-check-circle-fill',
           iconColor: 'text-green-600',
           timestamp: req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000),
-          subtitle: `Claimed at: ${formatDate(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))} at ${formatTime(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))}`,
+          subtitle: `Completed at: ${formatDate(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))} at ${formatTime(req.completedDate || new Date(baseTime.getTime() + 5 * 60 * 60 * 1000))}`,
           content: null
         })
       }
