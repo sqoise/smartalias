@@ -182,7 +182,7 @@ export default function PublicLayout({
             
             {/* Logo positioned between image and white card - only when not in keypad mode */}
             {!hideBackgroundImage && (
-              <div className="absolute z-20 left-1/2 transform -translate-x-1/2" style={{ top: 'calc(20dvh - 40px)' }}>
+              <div className="absolute z-10 left-1/2 transform -translate-x-1/2" style={{ top: 'calc(20dvh - 40px)' }}>
                 <div className="bg-white rounded-full p-3">
                   <img 
                     src="/images/barangay_logo.jpg" 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PublicLayout from '../../components/public/PublicLayout'
+import SlidePanel from '../../components/common/SlidePanel'
 import ApiClient from '../../lib/apiClient'
 import { USER_ROLES, ANNOUNCEMENT_TYPE_NAMES } from '../../lib/constants'
 
@@ -12,7 +13,7 @@ let globalFetchLock = false
 let globalFetchPromise = null
 
 // Navigation Header Component
-function NavigationHeader() {
+function NavigationHeader({ hide = false }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userRole, setUserRole] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -46,9 +47,12 @@ function NavigationHeader() {
     }
   }
 
+  // Hide header when slide panel is open
+  if (hide) return null
+
   if (isLoading) {
     return (
-      <header className="absolute top-0 left-0 right-0 z-[50] p-4 lg:p-6">
+      <header className="absolute top-0 left-0 right-0 z-40 p-4 lg:p-6">
         <nav className="flex justify-end items-center">
           <div className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md border border-white/30 lg:border-gray-300 text-white/90 lg:text-gray-700">
             Loading...
@@ -59,7 +63,7 @@ function NavigationHeader() {
   }
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-[50] p-4 lg:p-6">
+    <header className="absolute top-0 left-0 right-0 z-40 p-4 lg:p-6">
       <nav className="flex justify-end items-center">
         {isAuthenticated ? (
           <button
@@ -147,8 +151,8 @@ function AnnouncementCard({ announcement, onClick, getTypeName, getTypeIcon, get
 }
 
 // Homepage Content Component
-function HomepageContent({ className = '' }) {
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+function HomepageContent({ className = '', onPanelOpenChange }) {
+  const [showAnnouncementPanel, setShowAnnouncementPanel] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
   const [announcements, setAnnouncements] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -243,7 +247,13 @@ function HomepageContent({ className = '' }) {
 
   const handleAnnouncementClick = (announcement) => {
     setSelectedAnnouncement(announcement)
-    setShowAnnouncementModal(true)
+    setShowAnnouncementPanel(true)
+    onPanelOpenChange?.(true)
+  }
+
+  const handleClosePanel = () => {
+    setShowAnnouncementPanel(false)
+    onPanelOpenChange?.(false)
   }
 
   return (
@@ -318,90 +328,97 @@ function HomepageContent({ className = '' }) {
         </div>
       )}
 
-      {/* Announcement Detail Modal */}
-      {showAnnouncementModal && selectedAnnouncement && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-[9000]">
-          <div className="bg-white rounded-lg sm:rounded-xl w-full max-w-sm sm:max-w-md lg:max-w-lg max-h-[95vh] sm:max-h-[85vh] overflow-hidden shadow-xl mx-2 sm:mx-0">
-            {/* Modal Header with Image */}
-            <div className="relative">
-              <img 
-                src={selectedAnnouncement.image} 
-                alt={selectedAnnouncement.title}
-                className="w-full h-24 sm:h-32 object-cover"
-                onError={(e) => {
-                  e.target.src = '/images/barangay_logo.png'
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex gap-1.5">
-                {selectedAnnouncement.isNew && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white shadow-sm">
-                    New
-                  </span>
-                )}
-                {selectedAnnouncement.is_urgent && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full text-xs font-medium bg-red-500 text-white shadow-sm">
-                    <i className="bi bi-exclamation-triangle-fill mr-1"></i>
-                    Urgent
-                  </span>
-                )}
-              </div>
-            </div>
+      {/* Announcement Detail Slide Panel */}
+      <SlidePanel
+        open={showAnnouncementPanel}
+        onClose={handleClosePanel}
+        title='Announcement Details'
+        headerIcon="bi bi-megaphone"
+        size="lg"
+        closeOnEscape={true}
+      >
+        {selectedAnnouncement && (
+          <div className="space-y-0">
+            {/* Blog Article Style */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Article Header */}
+              <div className="px-6 py-5 border-b border-gray-200">
+                {/* Title */}
+                <div className="mb-3">
+                  <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                    {selectedAnnouncement.title}
+                  </h1>
+                </div>
 
-            {/* Modal Content */}
-            <div className="p-3 sm:p-4 overflow-y-auto max-h-[calc(95vh-6rem)] sm:max-h-[calc(85vh-8rem)]">
-              {/* Type Badge, Date and Time */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs mb-3">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${getTypeBadgeColor(selectedAnnouncement.type)}`}>
-                  <i className={`${getTypeIcon(selectedAnnouncement.type)} mr-1`}></i>
-                  {getTypeName(selectedAnnouncement.type)}
-                </span>
-                <div className="flex items-center gap-3 text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <i className="bi bi-calendar3"></i>
-                    <span>{new Date(selectedAnnouncement.date).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: '2-digit',
-                      year: 'numeric'
-                    })}</span>
+                {/* Metadata */}
+                <div className="space-y-3">
+                  {/* First Row - Published Date */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5">
+                      <i className="bi bi-send-check text-gray-400" />
+                      <span className="text-xs">Published: {new Date(selectedAnnouncement.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: '2-digit',
+                        year: 'numeric'
+                      })}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <i className="bi bi-clock"></i>
-                    <span>{selectedAnnouncement.time}</span>
+
+                  {/* Second Row - Type and Urgent */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    {/* Announcement Type */}
+                    <div className="flex items-center gap-1.5 text-left">
+                      <i className="bi bi-tag text-gray-400" />
+                      <span className="text-xs">Type:</span>
+                      <span className="text-xs text-blue-700 font-medium">{getTypeName(selectedAnnouncement.type)}</span>
+                      {selectedAnnouncement.is_urgent && (
+                        <>
+                          <span className="text-xs text-gray-500">•</span>
+                          <span className="text-xs text-red-700 font-medium">
+                            <i className="bi bi-exclamation-triangle-fill mr-1" />
+                            Urgent
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Title */}
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 leading-tight">
-                {selectedAnnouncement.title}
-              </h2>
-
-              {/* Full Description */}
-              <div className="mb-4 sm:mb-6">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedAnnouncement.fullDescription}
-                </p>
-              </div>
-
-              {/* Close Button */}
-              <div className="flex justify-center sm:justify-end pt-2 border-t border-gray-100">
-                <button
-                  onClick={() => setShowAnnouncementModal(false)}
-                  className="w-full sm:w-auto px-6 py-2.5 sm:px-4 sm:py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                >
-                  Close
-                </button>
+              {/* Article Content - Paper Style */}
+              <div className="px-6 py-5">
+                {/* Paper Container */}
+                <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Paper Header */}
+                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <div className="flex items-center justify-end">
+                      <span className="text-xs text-gray-400 font-mono">
+                        {selectedAnnouncement.content?.length || 0} chars
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Paper Content */}
+                  <div className="p-6 bg-white">
+                    <div className="prose prose-base max-w-none">
+                      <div className="text-gray-900 leading-relaxed whitespace-pre-wrap font-normal">
+                        {selectedAnnouncement.content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SlidePanel>
     </div>
   )
 }
 
 export default function HomePage() {
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
+
   return (
     <>
       <PublicLayout
@@ -410,11 +427,11 @@ export default function HomePage() {
         subtitle="Digital services and document requests for residents and visitors. Access barangay services conveniently online."
         allowAuthenticated={true}
       >
-        <HomepageContent />
+        <HomepageContent onPanelOpenChange={setIsPanelOpen} />
       </PublicLayout>
       
       {/* Navigation overlay - no wrapper to avoid stacking context issues */}
-      <NavigationHeader />
+      <NavigationHeader hide={isPanelOpen} />
     </>
   )
 }
