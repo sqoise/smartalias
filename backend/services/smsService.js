@@ -23,23 +23,19 @@ class SMSService {
       }
 
       // Template for activation message
-      const message = `Hi ${first_name}, your SmartLias account (@${username}) has been activated! You can now login to access barangay services.`
+      const message = `[SMARTLIAS]\n\nHi ${first_name}, your SmartLIAS account (@${username}) has been activated! You can now login to access barangay services.\n\nPlease visit: ${config.FRONTEND_URL}/login`
 
-      logger.info('Sending activation SMS', { 
-        recipient: username,
-        mobile: mobile_number 
-      })
-
-      // TODO: Integrate with actual SMS gateway
-      // For now, just log the message
-      console.log('SMS Notification:', {
-        to: mobile_number,
-        message: message
-      })
-
-      return {
-        success: true,
-        message: 'SMS notification sent successfully'
+      // Use the actual SMS sending method
+      const result = await this.sendBulkSMS(mobile_number, message)
+      
+      if (result.success) {
+        return {
+          success: true,
+          message: 'SMS notification sent successfully',
+          messageId: result.messageId
+        }
+      } else {
+        throw new Error(result.error || 'Failed to send SMS')
       }
 
     } catch (error) {

@@ -1,9 +1,22 @@
 import React from 'react'
 import Modal from '../../common/Modal'
+import CustomSelect from '../../common/CustomSelect'
 import ToastNotification from '../../common/ToastNotification'
 import ApiClient from '../../../lib/apiClient'
-import { SUFFIX_OPTIONS, getSuffixLabel } from '../../../lib/constants'
-import { mapGenderToFrontend } from '../../../lib/valueMappers'
+import { 
+  SUFFIX_OPTIONS, 
+  getSuffixLabel,
+  GENDER_OPTIONS,
+  CIVIL_STATUS_OPTIONS,
+  PUROK_OPTIONS,
+  OCCUPATION_OPTIONS,
+  RELIGION_OPTIONS
+} from '../../../lib/constants'
+import { 
+  mapGenderToFrontend,
+  mapOccupationToFrontend,
+  mapReligionToFrontend
+} from '../../../lib/valueMappers'
 
 export default function ResidentsView({ open, onClose, children, onStatusUpdate, onEditComplete }) {
   // Toast reference
@@ -373,12 +386,24 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
       const today = new Date()
       const minDate = new Date('1900-01-01')
       
+      // Calculate age
+      const age = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+      const dayDiff = today.getDate() - birthDate.getDate()
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+      
       if (isNaN(birthDate.getTime())) {
         newErrors.birth_date = 'Invalid birth date format'
       } else if (birthDate > today) {
         newErrors.birth_date = 'Birth date cannot be in the future'
       } else if (birthDate < minDate) {
         newErrors.birth_date = 'Birth date cannot be before 1900'
+      } else if (actualAge > 150) {
+        newErrors.birth_date = 'Age cannot exceed 150 years'
+      } else if (actualAge < 12) {
+        newErrors.birth_date = 'Resident must be at least 12 years old'
+      } else if (actualAge < 0) {
+        newErrors.birth_date = 'Invalid birth date'
       }
     }
 
@@ -409,8 +434,10 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
       newErrors.purok = 'Purok is required'
     }
     
-    // Mobile number validation (optional, but validate format if provided)
-    if (editFormData.mobile_number?.trim()) {
+    // Mobile number validation (required)
+    if (!editFormData.mobile_number?.trim()) {
+      newErrors.mobile_number = 'Mobile number is required'
+    } else {
       const cleanMobileNumber = editFormData.mobile_number.replace(/\s+/g, '')
       if (!/^09\d{9}$/.test(cleanMobileNumber)) {
         newErrors.mobile_number = 'Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)'
@@ -681,26 +708,27 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
 
         {/* Panel Content - Scrollable */}
         <div className="h-full overflow-y-auto">
-          <div className="p-4">
+          <div className="p-6">
             {/* Sectioned resident details layout */}
             {children && typeof children === 'object' && children.id ? (
-              <div className="w-full space-y-2">
+              <div className="w-full space-y-6">
               
               {/* Resident Information Card - Combined */}
-              <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 relative">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 relative">
                 {/* Header Section with Edit Button */}
-                <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm">
+                <div className="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm">
                       <i className="bi bi-person-badge" />
                     </div>
                     <div>
-                      <h1 className="text-sm font-medium tracking-normal antialiased text-gray-900">
+                      <h1 className="text-base font-medium tracking-normal antialiased text-gray-900">
                         {(() => {
                           const firstName = children.first_name || '';
                           const middleName = children.middle_name || '';
                           const lastName = children.last_name || '';
-                          const fullName = `${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim();
+                          const suffix = children.suffix || '';
+                          const fullName = `${firstName} ${middleName} ${lastName} ${suffix}`.replace(/\s+/g, ' ').trim();
                           return fullName || 'Unknown Resident';
                         })()}
                       </h1>
@@ -719,25 +747,38 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                       </div>
                     )}
                     
-                    {/* Status Badge */}
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500 mb-1">Status</div>
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium tracking-normal rounded-md ${statusInfo.color}`}>
-                        <i className={`${statusInfo.icon} mr-1`} />
-                        {statusInfo.label}
-                        {isUpdating && <i className="bi bi-arrow-clockwise animate-spin ml-1" />}
-                      </span>
-                    </div>
+                    {/* User Role Badge - Show role for all users */}
+                    {children.role && (
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 mb-1">User Role</div>
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-medium tracking-normal rounded-md ${
+                          children.role === 1 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : children.role === 2 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          <i className={`${
+                            children.role === 1 
+                              ? 'bi bi-shield-check' 
+                              : children.role === 2 
+                              ? 'bi bi-person-gear' 
+                              : 'bi bi-person'
+                          } mr-1`} />
+                          {children.role === 1 ? 'Admin' : children.role === 2 ? 'Staff' : 'Resident'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Personal and Contact Information */}
                 {!isEditing ? (
-                  <div className="gap-4 mb-3 grid grid-cols-1 md:grid-cols-2">
+                  <div className="gap-6 mb-4 grid grid-cols-1 md:grid-cols-2">
                     {/* Personal Information */}
                     <div>
-                      <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mb-2">Personal Information</div>
-                      <div className="space-y-1">
+                      <div className="text-sm font-medium tracking-normal antialiased text-gray-900 mb-3">Personal Information</div>
+                      <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">First Name</span>
                           <span className="text-xs text-gray-900">{children.first_name || '-'}</span>
@@ -749,6 +790,10 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">Last Name</span>
                           <span className="text-xs text-gray-900">{children.last_name || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-500">Suffix</span>
+                          <span className="text-xs text-gray-900">{children.suffix || '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">Gender</span>
@@ -775,8 +820,8 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
 
                     {/* Contact Information */}
                     <div>
-                      <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mb-2">Contact Information</div>
-                      <div className="space-y-1">
+                      <div className="text-sm font-medium tracking-normal antialiased text-gray-900 mb-3">Contact Information</div>
+                      <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">Email</span>
                           <span className="text-xs text-gray-900 font-mono">{children.email || '-'}</span>
@@ -795,25 +840,25 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                         </div>
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">Occupation</span>
-                          <span className="text-xs text-gray-900">{children.occupation || '-'}</span>
+                          <span className="text-xs text-gray-900">{mapOccupationToFrontend(children.occupation) || '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-xs text-gray-500">Religion</span>
-                          <span className="text-xs text-gray-900">{children.religion || '-'}</span>
+                          <span className="text-xs text-gray-900">{mapReligionToFrontend(children.religion) || '-'}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
                   /* Edit Mode - Card-based Layout */
-                  <div className="space-y-4 mb-3">
+                  <div className="space-y-6 mb-4">
                     {/* Personal Information Card */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <h3 className="text-base font-semibold text-gray-900 mb-5 flex items-center">
                         <i className="bi bi-person mr-2 text-blue-600"></i>
                         Personal Information
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {/* Row 1: Suffix, First Name, Middle Name */}
                         <div className="grid grid-cols-[100px_2fr_2fr] gap-3">
                           {/* Suffix - Compact */}
@@ -821,20 +866,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Suffix <span className="text-gray-400 font-normal">(Optional)</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={editFormData.suffix || ''}
-                                onChange={(e) => handleFieldChange('suffix', e.target.value)}
-                                className="w-full rounded-md px-2 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-6"
-                              >
-                                {SUFFIX_OPTIONS.map(option => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            </div>
+                            <CustomSelect
+                              value={editFormData.suffix || ''}
+                              onChange={(value) => handleFieldChange('suffix', value)}
+                              options={SUFFIX_OPTIONS}
+                              placeholder="None"
+                            />
                           </div>
 
                           {/* First Name */}
@@ -895,33 +932,8 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                           )}
                         </div>
 
-                        {/* Row 3: Gender, Birth Date, Civil Status */}
+                        {/* Row 3: Birth Date, Gender, Civil Status */}
                         <div className="grid grid-cols-3 gap-3">
-                          {/* Gender */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Gender <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                              {console.log('=== GENDER DROPDOWN RENDER ===', 'Current gender value:', editFormData.gender, 'Type:', typeof editFormData.gender, 'editFormData:', editFormData)}
-                              <select
-                                value={editFormData.gender || ''}
-                                onChange={(e) => handleFieldChange('gender', e.target.value)}
-                                className={`w-full rounded-md px-3 py-1.5 text-sm border focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8 ${
-                                  editErrors.gender ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                                }`}
-                              >
-                                <option value="">Select gender</option>
-                                <option value="1">Male</option>
-                                <option value="2">Female</option>
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            </div>
-                            {editErrors.gender && (
-                              <p className="text-xs text-red-600 mt-1">{editErrors.gender}</p>
-                            )}
-                          </div>
-
                           {/* Date of Birth */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -931,6 +943,15 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                               type="date"
                               value={editFormData.birth_date ? editFormData.birth_date.split('T')[0] : ''}
                               onChange={(e) => handleFieldChange('birth_date', e.target.value)}
+                              min="1900-01-01"
+                              max={(() => {
+                                const today = new Date()
+                                const maxDate = new Date(today.getFullYear() - 12, today.getMonth(), today.getDate())
+                                const year = maxDate.getFullYear()
+                                const month = String(maxDate.getMonth() + 1).padStart(2, '0')
+                                const day = String(maxDate.getDate()).padStart(2, '0')
+                                return `${year}-${month}-${day}`
+                              })()}
                               className={`w-full rounded-md px-3 py-1.5 text-sm border focus:ring-1 transition-colors h-9 ${
                                 editErrors.birth_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                               }`}
@@ -940,43 +961,47 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             )}
                           </div>
 
+                          {/* Gender */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Gender <span className="text-red-500">*</span>
+                            </label>
+                            <CustomSelect
+                              value={editFormData.gender || ''}
+                              onChange={(value) => handleFieldChange('gender', value)}
+                              options={GENDER_OPTIONS}
+                              placeholder="Select"
+                              error={!!editErrors.gender}
+                            />
+                            {editErrors.gender && (
+                              <p className="text-xs text-red-600 mt-1">{editErrors.gender}</p>
+                            )}
+                          </div>
+
                           {/* Civil Status */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Civil Status <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={editFormData.civil_status || ''}
-                                onChange={(e) => handleFieldChange('civil_status', e.target.value)}
-                                className={`w-full rounded-md px-3 py-1.5 text-sm border focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8 ${
-                                  editErrors.civil_status ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                                }`}
-                              >
-                                <option value="">Select civil status</option>
-                                <option value="Single">Single</option>
-                                <option value="Married">Married</option>
-                                <option value="Widowed">Widowed</option>
-                                <option value="Separated">Separated</option>
-                                <option value="Divorced">Divorced</option>
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            </div>
-                            {editErrors.civil_status && (
-                              <p className="text-xs text-red-600 mt-1">{editErrors.civil_status}</p>
-                            )}
+                            <CustomSelect
+                              value={editFormData.civil_status || ''}
+                              onChange={(value) => handleFieldChange('civil_status', value)}
+                              options={CIVIL_STATUS_OPTIONS}
+                              placeholder="Select civil status"
+                              error={editErrors.civil_status}
+                            />
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Contact Information Card */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <h3 className="text-base font-semibold text-gray-900 mb-5 flex items-center">
                         <i className="bi bi-telephone mr-2 text-green-600"></i>
                         Contact Information
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {/* Row 1: Home Number and Mobile Number */}
                         <div className="grid grid-cols-2 gap-3">
                           {/* Home Phone */}
@@ -1001,7 +1026,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                           {/* Mobile */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Mobile Number <span className="text-gray-400 font-normal">(Optional)</span>
+                              Mobile Number <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="tel"
@@ -1063,40 +1088,25 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Purok <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={editFormData.purok || ''}
-                                onChange={(e) => handleFieldChange('purok', e.target.value)}
-                                className={`w-full rounded-md px-3 py-1.5 text-sm border ${
-                                  editErrors.purok ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                                } focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8`}
-                              >
-                                <option value="">Select Purok</option>
-                                <option value="1">Purok 1</option>
-                                <option value="2">Purok 2</option>
-                                <option value="3">Purok 3</option>
-                                <option value="4">Purok 4</option>
-                                <option value="5">Purok 5</option>
-                                <option value="6">Purok 6</option>
-                                <option value="7">Purok 7</option>
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            </div>
-                            {editErrors.purok && (
-                              <p className="text-xs text-red-600 mt-1">{editErrors.purok}</p>
-                            )}
+                            <CustomSelect
+                              value={editFormData.purok || ''}
+                              onChange={(value) => handleFieldChange('purok', value)}
+                              options={PUROK_OPTIONS}
+                              placeholder="Select Purok"
+                              error={editErrors.purok}
+                            />
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Additional Information Card */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <h3 className="text-base font-semibold text-gray-900 mb-5 flex items-center">
                         <i className="bi bi-info-circle mr-2 text-indigo-600"></i>
                         Additional Information
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {/* Single Row: 3 Columns - Occupation, Religion, Special Category */}
                         <div className="grid grid-cols-3 gap-3">
                           {/* Occupation */}
@@ -1104,21 +1114,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Occupation <span className="text-gray-400 font-normal">(Optional)</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={editFormData.occupation || ''}
-                                onChange={(e) => handleFieldChange('occupation', e.target.value)}
-                                className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                              >
-                                <option value="">Select</option>
-                                <option value="EMPLOYED">Employed</option>
-                                <option value="SELF_EMPLOYED">Self Employed</option>
-                                <option value="UNEMPLOYED">Unemployed</option>
-                                <option value="RETIRED">Retired</option>
-                                <option value="OTHERS">Others</option>
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            </div>
+                            <CustomSelect
+                              value={editFormData.occupation || ''}
+                              onChange={(value) => handleFieldChange('occupation', value)}
+                              options={OCCUPATION_OPTIONS}
+                              placeholder="Select"
+                            />
                           </div>
 
                           {/* Religion */}
@@ -1126,21 +1127,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Religion <span className="text-gray-400 font-normal">(Optional)</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={editFormData.religion || ''}
-                                onChange={(e) => handleFieldChange('religion', e.target.value)}
-                                className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                              >
-                                <option value="">Select</option>
-                                <option value="ROMAN_CATHOLIC">Roman Catholic</option>
-                                <option value="PROTESTANT">Protestant</option>
-                                <option value="IGLESIA_NI_CRISTO">Iglesia ni Cristo</option>
-                                <option value="ISLAM">Islam</option>
-                                <option value="OTHERS">Others</option>
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            </div>
+                            <CustomSelect
+                              value={editFormData.religion || ''}
+                              onChange={(value) => handleFieldChange('religion', value)}
+                              options={RELIGION_OPTIONS}
+                              placeholder="Select"
+                            />
                           </div>
 
                           {/* Special Category */}
@@ -1148,34 +1140,22 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Special Category <span className="text-gray-400 font-normal">(Optional)</span>
                             </label>
-                            <div className="relative">
-                              <select
-                                value={SPECIAL_CATEGORY_REVERSE_MAP[editFormData.special_category_id] || ''}
-                                onChange={(e) => {
-                                  const selectedCode = e.target.value
-                                  const categoryId = SPECIAL_CATEGORY_MAP[selectedCode]
-                                  console.log('Special Category Selection:', {
-                                    selectedCode,
-                                    categoryId,
-                                    currentValue: editFormData.special_category_id,
-                                    mapping: SPECIAL_CATEGORY_MAP,
-                                    reverseMapping: SPECIAL_CATEGORY_REVERSE_MAP,
-                                    specialCategories: specialCategories
-                                  })
-                                  handleFieldChange('special_category_id', categoryId)
-                                }}
-                                className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                                disabled={isLoadingCategories}
-                              >
-                                <option value="">None</option>
-                                {specialCategories.map(category => (
-                                  <option key={category.id} value={category.category_code}>
-                                    {category.category_name}
-                                  </option>
-                                ))}
-                              </select>
-                              <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            </div>
+                            <CustomSelect
+                              value={SPECIAL_CATEGORY_REVERSE_MAP[editFormData.special_category_id] || ''}
+                              onChange={(selectedCode) => {
+                                const categoryId = SPECIAL_CATEGORY_MAP[selectedCode]
+                                handleFieldChange('special_category_id', categoryId)
+                              }}
+                              options={[
+                                { value: '', label: 'None' },
+                                ...specialCategories.map(category => ({
+                                  value: category.category_code,
+                                  label: category.category_name
+                                }))
+                              ]}
+                              placeholder="None"
+                              disabled={isLoadingCategories}
+                            />
                           </div>
                         </div>
                       </div>
@@ -1185,40 +1165,54 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
 
                 {/* Record Information - Only show in read mode */}
                 {!isEditing && (
-                  <div className="pt-2 border-t border-gray-200">
-                    <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mb-2">Record Information</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="pt-4 mt-4 border-t border-gray-200">
+                    <div className="text-sm font-medium tracking-normal antialiased text-gray-900 mb-3">Record Information</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <div className="text-xs text-gray-500 mb-1">Record ID</div>
                         <div className="text-xs font-mono text-blue-600">resident_id_{String(children.id).padStart(5, '0')}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Created</div>
+                        <div className="text-xs text-gray-500 mb-1">Created Date & Time</div>
                         <div className="text-xs text-gray-900">
-                          {children.created_at ? new Date(children.created_at).toLocaleDateString() : '-'}
+                          {children.created_at ? new Date(children.created_at).toLocaleString() : '-'}
                         </div>
                       </div>
+                      {children.username && (
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Username</div>
+                          <div className="text-xs font-mono text-gray-900">{children.username}</div>
+                        </div>
+                      )}
+                      {children.role && (
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">User Role</div>
+                          <div className="text-xs text-gray-900">
+                            {children.role === 1 ? 'Admin' : children.role === 2 ? 'Staff' : children.role === 3 ? 'Resident' : 'Unknown'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {/* Administrative Notes */}
                 {!isEditing ? (
-                  <div className="pt-2 border-t border-gray-200">
-                    <div className="flex items-center mb-2">
-                      <div className="text-xs font-medium tracking-normal antialiased text-gray-900 mr-2">Administrative Notes</div>
-                      <i className="bi bi-journal-text text-gray-500 text-xs" />
+                  <div className="pt-4 mt-4 border-t border-gray-200">
+                    <div className="flex items-center mb-3">
+                      <div className="text-sm font-medium tracking-normal antialiased text-gray-900 mr-2">Administrative Notes</div>
+                      <i className="bi bi-journal-text text-gray-500 text-sm" />
                     </div>
-                    <div className="bg-gray-100 border border-gray-300 rounded-md p-2">
-                      <div className="text-xs text-gray-700 tracking-normal antialiased">
+                    <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                      <div className="text-sm text-gray-700 tracking-normal antialiased">
                         {children.notes || 'No administrative notes available for this resident.'}
                       </div>
                     </div>
                   </div>
                 ) : (
                   /* Administrative Notes Card - Edit Mode */
-                  <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <h3 className="text-base font-semibold text-gray-900 mb-5 flex items-center">
                       <i className="bi bi-journal-text mr-2 text-purple-600"></i>
                       Administrative Notes
                     </h3>

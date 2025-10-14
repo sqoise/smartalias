@@ -37,6 +37,7 @@ export default function ResidentsContainer({
   // Check if any filters are active (excluding default 'active' status)
   const isAnyFilterActive = searchQuery !== '' || 
     (statusFilter !== 'all' && statusFilter !== 'active') || 
+    purokFilter !== 'all' ||
     ageGroupFilter !== 'all' || 
     civilStatusFilter !== 'all' || 
     specialCategoryFilter !== 'all'
@@ -200,13 +201,8 @@ export default function ResidentsContainer({
 
   // Additional filter handlers
   const handlePurokFilterChange = (value) => {
-  setPurokFilter(value)
-  setSearchQuery('')
-  setStatusFilter('active')
-  setAgeGroupFilter('all')
-  setCivilStatusFilter('all')
-  setSpecialCategoryFilter('all')
-  setCurrentPage(1)
+    setPurokFilter(value)
+    setCurrentPage(1)
   }
   const handleAgeGroupFilterChange = (value) => {
     setAgeGroupFilter(value)
@@ -633,6 +629,7 @@ export default function ResidentsContainer({
                   onClick={() => {
                     setSearchQuery('')
                     // Keep status filter as 'active' by default, don't reset it
+                    setPurokFilter('all')
                     setAgeGroupFilter('all')
                     setCivilStatusFilter('all')
                     setSpecialCategoryFilter('all')
@@ -918,7 +915,7 @@ export default function ResidentsContainer({
 
       {/* Pagination */}
       {!loading && filteredAndSortedData.length > 0 && (
-        <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg">
+        <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium tracking-normal antialiased text-gray-700">
               Page <span className="font-semibold">{currentPage}</span> of{' '}

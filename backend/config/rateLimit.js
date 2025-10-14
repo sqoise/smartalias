@@ -9,7 +9,7 @@ const config = require('./config')
 // General API rate limiting
 const generalLimiter = rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW,
-  max: config.isDevelopment ? 2000 : 500, // 2000 in dev, 500 in production
+  max: config.isDevelopment ? 1000 : 500, // 2000 in dev, 500 in production
   message: {
     success: false,
     error: 'Too many requests. Please try again later.',
@@ -20,7 +20,7 @@ const generalLimiter = rateLimit({
 
 // Strict rate limiting for authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 2 * 60 * 60 * 1000, // 2 hours
   max: config.isDevelopment ? 1000 : 200, // 1000 in dev, 200 in production
   message: {
     success: false,

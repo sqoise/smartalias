@@ -33,6 +33,69 @@ export const getSuffixValue = (label) => {
 }
 
 /**
+ * Gender options for forms
+ * Used for resident gender selection
+ */
+export const GENDER_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: '1', label: 'Male' },
+  { value: '2', label: 'Female' }
+]
+
+/**
+ * Civil status options for forms
+ * Used for resident civil status selection
+ */
+export const CIVIL_STATUS_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: 'Single', label: 'Single' },
+  { value: 'Married', label: 'Married' },
+  { value: 'Widowed', label: 'Widowed' },
+  { value: 'Separated', label: 'Separated' }
+]
+
+/**
+ * Purok options for forms
+ * Used for resident purok selection
+ */
+export const PUROK_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: '1', label: 'Purok 1' },
+  { value: '2', label: 'Purok 2' },
+  { value: '3', label: 'Purok 3' },
+  { value: '4', label: 'Purok 4' },
+  { value: '5', label: 'Purok 5' },
+  { value: '6', label: 'Purok 6' },
+  { value: '7', label: 'Purok 7' }
+]
+
+/**
+ * Occupation options for forms
+ * Used for resident occupation selection
+ */
+export const OCCUPATION_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: 'EMPLOYED', label: 'Employed' },
+  { value: 'SELF_EMPLOYED', label: 'Self Employed' },
+  { value: 'UNEMPLOYED', label: 'Unemployed' },
+  { value: 'RETIRED', label: 'Retired' },
+  { value: 'OTHERS', label: 'Others' }
+]
+
+/**
+ * Religion options for forms
+ * Used for resident religion selection
+ */
+export const RELIGION_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: 'ROMAN_CATHOLIC', label: 'Roman Catholic' },
+  { value: 'PROTESTANT', label: 'Protestant' },
+  { value: 'IGLESIA_NI_CRISTO', label: 'Iglesia ni Cristo' },
+  { value: 'ISLAM', label: 'Islam' },
+  { value: 'OTHERS', label: 'Others' }
+]
+
+/**
  * User role constants
  * Used for role-based access control
  */

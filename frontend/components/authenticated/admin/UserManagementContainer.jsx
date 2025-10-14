@@ -416,7 +416,7 @@ export default function UserManagementContainer({
                   {isCurrentUserAdmin && (
                     <button
                       onClick={handleAddAccessClick}
-                      className="cursor-pointer bg-green-600 text-white px-3 py-1.5 text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+                      className="cursor-pointer bg-green-600 text-white px-3 py-2 text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
                     >
                       Add Staff
                     </button>

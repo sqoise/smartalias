@@ -83,7 +83,7 @@ router.post('/auth/login', authLimiter, async (req, res) => {
     }
 
     // Check if account is locked
-    if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
+    if (user.locked_until && new Date() < new Date(user.locked_until)) {
       logger.warn('Login attempt on locked account', { username, ip: req.ip })
       return ApiResponse.error(res, 'Account temporarily locked. Please try again later.', 423)
     }
@@ -93,19 +93,35 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
     if (!isValidPin) {
       // Increment failed attempts
-      const failedAttempts = (user.failedLoginAttempts || 0) + 1
+      const failedAttempts = (user.failed_login_attempts || 0) + 1
+      
+      logger.warn('Failed login attempt', { 
+        username, 
+        ip: req.ip, 
+        attempts: failedAttempts,
+        maxAttempts: config.MAX_LOGIN_ATTEMPTS,
+        currentFailedAttempts: user.failed_login_attempts
+      })
       
       // Lock account if too many failed attempts
       let lockedUntil = null
       if (failedAttempts >= config.MAX_LOGIN_ATTEMPTS) {
         lockedUntil = new Date(Date.now() + config.LOCKOUT_TIME).toISOString()
-        logger.warn('Account locked due to failed attempts', { username, attempts: failedAttempts })
+        logger.warn('Account locked due to failed attempts', { 
+          username, 
+          attempts: failedAttempts,
+          lockedUntil,
+          lockoutTimeMs: config.LOCKOUT_TIME
+        })
       }
 
       await UserRepository.updateLoginFailure(user.id, username, failedAttempts, lockedUntil)
 
-      logger.warn('Failed login attempt', { username, ip: req.ip, attempts: failedAttempts })
-      return ApiResponse.unauthorized(res, 'Invalid PIN. Please try again.')
+      const message = failedAttempts >= config.MAX_LOGIN_ATTEMPTS 
+        ? 'Account locked due to too many failed attempts. Please try again in 15 minutes.'
+        : 'Invalid PIN. Please try again.'
+      
+      return ApiResponse.unauthorized(res, message)
     }
 
     // Check if user account is active (pending approval)
@@ -499,10 +515,10 @@ router.get('/residents/:id', generalLimiter, authenticateToken, async (req, res)
   }
 })
 
-// POST /api/residents - Create new resident (ADMIN DASHBOARD ONLY)
+// POST /api/residents - Create new resident (STAFF OR ADMIN)
 // NOTE: This endpoint creates IMMEDIATELY ACTIVE accounts (both user and resident)
 // For PUBLIC self-registration, use POST /api/auth/register which requires approval
-router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.post('/residents', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const residentData = req.body
 
@@ -1376,11 +1392,19 @@ router.patch('/admin/users/:id/approve-request', generalLimiter, authenticateTok
     // Send SMS notification if mobile number is available
     if (mobileNumber) {
       try {
-        const SMSService = require('../services/smsService')
+        // Get resident's first name for personalized SMS
+        const getResidentNameQuery = `
+          SELECT first_name 
+          FROM residents 
+          WHERE user_id = $1
+        `
+        const residentNameResult = await db.query(getResidentNameQuery, [userId])
+        const first_name = residentNameResult.rows[0]?.first_name || ''
+        
         await SMSService.sendActivationSMS({
           mobile_number: mobileNumber,
           username: username,
-          first_name: user.first_name
+          first_name: first_name
         })
         
         logger.info(`SMS notification sent for approved account`, {

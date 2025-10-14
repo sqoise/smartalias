@@ -651,7 +651,7 @@ POST   /api/auth/check-user         # Username verification
 
 Residents Management:
 GET    /api/residents              # List all residents (with search/pagination)
-POST   /api/residents              # Create new resident (admin only)
+POST   /api/residents              # Create new resident (staff or admin)
 GET    /api/residents/:id          # Get resident details
 PUT    /api/residents/:id          # Update resident (admin only)
 DELETE /api/residents/:id          # Delete resident (admin only)
@@ -803,8 +803,8 @@ If 1: requirePasswordChange = false → Frontend redirects to dashboard
 // All authenticated users
 router.get('/residents', authenticateToken, handler)
 
-// Admin only
-router.post('/residents', authenticateToken, requireAdmin, handler)
+// Staff or Admin
+router.post('/residents', authenticateToken, requireStaffOrAdmin, handler)
 
 // Staff or Admin
 router.get('/requests', authenticateToken, requireStaff, handler)

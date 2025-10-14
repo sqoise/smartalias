@@ -212,7 +212,33 @@ export default function RegisterPage() {
       }
     } else if (currentStep === 2) {
       // Step 2: Personal & Contact Info
-      if (!formData.birthDate) newErrors.birthDate = 'Birth date is required'
+      if (!formData.birthDate) {
+        newErrors.birthDate = 'Birth date is required'
+      } else {
+        // Age validation
+        const birthDate = new Date(formData.birthDate)
+        const today = new Date()
+        
+        if (isNaN(birthDate.getTime())) {
+          newErrors.birthDate = 'Invalid birth date format'
+        } else if (birthDate > today) {
+          newErrors.birthDate = 'Birth date cannot be in the future'
+        } else {
+          // Calculate age
+          const age = today.getFullYear() - birthDate.getFullYear()
+          const monthDiff = today.getMonth() - birthDate.getMonth()
+          const dayDiff = today.getDate() - birthDate.getDate()
+          
+          // Adjust age if birthday hasn't occurred this year
+          const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age
+          
+          if (actualAge < 12) {
+            newErrors.birthDate = 'Resident must be at least 12 years old'
+          } else if (actualAge > 200) {
+            newErrors.birthDate = 'Age cannot exceed 200 years'
+          }
+        }
+      }
       
       // Gender validation - must be one of the allowed values
       const validGenders = ['1', '2']

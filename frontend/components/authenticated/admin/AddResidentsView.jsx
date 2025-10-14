@@ -1,6 +1,16 @@
 import React from 'react'
 import ToastNotification from '../../common/ToastNotification'
-import { SUFFIX_OPTIONS, getSuffixLabel } from '../../../lib/constants'
+import CustomSelect from '../../common/CustomSelect'
+import Modal from '../../common/Modal'
+import { 
+  SUFFIX_OPTIONS, 
+  getSuffixLabel,
+  GENDER_OPTIONS,
+  CIVIL_STATUS_OPTIONS,
+  PUROK_OPTIONS,
+  OCCUPATION_OPTIONS,
+  RELIGION_OPTIONS
+} from '../../../lib/constants'
 import ApiClient from '../../../lib/apiClient'
 
 /**
@@ -198,12 +208,24 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
       const today = new Date()
       const minDate = new Date('1900-01-01')
       
+      // Calculate age
+      const age = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+      const dayDiff = today.getDate() - birthDate.getDate()
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+      
       if (isNaN(birthDate.getTime())) {
         newErrors.birthDate = 'Invalid birth date format'
       } else if (birthDate > today) {
         newErrors.birthDate = 'Birth date cannot be in the future'
       } else if (birthDate < minDate) {
         newErrors.birthDate = 'Birth date cannot be before 1900'
+      } else if (actualAge > 150) {
+        newErrors.birthDate = 'Age cannot exceed 150 years'
+      } else if (actualAge < 12) {
+        newErrors.birthDate = 'Resident must be at least 12 years old'
+      } else if (actualAge < 0) {
+        newErrors.birthDate = 'Invalid birth date'
       }
     }
 
@@ -236,8 +258,10 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
     
     // Additional Information fields are optional - no validation needed
     
-    // Mobile number validation (optional, but validate format if provided)
-    if (formData.mobileNumber.trim()) {
+    // Mobile number validation (required)
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Mobile number is required'
+    } else {
       const cleanMobileNumber = formData.mobileNumber.replace(/\s+/g, '')
       if (!/^09\d{9}$/.test(cleanMobileNumber)) {
         newErrors.mobileNumber = 'Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)'
@@ -280,10 +304,10 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
     
     try {
       // Transform formData before sending - convert specialCategory code to special_category_id
-      const { CODE_TO_ID_MAP } = createCategoryMaps(specialCategories)
+      const { codeToId } = createCategoryMaps()
       const submitData = {
         ...formData,
-        special_category_id: formData.specialCategory ? CODE_TO_ID_MAP[formData.specialCategory] : null
+        special_category_id: formData.specialCategory ? codeToId[formData.specialCategory] : null
       }
       // Remove the old specialCategory field
       delete submitData.specialCategory
@@ -500,21 +524,13 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Suffix <span className="text-gray-400 font-normal">(Optional)</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.suffix}
-                        onChange={(e) => handleChange('suffix', e.target.value)}
-                        className="w-full rounded-md px-2 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition-colors h-9 cursor-pointer appearance-none pr-6"
-                        disabled={loading}
-                      >
-                        {SUFFIX_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.suffix}
+                      onChange={(value) => handleChange('suffix', value)}
+                      options={SUFFIX_OPTIONS}
+                      placeholder="None"
+                      disabled={loading}
+                    />
                   </div>
 
                   {/* First Name */}
@@ -588,9 +604,10 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                       min="1900-01-01"
                       max={(() => {
                         const today = new Date()
-                        const year = today.getFullYear()
-                        const month = String(today.getMonth() + 1).padStart(2, '0')
-                        const day = String(today.getDate()).padStart(2, '0')
+                        const maxDate = new Date(today.getFullYear() - 12, today.getMonth(), today.getDate())
+                        const year = maxDate.getFullYear()
+                        const month = String(maxDate.getMonth() + 1).padStart(2, '0')
+                        const day = String(maxDate.getDate()).padStart(2, '0')
                         return `${year}-${month}-${day}`
                       })()}
                       className={`w-full rounded-md px-3 py-1.5 text-sm border ${
@@ -608,21 +625,14 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Gender <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.gender}
-                        onChange={(e) => handleChange('gender', e.target.value)}
-                        className={`w-full rounded-md px-3 py-1.5 text-sm border ${
-                          errors.gender ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                        } focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8`}
-                        disabled={loading}
-                      >
-                      <option value="">Select</option>
-                      <option value="1">Male</option>
-                      <option value="2">Female</option>
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.gender}
+                      onChange={(value) => handleChange('gender', value)}
+                      options={GENDER_OPTIONS}
+                      placeholder="Select"
+                      error={!!errors.gender}
+                      disabled={loading}
+                    />
                     {errors.gender && (
                       <p className="text-xs text-red-600 mt-1">{errors.gender}</p>
                     )}
@@ -633,23 +643,14 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Civil Status <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.civilStatus}
-                        onChange={(e) => handleChange('civilStatus', e.target.value)}
-                        className={`w-full rounded-md px-3 py-1.5 text-sm border ${
-                          errors.civilStatus ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                        } focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8`}
-                        disabled={loading}
-                      >
-                      <option value="">Select</option>
-                      <option value="Single">Single</option>
-                      <option value="Married">Married</option>
-                      <option value="Widowed">Widowed</option>
-                      <option value="Separated">Separated</option>
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.civilStatus}
+                      onChange={(value) => handleChange('civilStatus', value)}
+                      options={CIVIL_STATUS_OPTIONS}
+                      placeholder="Select"
+                      error={!!errors.civilStatus}
+                      disabled={loading}
+                    />
                     {errors.civilStatus && (
                       <p className="text-xs text-red-600 mt-1">{errors.civilStatus}</p>
                     )}
@@ -690,7 +691,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                   {/* Mobile Number */}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Mobile Number <span className="text-gray-400 font-normal">(Optional)</span>
+                      Mobile Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -753,26 +754,14 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Purok <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <select
-                      value={formData.purok}
-                      onChange={(e) => handleChange('purok', e.target.value)}
-                      className={`w-full rounded-md px-3 py-1.5 text-sm border ${
-                        errors.purok ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                      } focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8`}
-                      disabled={loading}
-                    >
-                      <option value="">Select</option>
-                      <option value="1">Purok 1</option>
-                      <option value="2">Purok 2</option>
-                      <option value="3">Purok 3</option>
-                      <option value="4">Purok 4</option>
-                      <option value="5">Purok 5</option>
-                      <option value="6">Purok 6</option>
-                      <option value="7">Purok 7</option>
-                    </select>
-                    <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                  </div>
+                  <CustomSelect
+                    value={formData.purok}
+                    onChange={(value) => handleChange('purok', value)}
+                    options={PUROK_OPTIONS}
+                    placeholder="Select"
+                    error={!!errors.purok}
+                    disabled={loading}
+                  />
                   {errors.purok && (
                     <p className="text-xs text-red-600 mt-1">{errors.purok}</p>
                   )}
@@ -794,22 +783,13 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Occupation <span className="text-gray-400 text-xs">(Optional)</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.occupation}
-                        onChange={(e) => handleChange('occupation', e.target.value)}
-                        className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                        disabled={loading}
-                      >
-                        <option value="">Select</option>
-                        <option value="EMPLOYED">Employed</option>
-                        <option value="SELF_EMPLOYED">Self Employed</option>
-                        <option value="UNEMPLOYED">Unemployed</option>
-                        <option value="RETIRED">Retired</option>
-                        <option value="OTHERS">Others</option>
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.occupation}
+                      onChange={(value) => handleChange('occupation', value)}
+                      options={OCCUPATION_OPTIONS}
+                      placeholder="Select"
+                      disabled={loading}
+                    />
                   </div>
 
                   {/* Religion */}
@@ -817,22 +797,13 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Religion <span className="text-gray-400 text-xs">(Optional)</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.religion}
-                        onChange={(e) => handleChange('religion', e.target.value)}
-                        className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                        disabled={loading}
-                      >
-                        <option value="">Select</option>
-                        <option value="ROMAN_CATHOLIC">Roman Catholic</option>
-                        <option value="PROTESTANT">Protestant</option>
-                        <option value="IGLESIA_NI_CRISTO">Iglesia ni Cristo</option>
-                        <option value="ISLAM">Islam</option>
-                        <option value="OTHERS">Others</option>
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.religion}
+                      onChange={(value) => handleChange('religion', value)}
+                      options={RELIGION_OPTIONS}
+                      placeholder="Select"
+                      disabled={loading}
+                    />
                   </div>
 
                   {/* Special Category */}
@@ -840,26 +811,19 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Special Category <span className="text-gray-400 text-xs">(Optional)</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.specialCategory}
-                        onChange={(e) => handleChange('specialCategory', e.target.value)}
-                        className="w-full rounded-md px-3 py-1.5 text-sm border border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-1 bg-white transition-colors h-9 cursor-pointer appearance-none pr-8"
-                        disabled={loading}
-                      >
-                        <option value="">Not Applicable</option>
-                        {isLoadingCategories ? (
-                          <option disabled>Loading categories...</option>
-                        ) : (
-                          specialCategories.map(category => (
-                            <option key={category.id} value={category.category_code}>
-                              {category.category_name}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
+                    <CustomSelect
+                      value={formData.specialCategory}
+                      onChange={(value) => handleChange('specialCategory', value)}
+                      options={[
+                        { value: '', label: 'Not Applicable' },
+                        ...specialCategories.map(category => ({
+                          value: category.category_code,
+                          label: category.category_name
+                        }))
+                      ]}
+                      placeholder="Not Applicable"
+                      disabled={loading || isLoadingCategories}
+                    />
                   </div>
                 </div>
 
@@ -898,7 +862,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
               ) : (
                 <>
                   <i className="bi bi-plus-lg mr-1.5"></i>
-                  Add Resident
+                  Submit
                 </>
               )}
             </button>
@@ -985,99 +949,89 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
       <ToastNotification ref={toastRef} />
     </div>
 
-    {/* Confirmation Modal - Outside main container to avoid z-index conflicts */}
-    {showConfirmation && (
-      <div 
-        className="fixed inset-0 bg-black/50 flex items-center justify-center"
-        style={{ zIndex: 999999 }}
-        onClick={(e) => {
-          console.log('Modal overlay clicked', e.target, e.currentTarget)
-          // Close modal if clicking outside
-          if (e.target === e.currentTarget) {
-            console.log('Background clicked - closing modal')
-            handleConfirmationClose()
-          }
-        }}
-      >
-        <div 
-          className="bg-white rounded-lg shadow-xl p-4 mx-4 max-w-xs w-full"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header with close button */}
-          <div className="flex justify-end mb-2">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation()
-                console.log('Header close button clicked')
-                handleConfirmationClose()
-              }}
-              className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all duration-200"
-            >
-              <i className="bi bi-x text-2xl"></i>
-            </button>
-          </div>
-          
-          <div className="text-center">
-            {/* Success Icon */}
-            <div className="mx-auto flex items-center justify-center h-11 w-11 rounded-full bg-green-100 mb-4">
-              <i className="bi bi-check-lg text-green-600 text-2xl"></i>
-            </div>
-            
-            {/* Title */}
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Resident has been added!
-            </h3>
-            
-            {/* Expandable Credentials Section */}
-            {addedResident && (
-              <div className="mb-6 flex justify-center">
-                <div className="w-[100%]">
-                  <button
-                    onClick={() => setShowCredentials(!showCredentials)}
-                    className="w-full p-2 bg-gray-100 border-dashed border border-gray-300 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-medium text-gray-800">Temporary Credentials</h4>
-                      <i className={`bi bi-chevron-${showCredentials ? 'up' : 'down'} text-gray-600 transition-transform duration-200 text-sm`}></i>
-                    </div>
-                  </button>
-                  
-                  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    showCredentials ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'
-                  }`}>
-                    <div className="px-2 py-1.5 bg-gray-100 border-l border-r border-b border-gray-300 border-dashed">
-                      <div className="flex items-center justify-between">
-                        <div className="text-gray-700 space-y-1 text-left">
-                          <div className="text-xs"><span className="font-medium">Username:</span> {addedResident.username}</div>
-                          <div className="text-xs"><span className="font-medium">PIN:</span> {addedResident.pin}</div>
-                        </div>
-                        <button
-                          onClick={handleCopyCredentials}
-                          className={`ml-2 p-1 rounded-md transition-colors cursor-pointer ${
-                            copied 
-                              ? 'text-gray-600' 
-                              : 'text-gray-600 hover:text-gray-800'
-                          }`}
-                          title={copied ? "Copied!" : "Copy credentials to clipboard"}
-                        >
-                          {copied ? (
-                            <span className="text-xs font-medium">Copied!</span>
-                          ) : (
-                            <i className="bi bi-copy text-xs"></i>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+    {/* Success Confirmation Modal using Common Modal */}
+    <Modal
+      open={showConfirmation}
+      onClose={handleConfirmationClose}
+      title="Resident Added Successfully!"
+      type="custom"
+      size="md"
+      closeOnBackdrop={false}
+    >
+      <div className="text-center">
+        {/* Success Icon */}
+        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+          <i className="bi bi-check-lg text-green-600 text-2xl"></i>
+        </div>
+        
+        {/* Success Message */}
+        <p className="text-gray-600 mb-6">
+          The resident account has been created and activated successfully.
+        </p>
+        
+        {/* Simple Credentials Section */}
+        {addedResident && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Login Credentials</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Username:</span>
+                <span className="font-mono text-gray-900 bg-white px-2 py-1 rounded border">{addedResident.username}</span>
               </div>
-            )}
-            
-
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">PIN:</span>
+                <span className="font-mono text-gray-900 bg-white px-2 py-1 rounded border">{addedResident.pin}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+              <span className="text-xs text-gray-500">
+                <i className="bi bi-info-circle mr-1"></i>
+                Resident must change PIN on first login
+              </span>
+              <button
+                onClick={handleCopyCredentials}
+                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                  copied 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+                title={copied ? "Copied!" : "Copy credentials to clipboard"}
+              >
+                {copied ? (
+                  <>
+                    <i className="bi bi-check mr-1"></i>
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-copy mr-1"></i>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleConfirmationClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+          <button
+            onClick={handleAddAnother}
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors cursor-pointer"
+          >
+            <i className="bi bi-plus-lg mr-1.5"></i>
+            Add Another
+          </button>
         </div>
       </div>
-    )}
+    </Modal>
+
     </>
   )
 }

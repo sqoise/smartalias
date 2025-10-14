@@ -5,7 +5,7 @@
 
 const express = require('express')
 const ResidentController = require('../controllers/residentController')
-const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware')
+const { authenticateToken, requireAdmin, requireStaffOrAdmin } = require('../middleware/authMiddleware')
 const { generalLimiter } = require('../config/rateLimit')
 
 const router = express.Router()
@@ -25,8 +25,8 @@ router.get('/stats', requireAdmin, ResidentController.getStats)
 // GET /api/residents/:id - Get resident by ID
 router.get('/:id', ResidentController.getById)
 
-// POST /api/residents - Create new resident (admin only)
-router.post('/', requireAdmin, ResidentController.create)
+// POST /api/residents - Create new resident (staff or admin)
+router.post('/', requireStaffOrAdmin, ResidentController.create)
 
 // PUT /api/residents/:id - Update resident (admin only)
 router.put('/:id', requireAdmin, ResidentController.update)

@@ -13,8 +13,7 @@ export default function CustomSelect({
   name = "",
   id = "",
   required = false,
-  title = "Select Option", // For mobile sheet title
-  focusColor = "blue" // blue, green, etc.
+  title = "Select Option" // For mobile sheet title
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
@@ -102,25 +101,6 @@ export default function CustomSelect({
 
   const selectedOption = normalizedOptions.find(opt => opt.value === value)
 
-  // Focus color classes
-  const focusClasses = {
-    blue: 'focus:ring-blue-500 focus:border-blue-500',
-    green: 'focus:ring-green-500 focus:border-green-500',
-    red: 'focus:ring-red-500 focus:border-red-500'
-  }
-
-  const highlightClasses = {
-    blue: 'bg-blue-100 text-blue-800',
-    green: 'bg-green-100 text-green-800',
-    red: 'bg-red-100 text-red-800'
-  }
-
-  const selectedClasses = {
-    blue: 'bg-blue-100 text-blue-800',
-    green: 'bg-green-100 text-green-800',
-    red: 'bg-red-100 text-red-800'
-  }
-
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Select Button */}
@@ -131,15 +111,16 @@ export default function CustomSelect({
         name={name}
         id={id}
         aria-required={required}
-        className={`w-full px-3 py-2.5 text-left border rounded-lg ${focusClasses[focusColor] || focusClasses.blue} transition-colors min-h-[42px] flex items-center justify-between bg-white ${className} ${
-          error ? 'border-red-500' : 'border-gray-300'
-        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}`}
-        style={{ fontSize: '15px', lineHeight: '1.4' }}
+        className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 h-9 flex items-center justify-between bg-white ${
+          error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+        } focus:ring-1 focus:outline-none ${
+          disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'hover:border-gray-400 cursor-pointer'
+        }`}
       >
-        <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+        <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <i className={`bi bi-chevron-down text-gray-400 text-sm transition-transform duration-200 ${
+        <i className={`bi bi-chevron-down text-gray-400 text-xs transition-transform duration-200 ${
           isOpen ? 'rotate-180' : ''
         }`}></i>
       </button>
@@ -151,17 +132,19 @@ export default function CustomSelect({
           <div className="fixed inset-0 bg-black/20 z-40 sm:hidden" onClick={() => setIsOpen(false)} />
           
           {/* Desktop Dropdown */}
-          <div className="hidden sm:block absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-auto">
+          <div className="hidden sm:block absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-auto">
             {normalizedOptions.map((option, index) => (
               <button
                 key={option.value}
                 ref={el => optionsRef.current[index] = el}
                 type="button"
                 onClick={() => handleSelect(option)}
-                className={`w-full px-3 py-2.5 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors ${
-                  highlightedIndex === index ? highlightClasses[focusColor] || highlightClasses.blue : 'text-gray-900'
-                } ${index === 0 ? 'rounded-t-lg' : ''} ${index === normalizedOptions.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'}`}
-                style={{ fontSize: '14px', lineHeight: '1.4' }}
+                disabled={option.disabled}
+                className={`w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors h-9 flex items-center ${
+                  highlightedIndex === index ? 'bg-blue-50 text-blue-800' : 'text-gray-900'
+                } ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''} ${
+                  index === 0 ? 'rounded-t-md' : ''
+                } ${index === normalizedOptions.length - 1 ? 'rounded-b-md' : 'border-b border-gray-100'}`}
               >
                 {option.label}
               </button>
@@ -188,17 +171,15 @@ export default function CustomSelect({
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option)}
-                  className={`w-full px-4 py-3.5 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 ${
-                    value === option.value ? selectedClasses[focusColor] || selectedClasses.blue + ' font-medium' : 'text-gray-900'
-                  }`}
-                  style={{ fontSize: '15px', lineHeight: '1.4', minHeight: '50px' }}
+                  disabled={option.disabled}
+                  className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 flex items-center justify-between min-h-[44px] ${
+                    value === option.value ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-900'
+                  } ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span>{option.label}</span>
-                    {value === option.value && (
-                      <i className="bi bi-check2 text-blue-600 text-lg"></i>
-                    )}
-                  </div>
+                  <span>{option.label}</span>
+                  {value === option.value && (
+                    <i className="bi bi-check2 text-blue-600 text-lg"></i>
+                  )}
                 </button>
               ))}
             </div>

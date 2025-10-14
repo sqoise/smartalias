@@ -179,7 +179,8 @@ export default function Profile() {
             <h1 className="text-lg font-semibold text-gray-900">User Profile</h1>
             <p className="text-sm text-gray-500 mt-0.5">Manage your personal information and account settings</p>
           </div>
-          {!isEditing ? (
+          {/* Edit functionality disabled */}
+          {/* {!isEditing ? (
             <button
               onClick={handleEdit}
               className="cursor-pointer inline-flex items-center justify-center w-10 h-10 bg-white border border-gray-300 rounded-lg hover:text-white focus:outline-none focus:ring-2 transition-all duration-200"
@@ -209,7 +210,7 @@ export default function Profile() {
                 Cancel
               </button>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Profile Summary Card */}

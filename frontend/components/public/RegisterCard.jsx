@@ -127,12 +127,24 @@ export default function RegisterCard({
             name="birthDate"
             value={formData.birthDate}
             onChange={onInputChange}
-            min="1900-01-01"
-            max={(() => {
+            min={(() => {
+              // Maximum 200 years old
               const today = new Date()
-              const year = today.getFullYear()
-              const month = String(today.getMonth() + 1).padStart(2, '0')
-              const day = String(today.getDate()).padStart(2, '0')
+              const maxAge = new Date()
+              maxAge.setFullYear(today.getFullYear() - 200)
+              const year = maxAge.getFullYear()
+              const month = String(maxAge.getMonth() + 1).padStart(2, '0')
+              const day = String(maxAge.getDate()).padStart(2, '0')
+              return `${year}-${month}-${day}`
+            })()}
+            max={(() => {
+              // Minimum 12 years old
+              const today = new Date()
+              const minAge = new Date()
+              minAge.setFullYear(today.getFullYear() - 12)
+              const year = minAge.getFullYear()
+              const month = String(minAge.getMonth() + 1).padStart(2, '0')
+              const day = String(minAge.getDate()).padStart(2, '0')
               return `${year}-${month}-${day}`
             })()}
             className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
@@ -149,22 +161,17 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Gender <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.gender ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="1">Male</option>
-              <option value="2">Female</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.gender}
+            onChange={(value) => onInputChange({ target: { name: 'gender', value } })}
+            options={[
+              { value: '1', label: 'Male' },
+              { value: '2', label: 'Female' }
+            ]}
+            placeholder="Select Gender"
+            title="Gender"
+            error={errors.gender}
+          />
           {errors.gender && (
             <p className="text-xs text-red-600 mt-1">{errors.gender}</p>
           )}
@@ -175,24 +182,19 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Civil Status <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              name="civilStatus"
-              value={formData.civilStatus}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.civilStatus ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="Single">Single</option>
-              <option value="Married">Married</option>
-              <option value="Widowed">Widowed</option>
-              <option value="Separated">Separated</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.civilStatus}
+            onChange={(value) => onInputChange({ target: { name: 'civilStatus', value } })}
+            options={[
+              { value: 'Single', label: 'Single' },
+              { value: 'Married', label: 'Married' },
+              { value: 'Widowed', label: 'Widowed' },
+              { value: 'Separated', label: 'Separated' }
+            ]}
+            placeholder="Select Civil Status"
+            title="Civil Status"
+            error={errors.civilStatus}
+          />
           {errors.civilStatus && (
             <p className="text-xs text-red-600 mt-1">{errors.civilStatus}</p>
           )}
@@ -287,27 +289,22 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Purok <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              name="purok"
-              value={formData.purok}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.purok ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="1">Purok 1</option>
-              <option value="2">Purok 2</option>
-              <option value="3">Purok 3</option>
-              <option value="4">Purok 4</option>
-              <option value="5">Purok 5</option>
-              <option value="6">Purok 6</option>
-              <option value="7">Purok 7</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.purok}
+            onChange={(value) => onInputChange({ target: { name: 'purok', value } })}
+            options={[
+              { value: '1', label: 'Purok 1' },
+              { value: '2', label: 'Purok 2' },
+              { value: '3', label: 'Purok 3' },
+              { value: '4', label: 'Purok 4' },
+              { value: '5', label: 'Purok 5' },
+              { value: '6', label: 'Purok 6' },
+              { value: '7', label: 'Purok 7' }
+            ]}
+            placeholder="Select Purok"
+            title="Purok"
+            error={errors.purok}
+          />
           {errors.purok && (
             <p className="text-xs text-red-600 mt-1">{errors.purok}</p>
           )}
@@ -318,25 +315,20 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Religion <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              name="religion"
-              value={formData.religion}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.religion ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="ROMAN_CATHOLIC">Roman Catholic</option>
-              <option value="PROTESTANT">Protestant</option>
-              <option value="IGLESIA_NI_CRISTO">Iglesia ni Cristo</option>
-              <option value="ISLAM">Islam</option>
-              <option value="OTHERS">Others</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.religion}
+            onChange={(value) => onInputChange({ target: { name: 'religion', value } })}
+            options={[
+              { value: 'ROMAN_CATHOLIC', label: 'Roman Catholic' },
+              { value: 'PROTESTANT', label: 'Protestant' },
+              { value: 'IGLESIA_NI_CRISTO', label: 'Iglesia ni Cristo' },
+              { value: 'ISLAM', label: 'Islam' },
+              { value: 'OTHERS', label: 'Others' }
+            ]}
+            placeholder="Select Religion"
+            title="Religion"
+            error={errors.religion}
+          />
           {errors.religion && (
             <p className="text-xs text-red-600 mt-1">{errors.religion}</p>
           )}
@@ -347,25 +339,20 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Occupation <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              name="occupation"
-              value={formData.occupation}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.occupation ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Select</option>
-              <option value="EMPLOYED">Employed</option>
-              <option value="SELF_EMPLOYED">Self-employed</option>
-              <option value="UNEMPLOYED">Unemployed</option>
-              <option value="RETIRED">Retired</option>
-              <option value="OTHERS">Others</option>
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.occupation}
+            onChange={(value) => onInputChange({ target: { name: 'occupation', value } })}
+            options={[
+              { value: 'EMPLOYED', label: 'Employed' },
+              { value: 'SELF_EMPLOYED', label: 'Self-employed' },
+              { value: 'UNEMPLOYED', label: 'Unemployed' },
+              { value: 'RETIRED', label: 'Retired' },
+              { value: 'OTHERS', label: 'Others' }
+            ]}
+            placeholder="Select Occupation"
+            title="Occupation"
+            error={errors.occupation}
+          />
           {errors.occupation && (
             <p className="text-xs text-red-600 mt-1">{errors.occupation}</p>
           )}
@@ -378,29 +365,24 @@ export default function RegisterCard({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Special Category <span className="text-gray-400 font-normal">(Optional)</span>
           </label>
-          <div className="relative">
-            <select
-              name="specialCategory"
-              value={formData.specialCategory}
-              onChange={onInputChange}
-              className={`w-full rounded-md px-3 py-1.5 border transition-all duration-200 ${
-                errors.specialCategory ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer appearance-none pr-8`}
-              style={{ fontSize: '14.5px' }}
-            >
-              <option value="">Not Applicable</option>
-              {isLoadingCategories ? (
-                <option disabled>Loading categories...</option>
-              ) : (
-                specialCategories.map(category => (
-                  <option key={category.id} value={category.category_code}>
-                    {category.category_name}
-                  </option>
-                ))
-              )}
-            </select>
-            <i className="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-          </div>
+          <CustomSelect
+            value={formData.specialCategory}
+            onChange={(value) => onInputChange({ target: { name: 'specialCategory', value } })}
+            options={[
+              { value: '', label: 'Not Applicable' },
+              ...(isLoadingCategories ? 
+                [{ value: '', label: 'Loading categories...', disabled: true }] :
+                specialCategories.map(category => ({
+                  value: category.category_code,
+                  label: category.category_name
+                }))
+              )
+            ]}
+            placeholder="Select Special Category"
+            title="Special Category"
+            error={errors.specialCategory}
+            disabled={isLoadingCategories}
+          />
           {errors.specialCategory && (
             <p className="text-xs text-red-600 mt-1">{errors.specialCategory}</p>
           )}
@@ -598,7 +580,7 @@ export default function RegisterCard({
               <Spinner size="sm" />
             ) : currentStep === 4 ? (
               <>
-                <span className="hidden sm:inline">Complete Registration</span>
+                <span>Complete Registration</span>
               </>
             ) : (
               'Next'

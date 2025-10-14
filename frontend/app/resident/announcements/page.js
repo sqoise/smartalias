@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import ApiClient from '../../../lib/apiClient'
 import ToastNotification from '../../../components/common/ToastNotification'
+import SlidePanel from '../../../components/common/SlidePanel'
 import { ANNOUNCEMENT_TYPE_NAMES } from '../../../lib/constants'
 
 export default function Announcements() {
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+  const [showAnnouncementPanel, setShowAnnouncementPanel] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
   const [announcements, setAnnouncements] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -75,7 +76,7 @@ export default function Announcements() {
           created_at: announcement.created_at,
           published_at: announcement.published_at,
           date: announcement.published_at ? new Date(announcement.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          time: announcement.published_at ? new Date(announcement.published_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '00:00',
+          time: announcement.published_at ? new Date(announcement.published_at).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }) : '12:00 AM',
           isNew: announcement.published_at ? (new Date() - new Date(announcement.published_at)) < 7 * 24 * 60 * 60 * 1000 : false, // New if published within 7 days (1 week)
           image: '/images/barangay_logo.png' // Default image
         }))
@@ -110,9 +111,14 @@ export default function Announcements() {
     }
   }
 
-  const openAnnouncementModal = (announcement) => {
+  const openAnnouncementPanel = (announcement) => {
     setSelectedAnnouncement(announcement)
-    setShowAnnouncementModal(true)
+    setShowAnnouncementPanel(true)
+  }
+
+  const closeAnnouncementPanel = () => {
+    setShowAnnouncementPanel(false)
+    setSelectedAnnouncement(null)
   }
 
   const formatDate = (dateString) => {
@@ -201,7 +207,7 @@ export default function Announcements() {
                     <div
                       key={announcement.id}
                       className="group cursor-pointer"
-                      onClick={() => openAnnouncementModal(announcement)}
+                      onClick={() => openAnnouncementPanel(announcement)}
                     >
                       <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-200 shadow-sm hover:shadow-md">
                         {/* Published Date Column */}
@@ -301,101 +307,88 @@ export default function Announcements() {
         </div>
       </div>
 
-      {/* Announcement Details Modal */}
-      {showAnnouncementModal && selectedAnnouncement && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-hidden shadow-xl">
-            {/* Modal Header with Image */}
-            <div className="relative">
-              <img 
-                src={selectedAnnouncement.image || '/images/barangay_logo.png'} 
-                alt={selectedAnnouncement.title}
-                className="w-full h-32 object-cover"
-                onError={(e) => {
-                  e.target.src = '/images/barangay_logo.png'
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              
-              {/* Status Badges */}
-              <div className="absolute top-3 left-3 flex gap-2">
-                {selectedAnnouncement.isNew && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white shadow-sm">
-                    New
-                  </span>
-                )}
-                {selectedAnnouncement.is_urgent && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white shadow-sm">
-                    <i className="bi bi-exclamation-triangle-fill mr-1"></i>
-                    Urgent
-                  </span>
-                )}
-              </div>
-
-              {/* Close Button */}
-              <button
-                onClick={() => setShowAnnouncementModal(false)}
-                className="absolute top-3 right-3 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-colors"
-              >
-                <i className="bi bi-x text-xl"></i>
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-4 overflow-y-auto max-h-[calc(85vh-8rem)]">
-              {/* Title */}
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 leading-tight">
-                {selectedAnnouncement.title}
-              </h2>
-
-              {/* Metadata */}
-              <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                {/* Published Date */}
-                <div className="flex items-center gap-2 text-sm">
-                  <i className="bi bi-calendar3 text-gray-400"></i>
-                  <span className="text-gray-600">Published:</span>
-                  <span className="text-gray-900 font-medium">
-                    {formatDate(selectedAnnouncement.date)} at {selectedAnnouncement.time}
-                  </span>
-                </div>
-
-                {/* Type */}
-                <div className="flex items-center gap-2 text-sm">
-                  <i className="bi bi-tag text-gray-400"></i>
-                  <span className="text-gray-600">Type:</span>
-                  <div className="flex items-center gap-1">
-                    <i className={`${getTypeIcon(selectedAnnouncement.type)} text-xs`}></i>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${getTypeBadgeColor(selectedAnnouncement.type)}`}>
-                      {getTypeName(selectedAnnouncement.type)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Full Description */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Details</h3>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedAnnouncement.fullDescription}
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowAnnouncementModal(false)}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Announcement Details SlidePanel */}
+      <SlidePanel
+        open={showAnnouncementPanel}
+        onClose={closeAnnouncementPanel}
+        title="Announcement Details"
+        subtitle=""
+      >
+        {selectedAnnouncement && <AnnouncementContent announcement={selectedAnnouncement} />}
+      </SlidePanel>
 
       {/* Toast Notification */}
       <ToastNotification ref={toastRef} />
     </>
   )
+
+  // Announcement content component for SlidePanel
+  function AnnouncementContent({ announcement }) {
+    if (!announcement) return null
+
+    return (
+      <div className="space-y-4">
+        {/* Main Content Card */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-6 space-y-6">
+            {/* Title */}
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-semibold text-gray-900 leading-tight flex-1">
+                {announcement.title}
+              </h1>
+              {/* Status Badges */}
+              <div className="flex gap-2 flex-shrink-0">
+                {announcement.isNew && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    New
+                  </span>
+                )}
+                {announcement.is_urgent && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    <i className="bi bi-exclamation-triangle-fill mr-1"></i>
+                    Urgent
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Metadata Section */}
+            <div className="space-y-4">
+              {/* Published Date */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <i className="bi bi-calendar3 text-gray-400"></i>
+                <span>Published:</span>
+                <span className="font-medium text-gray-900">
+                  {formatDate(announcement.date)} at {announcement.time}
+                </span>
+              </div>
+
+              {/* Announcement Type */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <i className="bi bi-tag text-gray-400"></i>
+                <span>Type:</span>
+                <span className="font-medium text-gray-900">
+                  {getTypeName(announcement.type)}
+                </span>
+              </div>
+            </div>
+
+            {/* Announcement Content */}
+            <div className="border-t border-gray-100 pt-6">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+                <div className="relative">
+                  {/* Paper-style content */}
+                  <div className="prose prose-sm max-w-none">
+                    <div className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
+                      {announcement.fullDescription || announcement.content}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 }

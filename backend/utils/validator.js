@@ -159,6 +159,44 @@ class Validator {
     }
   }
 
+  // Validate birth date (minimum 12 years old, maximum 200 years old)
+  static validateBirthDate(birthDate) {
+    const errors = []
+    
+    if (!birthDate) {
+      errors.push('Birth date is required')
+    } else {
+      const birth = new Date(birthDate)
+      const today = new Date()
+      
+      if (isNaN(birth.getTime())) {
+        errors.push('Invalid birth date format')
+      } else {
+        // Calculate age
+        const age = today.getFullYear() - birth.getFullYear()
+        const monthDiff = today.getMonth() - birth.getMonth()
+        const dayDiff = today.getDate() - birth.getDate()
+        
+        // Adjust age if birthday hasn't occurred this year
+        const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age
+        
+        if (birth > today) {
+          errors.push('Birth date cannot be in the future')
+        } else if (actualAge < 12) {
+          errors.push('Resident must be at least 12 years old')
+        } else if (actualAge > 200) {
+          errors.push('Age cannot exceed 200 years')
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+      age: errors.length === 0 ? Math.floor((new Date() - new Date(birthDate)) / (365.25 * 24 * 60 * 60 * 1000)) : null
+    }
+  }
+
   // Validate business name field
   static validateBusinessName(businessName) {
     const errors = []
@@ -256,14 +294,19 @@ class Validator {
     } else {
       const birthDate = new Date(data.birthDate)
       const today = new Date()
-      const minDate = new Date('1900-01-01')
+      const minDate = new Date()
+      minDate.setFullYear(today.getFullYear() - 200) // Maximum 200 years old
+      const maxDate = new Date()
+      maxDate.setFullYear(today.getFullYear() - 12) // Minimum 12 years old
       
       if (isNaN(birthDate.getTime())) {
         errors.push('Invalid birth date format')
       } else if (birthDate > today) {
         errors.push('Birth date cannot be in the future')
+      } else if (birthDate > maxDate) {
+        errors.push('Resident must be at least 12 years old')
       } else if (birthDate < minDate) {
-        errors.push('Birth date cannot be before 1900')
+        errors.push('Age cannot exceed 200 years')
       }
     }
     

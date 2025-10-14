@@ -441,28 +441,28 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
   return (
     <div className="space-y-3">
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex items-start space-x-2">
-          <div className="flex-shrink-0">
-            <i className="bi bi-info-circle text-blue-600 text-sm mt-0.5"></i>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+        <div className="flex items-start space-x-2 sm:space-x-3">
+          <div className="flex-shrink-0 mt-0.5">
+            <i className="bi bi-info-circle text-blue-600 text-sm"></i>
           </div>
-          <div className="text-sm text-blue-800">
+          <div className="text-xs sm:text-sm text-blue-800">
             <p className="font-medium mb-1">Request Timeline View</p>
-            <p>Each document type shows your most recent request. Click the arrow to view complete history for that document type.</p>
+            <p className="leading-relaxed">Each document type shows your most recent request. Click the arrow to view complete history for that document type.</p>
           </div>
         </div>
       </div>
 
       {/* Timeline Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
           <div className="flex flex-col space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Request Timeline</h3>
-              <h4 className="text-gray-500 mt-1">Track the status of your document requests and view timeline history.</h4>
+              <h4 className="text-sm sm:text-base text-gray-500 mt-1">Track the status of your document requests and view timeline history.</h4>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex flex-col gap-3">
               <div className="flex items-center space-x-2">
                 <i className="bi bi-funnel text-gray-400"></i>
                 <label className="text-sm font-medium text-gray-700">Filter by Document Type:</label>
@@ -479,7 +479,7 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
           </div>
         </div>
         
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {documentGroups.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -500,20 +500,20 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
                     <div className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
                       {/* Main Request Content - Clickable for timeline */}
                       <div 
-                        className="p-4 cursor-pointer transition-colors duration-200 group"
+                        className="p-3 sm:p-4 cursor-pointer transition-colors duration-200 group"
                         onClick={() => openTimeline(activeRequest)}
                       >
                         <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="font-medium text-gray-900 truncate">{documentType}</h3>
-                              <span className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${statusConfig.color}`}>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-2">
+                              <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{documentType}</h3>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium self-start ${statusConfig.color}`}>
                                 {statusConfig.label}
                               </span>
                             </div>
                             
-                            <div className="text-sm text-gray-600 space-y-1">
-                              <div className="flex items-center space-x-4">
+                            <div className="text-xs sm:text-sm text-gray-600 space-y-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
                                 <span className="font-medium">ID: {formatRequestId(activeRequest.id, activeRequest.requestDate)}</span>
                                 <span>Requested: {formatDate(activeRequest.requestDate)}</span>
                                 {activeRequest.fee > 0 && (
@@ -523,7 +523,7 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
                             </div>
                           </div>
                           
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 flex-shrink-0">
                             <div className="text-gray-400 group-hover:text-gray-600 transition-colors duration-200">
                               <i className="bi bi-chevron-right text-lg"></i>
                             </div>
