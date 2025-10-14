@@ -1,6 +1,6 @@
 /**
  * Database Configuration
- * Supports both local PostgreSQL (development) and Supabase (production)
+ * Supports PostgreSQL connection via DATABASE_URL (works for both local and Supabase)
  */
 
 const config = require('./config')
@@ -8,26 +8,22 @@ const logger = require('./logger')
 
 class Database {
   constructor() {
-    this.pg = null // PostgreSQL client (for local development)
-    this.supabase = null // Supabase client (for production)
-    this.type = null // 'mock', 'postgres', or 'supabase'
+    this.pg = null // PostgreSQL client (works for both local and Supabase)
+    this.type = null // 'postgres'
   }
 
   async connect() {
-    // Development: Use local PostgreSQL (Docker)
-    if (config.isDevelopment && config.DATABASE_URL) {
+    // Use DATABASE_URL (works for both local PostgreSQL and Supabase PostgreSQL)
+    if (config.DATABASE_URL) {
       return await this.connectPostgreSQL()
     }
 
-    // Production: Use Supabase
-    if (config.isProduction && config.SUPABASE_URL) {
-      return await this.connectSupabase()
-    }
-
     // No database configured
-    logger.error('No database configured. Set DATABASE_URL or SUPABASE_URL in .env')
-    console.error('Database: No connection configured!')
-    throw new Error('Database configuration required. Please configure DATABASE_URL in your .env file.')
+    logger.error('No database configured. Set DATABASE_URL in .env')
+    console.error('Database: No DATABASE_URL configured!')
+    console.error('For local: DATABASE_URL=postgresql://user:pass@localhost:5432/dbname')
+    console.error('For Supabase: Get connection string from Dashboard → Settings → Database → Connection String → URI')
+    throw new Error('Database configuration required. Please set DATABASE_URL in your .env file.')
   }
 
   async connectPostgreSQL() {
@@ -48,65 +44,37 @@ class Database {
 
       this.type = 'postgres'
       logger.info('PostgreSQL connection established', { 
-        host: config.POSTGRES_HOST,
-        database: config.POSTGRES_DB 
+        connectionString: config.DATABASE_URL?.substring(0, 50) + '...'
       })
-      console.log(`Database: Connected to PostgreSQL (${config.POSTGRES_HOST}:${config.POSTGRES_PORT}/${config.POSTGRES_DB})`)
+      
+      // Detect if it's Supabase or local based on connection string
+      const isSupabase = config.DATABASE_URL.includes('supabase.co')
+      const dbType = isSupabase ? 'Supabase PostgreSQL' : 'Local PostgreSQL'
+      console.log(`Database: Connected to ${dbType}`)
       return true
 
     } catch (error) {
       logger.error('PostgreSQL connection failed', { 
         error: error.message,
-        host: config.POSTGRES_HOST,
-        database: config.POSTGRES_DB,
-        port: config.POSTGRES_PORT
+        connectionString: config.DATABASE_URL?.substring(0, 50) + '...'
       })
       console.error(`PostgreSQL connection failed: ${error.message}`)
-      console.error(`Host: ${config.POSTGRES_HOST}:${config.POSTGRES_PORT}`)
-      console.error(`Database: ${config.POSTGRES_DB}`)
-      console.error(`User: ${config.POSTGRES_USER}`)
       
       // Provide specific error guidance
       if (error.message.includes('password authentication failed')) {
         console.error('Issue: Incorrect username or password')
-        console.error('Solution: Check POSTGRES_USER and POSTGRES_PASSWORD in .env file')
+        console.error('Solution: Check your DATABASE_URL credentials')
       } else if (error.message.includes('database') && error.message.includes('does not exist')) {
         console.error('Issue: Database does not exist')
-        console.error('Solution: Create the database or check POSTGRES_DB in .env file')
+        console.error('Solution: Create the database or check DATABASE_URL')
       } else if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
         console.error('Issue: Cannot connect to PostgreSQL server')
-        console.error('Solution: Make sure PostgreSQL is running on the specified host and port')
+        console.error('Solution: Make sure PostgreSQL is running or check DATABASE_URL')
+      } else if (error.message.includes('getaddrinfo')) {
+        console.error('Issue: Cannot resolve database host')
+        console.error('Solution: Check your internet connection or DATABASE_URL host')
       }
       
-      throw error
-    }
-  }
-
-  async connectSupabase() {
-    try {
-      const { createClient } = require('@supabase/supabase-js')
-      
-      this.supabase = createClient(
-        config.SUPABASE_URL,
-        config.SUPABASE_SERVICE_ROLE_KEY || config.SUPABASE_ANON_KEY
-      )
-
-      // Test connection
-      const { error } = await this.supabase.from('users').select('count').limit(1)
-      if (error) throw error
-
-      this.type = 'supabase'
-      logger.info('Supabase connection established')
-      console.log('Database: Connected to Supabase')
-      return true
-
-    } catch (error) {
-      logger.error('Supabase connection failed', {
-        error: error.message,
-        url: config.SUPABASE_URL?.substring(0, 50) + '...'
-      })
-      console.error(`Supabase connection failed: ${error.message}`)
-      console.error('Check your Supabase URL and API keys')
       throw error
     }
   }
@@ -118,9 +86,7 @@ class Database {
       console.log('Database: PostgreSQL connection closed')
     }
     
-    // Supabase doesn't require explicit disconnect
     this.pg = null
-    this.supabase = null
     this.type = null
   }
 
@@ -129,21 +95,20 @@ class Database {
   }
 
   getClient() {
-    if (this.type === 'postgres') return this.pg
-    if (this.type === 'supabase') return this.supabase
-    return null
+    return this.pg
   }
 
   getType() {
     return this.type
   }
 
-  // Execute query with automatic client selection
+  // Execute PostgreSQL query
   async query(text, params) {
-    if (this.type === 'postgres') {
+    if (this.type === 'postgres' && this.pg) {
       return await this.pg.query(text, params)
     }
-    throw new Error('Query method only available for PostgreSQL')
+    
+    throw new Error('No database connection available. Make sure DATABASE_URL is set.')
   }
 }
 

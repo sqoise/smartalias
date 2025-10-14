@@ -88,7 +88,8 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
               setSmsStatus({
                 total: smsResponse.data.total_recipients || 0,
                 sent: smsResponse.data.successful_sends || 0,
-                failed: smsResponse.data.failed_sends || 0
+                failed: smsResponse.data.failed_sends || 0,
+                uniquePhones: smsResponse.data.unique_phone_count || 0
               })
             }
           } catch (smsError) {
@@ -260,7 +261,8 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
               setSmsStatus({
                 total: smsResponse.data.total_recipients || 0,
                 sent: smsResponse.data.successful_sends || 0,
-                failed: smsResponse.data.failed_sends || 0
+                failed: smsResponse.data.failed_sends || 0,
+                uniquePhones: smsResponse.data.unique_phone_count || 0
               })
             }
           } catch (smsError) {
@@ -659,6 +661,12 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                           <span className="text-gray-600">Total Recipients:</span>
                           <span className="font-medium text-gray-800">{smsStatus.total}</span>
                         </div>
+                        {smsStatus.uniquePhones > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Unique Phone Numbers:</span>
+                            <span className="font-medium text-blue-600">{smsStatus.uniquePhones}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Successfully Sent:</span>
                           <span className="font-medium text-green-600">{smsStatus.sent}</span>

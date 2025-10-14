@@ -100,6 +100,8 @@ export default function ChangePinPage() {
       return
     }
 
+    // Close keypad and start loading
+    setShowKeypad(false)
     setIsLoading(true)
 
     try {
@@ -117,7 +119,7 @@ export default function ChangePinPage() {
 
       // Success!
       showAlert('PIN changed successfully!', 'success')
-      setIsLoading(false)
+      // Keep loading state and keypad closed
       
       // Redirect to login after 2 seconds
       setTimeout(() => {

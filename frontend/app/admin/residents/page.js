@@ -29,16 +29,6 @@ export default function ResidentsPage() {
       const response = await ApiClient.getResidents()
       
       if (response.success) {
-        console.log('=== LOADED RESIDENTS FROM API ===')
-        console.log('Total residents:', response.data?.length || 0)
-        console.log('Active residents:', response.data?.filter(r => r.is_active === 1).length || 0)
-        console.log('Inactive residents:', response.data?.filter(r => r.is_active === 0).length || 0)
-        console.log('Sample data:', response.data?.slice(0, 3).map(r => ({
-          id: r.id,
-          name: `${r.first_name} ${r.last_name}`,
-          is_active: r.is_active
-        })))
-        
         setResidentsData(response.data || [])
       } else {
         setError(response.error || 'Failed to load residents')

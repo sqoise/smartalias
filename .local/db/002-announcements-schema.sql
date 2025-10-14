@@ -28,7 +28,7 @@ CREATE TABLE "public"."announcements" (
     "published_by" integer,
     "published_at" timestamp,
     "target_type" character varying(20),
-    "target_value" character varying(100)
+    "target_value" text
 );
 
 -- Announcement SMS Logs table (SMS Delivery Tracking)

@@ -388,7 +388,6 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
   }
 
   const handleConfirmationClose = () => {
-    console.log('Closing confirmation modal...') // Debug log
     setShowConfirmation(false)
     setAddedResident(null)
     setShowCredentials(false)

@@ -22,11 +22,42 @@ class SMSService {
         throw new Error('No mobile number provided for SMS notification')
       }
 
-      // Template for activation message
-      const message = `[SMARTLIAS]\n\nHi ${first_name}, your SmartLIAS account (@${username}) has been activated! You can now login to access barangay services.\n\nPlease visit: ${config.FRONTEND_URL}/login`
+      // Validate and normalize phone number first
+      if (!this.validatePhoneNumber(mobile_number)) {
+        logger.error('Invalid phone number format for activation SMS', {
+          mobile_number,
+          username
+        })
+        throw new Error('Invalid phone number format')
+      }
 
-      // Use the actual SMS sending method
-      const result = await this.sendBulkSMS(mobile_number, message)
+      const normalizedPhone = this.normalizePhoneNumber(mobile_number)
+      
+      logger.info('Sending activation SMS', {
+        originalPhone: mobile_number,
+        normalizedPhone,
+        username,
+        firstName: first_name
+      })
+
+      // Template for activation message - simple and clean
+      // SMART Provider - Doesn't support URLs
+      // TM Provider - Support URLs
+      const message = `[SMARTLIAS]\n\n Hi ${first_name}, your SmartLIAS account (@${username}) has been activated! You can now login to access barangay services.`
+
+      logger.info('Activation SMS message prepared', {
+        messageLength: message.length,
+        message: message
+      })
+
+      // Use the actual SMS sending method with normalized phone
+      const result = await this.sendBulkSMS(normalizedPhone, message)
+      
+      logger.info('Activation SMS send result', {
+        success: result.success,
+        messageId: result.messageId,
+        phone: normalizedPhone
+      })
       
       if (result.success) {
         return {
@@ -41,7 +72,11 @@ class SMSService {
     } catch (error) {
       logger.error('SMS Service Error:', { 
         error: error.message,
-        type: 'activation_sms'
+        type: 'activation_sms',
+        resident: {
+          username: resident.username,
+          mobile_number: resident.mobile_number
+        }
       })
       return {
         success: false,
@@ -81,6 +116,7 @@ class SMSService {
       } else {
         // Filter by specific target groups
         const categoryIds = []
+        const categoryCodes = []
         const specialConditions = []
         let paramIndex = 1
         
@@ -93,19 +129,29 @@ class SMSService {
               // Assuming 60+ years old qualifies as senior citizen
               specialConditions.push(`(EXTRACT(YEAR FROM AGE(CURRENT_DATE, r.birth_date)) >= 60)`)
             } else {
-              // Map other category names to IDs (faster numeric lookup)
-              const categoryMap = {
-                'PWD': 2,
-                'SOLO_PARENT': 3,
-                'INDIGENT': 4
-              }
-              
-              const categoryId = categoryMap[categoryName]
-              if (categoryId) {
-                categoryIds.push(categoryId)
-              }
+              // Collect category codes to look up from database
+              categoryCodes.push(categoryName)
             }
           }
+        }
+
+        // Query database to get actual category IDs based on category codes
+        if (categoryCodes.length > 0) {
+          const categoryQuery = `
+            SELECT id 
+            FROM special_categories 
+            WHERE category_code = ANY($1)
+          `
+          const categoryResult = await db.query(categoryQuery, [categoryCodes])
+          
+          if (categoryResult.rows.length > 0) {
+            categoryIds.push(...categoryResult.rows.map(row => row.id))
+          }
+          
+          logger.info('Mapped category codes to IDs', {
+            categoryCodes,
+            categoryIds: categoryIds
+          })
         }
 
         // Build WHERE conditions
@@ -228,22 +274,40 @@ class SMSService {
       }
     }
 
-    // Remove duplicate phone numbers
-    const seenPhones = new Set()
-    const uniqueRecipients = []
+    // Remove duplicate phone numbers and track all recipients per phone
+    const phoneToRecipients = new Map() // Map of phone -> array of recipients with that phone
     const duplicateInfo = []
 
     validRecipients.forEach(recipient => {
-      if (seenPhones.has(recipient.normalizedPhone)) {
+      const phone = recipient.normalizedPhone
+      
+      if (!phoneToRecipients.has(phone)) {
+        phoneToRecipients.set(phone, [])
+      }
+      
+      phoneToRecipients.get(phone).push(recipient)
+      
+      // Log duplicates (recipients beyond the first for this phone number)
+      if (phoneToRecipients.get(phone).length > 1) {
         duplicateInfo.push({
           name: `${recipient.first_name} ${recipient.last_name}`,
-          phone: recipient.normalizedPhone,
+          phone: phone,
           reason: 'Duplicate phone number'
         })
-      } else {
-        seenPhones.add(recipient.normalizedPhone)
-        uniqueRecipients.push(recipient)
       }
+    })
+
+    // Create unique recipients list (one per phone number, but keeping reference to all)
+    const uniqueRecipients = Array.from(phoneToRecipients.entries()).map(([phone, recipientsList]) => ({
+      normalizedPhone: phone,
+      recipients: recipientsList, // All recipients with this phone number
+      primaryRecipient: recipientsList[0] // Use first recipient as primary for display
+    }))
+
+    logger.info('Phone deduplication summary', {
+      totalRecipients: validRecipients.length,
+      uniquePhoneNumbers: uniqueRecipients.length,
+      duplicatesRemoved: validRecipients.length - uniqueRecipients.length
     })
 
     // Send in batches of 1000 (provider limit)
@@ -266,58 +330,72 @@ class SMSService {
       const batch = batches[batchIndex]
       const phoneNumbers = batch.map(r => r.normalizedPhone).join(',')
       
+      // Count total recipients in this batch (including those sharing phone numbers)
+      const totalRecipientsInBatch = batch.reduce((sum, r) => sum + r.recipients.length, 0)
+      
       try {
         logger.info(`Sending SMS batch ${batchIndex + 1}/${batches.length}`, {
-          recipientsInBatch: batch.length,
+          uniquePhonesInBatch: batch.length,
+          totalRecipientsInBatch: totalRecipientsInBatch,
           phoneNumbers: phoneNumbers.substring(0, 100) + '...' // Log first 100 chars
         })
 
         const sendResult = await this.sendBulkSMS(phoneNumbers, message)
 
         if (sendResult.success) {
-          // If bulk send successful, mark all in batch as sent
-          results.sent += batch.length
+          // If bulk send successful, count ALL recipients (including those sharing phone numbers)
+          results.sent += totalRecipientsInBatch
           
-          // Log each recipient as successful
-          for (const recipient of batch) {
+          // Log each unique phone as successful, but track all recipients
+          for (const recipientGroup of batch) {
             providerResponses.push({
-              phone: recipient.normalizedPhone,
+              phone: recipientGroup.normalizedPhone,
               success: true,
               messageId: sendResult.messageId || `BULK-${Date.now()}-${batchIndex}`,
-              error: null
+              error: null,
+              recipientCount: recipientGroup.recipients.length,
+              recipients: recipientGroup.recipients.map(r => `${r.first_name} ${r.last_name}`)
             })
           }
         } else {
-          // If bulk send failed, mark all in batch as failed
-          results.failed += batch.length
+          // If bulk send failed, count ALL recipients as failed
+          results.failed += totalRecipientsInBatch
           
-          // Log each recipient as failed
-          for (const recipient of batch) {
+          // Log each unique phone as failed, with all recipients
+          for (const recipientGroup of batch) {
             providerResponses.push({
-              phone: recipient.normalizedPhone,
+              phone: recipientGroup.normalizedPhone,
               success: false,
               messageId: null,
-              error: sendResult.error
+              error: sendResult.error,
+              recipientCount: recipientGroup.recipients.length,
+              recipients: recipientGroup.recipients.map(r => `${r.first_name} ${r.last_name}`)
             })
             
-            results.errors.push({
-              recipient: `${recipient.first_name} ${recipient.last_name}`,
-              error: sendResult.error
+            // Add error for each individual recipient
+            recipientGroup.recipients.forEach(recipient => {
+              results.errors.push({
+                recipient: `${recipient.first_name} ${recipient.last_name}`,
+                error: sendResult.error
+              })
             })
           }
         }
       } catch (error) {
         logger.error(`Error sending SMS batch ${batchIndex + 1}`, {
           error: error.message,
-          batchSize: batch.length
+          batchSize: batch.length,
+          totalRecipients: totalRecipientsInBatch
         })
         
-        results.failed += batch.length
+        results.failed += totalRecipientsInBatch
         
-        for (const recipient of batch) {
-          results.errors.push({
-            recipient: `${recipient.first_name} ${recipient.last_name}`,
-            error: error.message
+        for (const recipientGroup of batch) {
+          recipientGroup.recipients.forEach(recipient => {
+            results.errors.push({
+              recipient: `${recipient.first_name} ${recipient.last_name}`,
+              error: error.message
+            })
           })
         }
       }
@@ -503,6 +581,13 @@ class SMSService {
         urlParams.append('sms_provider', config.IPROG_SMS_PROVIDER.toString())
       }
       
+      logger.info('Sending SMS to IProg API', {
+        phoneNumbers,
+        messageLength: message.length,
+        messageSample: message.substring(0, 100),
+        smsProvider: config.IPROG_SMS_PROVIDER
+      })
+      
       const apiUrl = `https://sms.iprogtech.com/api/v1/sms_messages/send_bulk?${urlParams.toString()}`
       
       const response = await fetch(apiUrl, {
@@ -531,6 +616,20 @@ class SMSService {
       // Parse JSON response
       const result = await response.json()
       
+      // Check if message_ids is empty (indicates queued but not actually sent)
+      if (result.message_ids === '' || result.message_ids === null) {
+        logger.warn('IProg API queued message but returned empty message_ids - SMS may not be delivered', {
+          phoneNumbers,
+          response: result,
+          possibleIssues: [
+            'Invalid phone number format for provider',
+            'Insufficient credits',
+            'Provider-specific content filtering',
+            'Special characters in message'
+          ]
+        })
+      }
+      
       // IProg API success response structure
       // IProg returns status: 200 (number) and message_ids when successful
       if (result.success || 
@@ -543,6 +642,7 @@ class SMSService {
         logger.info('IProg bulk SMS sent successfully', {
           phoneCount: phoneNumbers.split(',').length,
           messageId: result.message_ids || result.message_id || result.id || result.reference_id,
+          hasMessageIds: !!result.message_ids && result.message_ids !== '',
           response: result
         })
         

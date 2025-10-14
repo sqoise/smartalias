@@ -8,15 +8,20 @@ const getIconForActivityType = (type, activity) => {
   switch (type) {
     case 'document_request_new':
       return 'bi-file-earmark-text'
+    case 'document_request_processing':
+      return 'bi-hourglass-split'
+    case 'document_request_rejected':
+      return 'bi-x-circle'
+    case 'document_request_ready':
+      return 'bi-clock'
     case 'document_request_completed':
       return 'bi-check-circle'
     case 'document_request_other':
-      if (activity.includes('processing')) return 'bi-hourglass-split'
-      if (activity.includes('rejected')) return 'bi-x-circle'
-      if (activity.includes('ready')) return 'bi-clock'
       return 'bi-file-earmark'
+    case 'user_activation':
+      return 'bi-person-check'
     case 'announcement':
-      return activity.includes('published') ? 'bi-megaphone' : 'bi-plus-circle'
+      return 'bi-megaphone'
     case 'resident':
       return 'bi-person-plus'
     default:
@@ -28,15 +33,20 @@ const getColorForActivityType = (type, activity) => {
   switch (type) {
     case 'document_request_new':
       return 'text-blue-600'
+    case 'document_request_processing':
+      return 'text-blue-500'
+    case 'document_request_rejected':
+      return 'text-red-600'
+    case 'document_request_ready':
+      return 'text-purple-600'
     case 'document_request_completed':
       return 'text-green-600'
     case 'document_request_other':
-      if (activity.includes('processing')) return 'text-blue-500'
-      if (activity.includes('rejected')) return 'text-red-600'
-      if (activity.includes('ready')) return 'text-purple-600'
       return 'text-gray-600'
+    case 'user_activation':
+      return 'text-green-600'
     case 'announcement':
-      return activity.includes('published') ? 'text-orange-600' : 'text-blue-600'
+      return 'text-orange-600'
     case 'resident':
       return 'text-green-600'
     default:
@@ -60,20 +70,20 @@ export default function ActivityCard() {
       const response = await ApiClient.get('/dashboard/activity')
       
       if (response.success) {
-        // Transform backend data to match frontend format
+        // Transform backend data to match frontend format and ensure unique keys
         const transformedActivity = response.data.map((item, index) => ({
-          id: item.referenceId || index + 1,
+          id: `${item.type}-${item.referenceId}-${index}`, // Create unique composite key
           type: item.type,
           description: item.activity,
           user: item.details,
-          timestamp: new Date(item.timestamp),
+          timestamp: item.timestamp, // Keep as string, let formatTimeAgo handle conversion
           icon: getIconForActivityType(item.type, item.activity),
           color: getColorForActivityType(item.type, item.activity)
         }))
         
         setActivityData({
           loading: false,
-          recent: transformedActivity,
+          recent: transformedActivity.slice(0, 4), // Limit to 4 most recent activities
           error: null
         })
       } else {
@@ -95,19 +105,25 @@ export default function ActivityCard() {
 
   useEffect(() => {
     loadActivity()
-    
-    // Set up auto-refresh every 30 seconds for live updates
-    const interval = setInterval(loadActivity, 30000)
-    
-    return () => clearInterval(interval)
+    // Removed auto-refresh interval - users can manually refresh using the button
   }, [])
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date()
-    const diff = now - timestamp
+    // PostgreSQL returns timestamps in UTC, convert properly
+    const then = new Date(timestamp)
+    
+    // Ensure we're working with valid dates
+    if (isNaN(then.getTime())) return 'Unknown time'
+    
+    // Calculate difference using UTC time to avoid timezone issues
+    const diff = now.getTime() - then.getTime()
     const minutes = Math.floor(diff / (1000 * 60))
     const hours = Math.floor(diff / (1000 * 60 * 60))
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    
+    // Handle negative differences (future dates due to clock skew)
+    if (diff < 0) return 'Just now'
     
     if (minutes < 1) return 'Just now'
     if (minutes === 1) return '1 minute ago'
@@ -140,13 +156,7 @@ export default function ActivityCard() {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-          <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-xs text-green-700 font-medium">Live</span>
-          </div>
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
         <div className="flex items-center space-x-2">
           <button
             onClick={loadActivity}

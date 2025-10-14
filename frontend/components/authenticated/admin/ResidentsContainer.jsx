@@ -68,21 +68,6 @@ export default function ResidentsContainer({
     }
   }, [])  // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    // Debug: Check data before filtering
-    if (statusFilter === 'inactive') {
-      console.log('=== INACTIVE FILTER DEBUG ===')
-      console.log('Total residents:', residents.length)
-      console.log('Residents with is_active=0:', residents.filter(r => r.is_active === 0).length)
-      console.log('Residents with is_active=1:', residents.filter(r => r.is_active === 1).length)
-      console.log('Status filter:', statusFilter)
-      console.log('Other filters:', {
-        ageGroupFilter,
-        civilStatusFilter,
-        purokFilter,
-        specialCategoryFilter
-      })
-    }
-    
     let filtered = residents.filter(resident => {
       const fullName = `${resident.first_name || ''} ${resident.last_name || ''}`.trim()
       const matchesSearch = searchQuery === '' || 
@@ -132,21 +117,6 @@ export default function ResidentsContainer({
         return false
       })()
       
-      // Debug inactive filter - after all variables are defined
-      if (statusFilter === 'inactive') {
-        console.log('Resident:', {
-          id: resident.id,
-          name: `${resident.first_name} ${resident.last_name}`,
-          is_active: resident.is_active,
-          is_active_type: typeof resident.is_active,
-          matchesStatus,
-          matchesSearch,
-          matchesAgeGroup,
-          matchesCivilStatus,
-          matchesPurok,
-          matchesSpecialCategory
-        })
-      }
       
       return matchesSearch && matchesStatus && 
              matchesAgeGroup && matchesCivilStatus && matchesPurok && matchesSpecialCategory
@@ -175,18 +145,6 @@ export default function ResidentsContainer({
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentData = filteredAndSortedData.slice(startIndex, endIndex)
-  
-  // Debug pagination for inactive filter
-  if (statusFilter === 'inactive') {
-    console.log('=== PAGINATION DEBUG ===')
-    console.log('Filtered data length:', filteredAndSortedData.length)
-    console.log('Current page:', currentPage)
-    console.log('Items per page:', itemsPerPage)
-    console.log('Start index:', startIndex)
-    console.log('End index:', endIndex)
-    console.log('Current data length:', currentData.length)
-    console.log('Current data:', currentData)
-  }
 
   // Reset to first page when filters change
   const handleSearchChange = (value) => {

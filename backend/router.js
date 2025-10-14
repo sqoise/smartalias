@@ -2289,6 +2289,7 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireStaffOrAdm
         successful_sends,
         failed_sends,
         sms_content,
+        provider_response,
         sent_at
       FROM announcement_sms_logs 
       WHERE announcement_id = $1
@@ -2311,10 +2312,17 @@ router.get('/announcements/:id/sms-status', authenticateToken, requireStaffOrAdm
     
     const smsLog = result.rows[0]
     
+    // Calculate unique phone numbers from provider_response
+    let uniquePhoneCount = 0
+    if (smsLog.provider_response && Array.isArray(smsLog.provider_response)) {
+      uniquePhoneCount = smsLog.provider_response.length
+    }
+    
     return ApiResponse.success(res, {
       total_recipients: smsLog.total_recipients || 0,
       successful_sends: smsLog.successful_sends || 0,
       failed_sends: smsLog.failed_sends || 0,
+      unique_phone_count: uniquePhoneCount,
       sms_content: smsLog.sms_content,
       target_groups: smsLog.target_groups,
       sent_at: smsLog.sent_at

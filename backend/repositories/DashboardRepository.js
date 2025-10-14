@@ -318,8 +318,39 @@ class DashboardRepository {
    */
   static async getRecentActivity() {
     try {
-      // Get all document requests (no status or date filter for testing)
-      const documentRequestsResult = await db.query(`
+      // Get recent user activations/approvals
+      const userActivationsResult = await db.query(`
+        SELECT 
+          'user_activation' as type,
+          CONCAT(r.first_name, ' ', r.last_name, ' - Account activated and approved') as details,
+          u.updated_at as timestamp,
+          u.id as reference_id,
+          1 as status_info
+        FROM users u
+        JOIN residents r ON u.id = r.id
+        WHERE u.is_active = 1 
+          AND u.updated_at >= NOW() - INTERVAL '7 days'
+        ORDER BY u.updated_at DESC
+        LIMIT 2
+      `)
+
+      // Get recent published announcements
+      const announcementsResult = await db.query(`
+        SELECT 
+          'announcement' as type,
+          CONCAT(a.title, ' - Announcement published') as details,
+          a.published_at as timestamp,
+          a.id as reference_id,
+          2 as status_info
+        FROM announcements a
+        WHERE a.published_at IS NOT NULL 
+          AND a.published_at >= NOW() - INTERVAL '7 days'
+        ORDER BY a.published_at DESC
+        LIMIT 2
+      `)
+
+      // Get recent individual document requests (all statuses)
+      const recentDocRequestsResult = await db.query(`
         SELECT 
           CASE 
             WHEN dr.status = 0 THEN 'document_request_new'
@@ -340,6 +371,7 @@ class DashboardRepository {
         JOIN users u ON dr.user_id = u.id
         JOIN residents r ON u.id = r.id
         JOIN document_catalog dc ON dr.document_id = dc.id
+        WHERE dr.created_at >= NOW() - INTERVAL '7 days'
         ORDER BY 
           CASE 
             WHEN dr.status = 4 THEN dr.updated_at
@@ -348,8 +380,15 @@ class DashboardRepository {
         LIMIT 4
       `)
 
-      // Process all document requests
-      return this.processRecentActivity(documentRequestsResult.rows)
+      // Combine all activities
+      const allActivities = [
+        ...userActivationsResult.rows,
+        ...announcementsResult.rows,
+        ...recentDocRequestsResult.rows
+      ]
+
+      // Process and sort by timestamp
+      return this.processRecentActivity(allActivities)
 
     } catch (error) {
       logger.error('Error fetching recent activity:', error)
@@ -358,46 +397,59 @@ class DashboardRepository {
   }
 
   /**
-   * Process recent activity data for all document request statuses
+   * Process recent activity data for all types
    */
-  static processRecentActivity(documentRequests) {
-    const activities = []
+  static processRecentActivity(activities) {
+    const processedActivities = []
 
-    // Process all document request statuses
-    documentRequests.forEach(request => {
-      let activityText = 'Document request'
+    activities.forEach(activity => {
+      let activityText = 'Activity'
       
-      switch (request.status_info) {
-        case 0:
-          activityText = 'New application submitted'
-          break
-        case 1:
-          activityText = 'Document processing'
-          break
-        case 2:
-          activityText = 'Document rejected'
-          break
-        case 3:
-          activityText = 'Document ready for pickup'
-          break
-        case 4:
-          activityText = 'Document completed'
-          break
-        default:
-          activityText = 'Document updated'
+      // Handle user activation
+      if (activity.type === 'user_activation') {
+        activityText = 'User access activated and approved'
+      }
+      // Handle announcements
+      else if (activity.type === 'announcement') {
+        activityText = 'Announcement published'
+      }
+      // Handle individual document requests
+      else {
+        switch (activity.status_info) {
+          case 0:
+            activityText = 'New application submitted'
+            break
+          case 1:
+            activityText = 'Document processing'
+            break
+          case 2:
+            activityText = 'Document rejected'
+            break
+          case 3:
+            activityText = 'Document ready for pickup'
+            break
+          case 4:
+            activityText = 'Document completed'
+            break
+          default:
+            activityText = 'Document updated'
+        }
       }
 
-      activities.push({
-        type: request.type,
+      processedActivities.push({
+        type: activity.type,
         activity: activityText,
-        details: request.details,
-        timestamp: request.timestamp,
-        referenceId: request.reference_id
+        details: activity.details,
+        timestamp: activity.timestamp,
+        referenceId: activity.reference_id
       })
     })
 
-    // Already sorted by timestamp in the SQL query, just return the activities
-    return activities
+    // Sort by timestamp descending
+    processedActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+
+    // Return top 4 most recent activities
+    return processedActivities.slice(0, 4)
   }
 
   /**

@@ -143,6 +143,18 @@ export default function UserManagementContainer({
     setSelectedUser(null)
   }
 
+  const confirmGrantPermission = () => {
+    if (selectedUser && onGrantAccess) {
+      handleAddUserAccess(selectedUser, selectedRole)
+      setShowGrantConfirmModal(false)
+      setShowAddUserSearch(false)
+      setSelectedUser(null)
+      setSelectedRole('staff')
+      setUserSearchQuery('')
+      setUserSearchResults([])
+    }
+  }
+
   const confirmDelete = () => {
     if (selectedUser && onDeleteRequest) {
       onDeleteRequest(selectedUser.user_id || selectedUser.id, selectedUser.username)
@@ -471,7 +483,27 @@ export default function UserManagementContainer({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {filteredAccessControl.length === 0 ? (
+                  {isRefreshingUserPermissions ? (
+                    // Skeleton loading rows
+                    [...Array(5)].map((_, index) => (
+                      <tr key={`skeleton-ac-${index}`} className="h-12 animate-pulse">
+                        <td className="px-3 py-1">
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-24"></div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-1">
+                          <div className="h-5 bg-gray-200 rounded-full w-16"></div>
+                        </td>
+                        <td className="px-3 py-1">
+                          <div className="flex items-center justify-center">
+                            <div className="h-6 bg-gray-200 rounded w-16"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : filteredAccessControl.length === 0 ? (
                     <tr>
                       <td colSpan="3" className="px-6 py-12">
                         <div className="text-center">
@@ -590,7 +622,27 @@ export default function UserManagementContainer({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {filteredAccessRequests.length === 0 ? (
+                {isRefreshingAccessRequests ? (
+                  // Skeleton loading rows
+                  [...Array(5)].map((_, index) => (
+                    <tr key={`skeleton-ar-${index}`} className="h-12 animate-pulse">
+                      <td className="px-3 py-1">
+                        <div>
+                          <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-1">
+                        <div className="h-4 bg-gray-200 rounded w-40"></div>
+                      </td>
+                      <td className="px-3 py-1">
+                        <div className="flex items-center justify-center">
+                          <div className="h-6 bg-gray-200 rounded w-16"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredAccessRequests.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="px-6 py-12">
                       <div className="text-center">
@@ -760,6 +812,23 @@ export default function UserManagementContainer({
         </div>
       </Modal>
 
+      {/* Grant Permission Confirmation Modal */}
+      <Modal
+        isOpen={showGrantConfirmModal}
+        onClose={() => setShowGrantConfirmModal(false)}
+        title="Confirm Grant Permission"
+        type="confirm"
+        variant="success"
+        confirmText="Yes, Confirm"
+        cancelText="Back"
+        onConfirm={confirmGrantPermission}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to grant <span className="font-semibold">{selectedRole === 'admin' ? 'Admin' : 'Staff'}</span> access to <span className="font-semibold">{selectedUser?.username}</span>?
+        </p>
+      </Modal>
+
       {/* User Details SlidePanel */}
       <SlidePanel
         open={showUserDetails}
@@ -900,9 +969,7 @@ export default function UserManagementContainer({
         confirmDisabled={!selectedUser}
         onConfirm={() => {
           if (selectedUser) {
-            handleAddUserAccess(selectedUser, selectedRole)
-            setSelectedUser(null)
-            setSelectedRole('staff')
+            setShowGrantConfirmModal(true)
           }
         }}
       >

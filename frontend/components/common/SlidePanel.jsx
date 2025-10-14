@@ -132,7 +132,7 @@ export default function SlidePanel({
   )
 
   const SkeletonFooter = () => (
-    <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3 animate-pulse">
+    <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-3 animate-pulse">
       <div className="flex items-center justify-end space-x-2">
         <div className="w-16 h-9 bg-gray-200 rounded-md"></div>
         <div className="w-24 h-9 bg-gray-200 rounded-md"></div>
@@ -218,12 +218,12 @@ export default function SlidePanel({
           )}
         </div>
 
-        {/* Panel Footer - Sticky */}
+        {/* Panel Footer - Fixed at bottom */}
         {loading ? (
           <SkeletonFooter />
         ) : (
           (footer || showFooter) && (
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3">
+            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-3">
               {footer || (
                 <div className="flex items-center justify-end space-x-2">
                   <button

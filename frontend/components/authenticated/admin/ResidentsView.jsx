@@ -1251,12 +1251,12 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                 {/* Empty left side for balance */}
                 <div></div>
                 
-                {/* Right side - Reset PIN, Deactivate, Delete */}
+                {/* Right side - Reset PIN, Delete */}
                 <div className="flex items-center space-x-2">
                   {/* Reset PIN button - only show if resident has user account AND is active */}
                   {children.user_id && currentStatus === 1 && (
                     <button 
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:border-blue-300 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9"
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer h-9"
                       onClick={handleResetPinClick}
                       title="Reset user PIN and generate new temporary credentials"
                     >
@@ -1265,33 +1265,19 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                     </button>
                   )}
                   
-                  {/* Deactivate/Activate button */}
-                  <button 
-                    className={`inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md focus:ring-1 transition-colors cursor-pointer h-9 ${
-                      currentStatus === 1 
-                        ? 'text-orange-600 bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:border-orange-300 focus:ring-orange-500' 
-                        : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 hover:border-green-300 focus:ring-green-500'
-                    }`}
-                    onClick={handleToggleActivation}
-                    disabled={isUpdating}
-                    title={currentStatus === 1 ? 'Deactivate this resident' : 'Activate this resident'}
-                  >
-                    {isUpdating ? (
-                      <i className="bi bi-arrow-clockwise animate-spin mr-1.5" />
-                    ) : (
-                      <i className={`${currentStatus === 1 ? 'bi bi-person-dash' : 'bi bi-person-check'} mr-1.5`} />
-                    )}
-                    {currentStatus === 1 ? 'Deactivate' : 'Activate'}
-                  </button>
-                  
-                  {/* Delete button - Admin only, Inactive residents only */}
-                  {currentUser?.role === 1 && currentStatus === 0 && (
+                  {/* Delete button - Admin only */}
+                  {currentUser?.role === 1 && (
                     <button 
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 hover:border-red-700 focus:ring-1 focus:ring-red-500 transition-colors cursor-pointer h-9"
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:ring-1 focus:ring-red-500 transition-colors cursor-pointer h-9"
                       onClick={handleDeleteResident}
-                      title="Permanently delete this inactive resident (Admin only)"
+                      disabled={isUpdating}
+                      title="Permanently delete this resident (Admin only)"
                     >
-                      <i className="bi bi-trash mr-1.5" />
+                      {isUpdating ? (
+                        <i className="bi bi-arrow-clockwise animate-spin mr-1.5" />
+                      ) : (
+                        <i className="bi bi-trash mr-1.5" />
+                      )}
                       Delete
                     </button>
                   )}
@@ -1410,14 +1396,14 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-gray-500 transition-colors"
                   disabled={isDeleting}
                 >
-                  Cancel
+                  Back
                 </button>
                 <button
                   onClick={handleConfirmDelete}
                   disabled={isDeleting}
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 focus:ring-1 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? 'Deleting...' : 'Yes, Confirm'}
                 </button>
               </div>
             </div>

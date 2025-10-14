@@ -13,7 +13,8 @@ export default function PINKeypad({
   onClose,
   onLogin,
   username,
-  onBack
+  onBack,
+  disabled = false  // Add disabled prop
 }) {
   const [mounted, setMounted] = useState(false)
 
@@ -30,8 +31,8 @@ export default function PINKeypad({
         return // Let system shortcuts pass through completely
       }
       
-      // Only handle keyboard input if not loading
-      if (isLoading) return
+      // Only handle keyboard input if not loading or disabled
+      if (isLoading || disabled) return
       
       // Only handle keyboard input if we're focused on the PIN area or no input is focused
       const activeElement = document.activeElement
@@ -79,13 +80,13 @@ export default function PINKeypad({
               <button
                 key={number}
                 type="button"
-                disabled={isLoading}
+                disabled={isLoading || disabled}
                 onClick={() => onNumberPress(number.toString())}
                 className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
                          text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
-                         ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                         ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
               </button>
@@ -96,13 +97,13 @@ export default function PINKeypad({
               <button
                 key={number}
                 type="button"
-                disabled={isLoading}
+                disabled={isLoading || disabled}
                 onClick={() => onNumberPress(number.toString())}
                 className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
                          text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
-                         ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                         ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
               </button>
@@ -113,13 +114,13 @@ export default function PINKeypad({
               <button
                 key={number}
                 type="button"
-                disabled={isLoading}
+                disabled={isLoading || disabled}
                 onClick={() => onNumberPress(number.toString())}
                 className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
                          text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                          transition-all duration-200 cursor-pointer
                          focus:outline-none shadow-sm
-                         ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                         ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {number}
               </button>
@@ -130,14 +131,14 @@ export default function PINKeypad({
             {/* Back button */}
             <button
               type="button"
-              disabled={isLoading}
+              disabled={isLoading || disabled}
               onClick={onBack}
               className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-gray-300 active:bg-gray-300
                        text-gray-800 hover:text-gray-900 active:text-gray-900
                        transition-all duration-200 cursor-pointer
                        focus:outline-none
                        flex flex-col items-center justify-center
-                       ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                       ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span className="font-medium" style={{ fontSize: '13px' }}>ESC</span>
               <i className="bi bi-chevron-down text-sm sm:text-xs lg:text-sm"></i>
@@ -146,13 +147,13 @@ export default function PINKeypad({
             {/* Zero button */}
             <button
               type="button"
-              disabled={isLoading}
+              disabled={isLoading || disabled}
               onClick={() => onNumberPress('0')}
               className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-white hover:bg-gray-50 active:bg-gray-100
                        text-3xl sm:text-2xl lg:text-3xl font-normal text-gray-800
                        transition-all duration-200 cursor-pointer
                        focus:outline-none shadow-sm
-                       ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                       ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               0
             </button>
@@ -160,12 +161,12 @@ export default function PINKeypad({
             {/* Backspace button */}
             <button
               type="button"
-              disabled={isLoading}
+              disabled={isLoading || disabled}
               onClick={onBackspace}
               className={`w-full h-14 sm:h-14 lg:h-14 rounded-lg bg-transparent hover:bg-red-100 active:bg-red-200
                        text-red-500 hover:text-red-600 transition-all duration-200 cursor-pointer focus:outline-none
                        flex items-center justify-center
-                       ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                       ${isLoading || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <i className="bi bi-backspace text-2xl sm:text-xl lg:text-2xl"></i>
             </button>

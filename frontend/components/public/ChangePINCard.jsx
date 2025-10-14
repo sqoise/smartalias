@@ -26,6 +26,8 @@ export default function ChangePINCard({
 
   // Toggle keypad visibility
   const toggleKeypad = () => {
+    // Don't allow opening keypad when loading
+    if (isLoading) return
     setShowKeypad(!showKeypad)
   }
 
@@ -113,7 +115,10 @@ export default function ChangePINCard({
 
           {/* PIN Input - Fixed position container to prevent movement */}
           <div className="mb-6 lg:mt-4 text-center">
-            <div className={showKeypad ? "pt-4" : "cursor-pointer"} onClick={!showKeypad ? toggleKeypad : undefined}>
+            <div 
+              className={`${showKeypad ? "pt-4" : "cursor-pointer"} ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`} 
+              onClick={!showKeypad && !isLoading ? toggleKeypad : undefined}
+            >
               <label className="block text-lg font-medium text-gray-700 mb-3">
                 {currentStep === 'new-pin' 
                   ? 'Create your new 6-digit PIN'
@@ -134,7 +139,7 @@ export default function ChangePINCard({
                 ))}
               </div>
               <p className={`text-sm text-gray-500 mt-2 transition-all duration-500 ease-out ${
-                showKeypad ? 'opacity-0 pointer-events-none' : 'opacity-100 animate-pulse'
+                showKeypad || isLoading ? 'opacity-0 pointer-events-none' : 'opacity-100 animate-pulse'
               }`}>
                 Tap to enter PIN
               </p>
@@ -157,9 +162,9 @@ export default function ChangePINCard({
         {/* Desktop Keypad Overlay - Slides up from bottom within card container */}
         <div 
           className={`hidden lg:block absolute inset-x-0 bottom-0 transition-all duration-300 ease-out overflow-hidden ${
-            showKeypad ? 'h-1/2' : 'h-0'
+            showKeypad && !isLoading ? 'h-1/2' : 'h-0'
           }`} 
-          style={{ boxShadow: showKeypad ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}
+          style={{ boxShadow: showKeypad && !isLoading ? '0 -4px 6px rgba(0, 0, 0, 0.07), 0 -1px 3px rgba(0, 0, 0, 0.06)' : 'none' }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="h-full w-full bg-gray-200 backdrop-blur-sm rounded-b-lg flex flex-col">
@@ -179,6 +184,7 @@ export default function ChangePINCard({
                   errors={errors}
                   isLoading={isLoading}
                   showKeypad={true}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -189,13 +195,13 @@ export default function ChangePINCard({
       {/* Mobile Keypad Overlay - Slides up from bottom of screen */}
       <div 
         className={`lg:hidden transition-all duration-300 ease-out ${
-          showKeypad ? 'pointer-events-auto' : 'pointer-events-none'
+          showKeypad && !isLoading ? 'pointer-events-auto' : 'pointer-events-none'
         } fixed inset-0 z-40`}
       >
         {/* Mobile keypad - slides up from bottom */}
         <div 
           className={`absolute inset-x-0 bottom-0 bg-gray-200 border-t border-gray-300 shadow-2xl pt-4 p-2 transition-transform duration-300 ease-out ${
-            showKeypad ? 'translate-y-0' : 'translate-y-full'
+            showKeypad && !isLoading ? 'translate-y-0' : 'translate-y-full'
           }`}
           style={{ boxShadow: '0 -10px 25px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)' }}
         >
@@ -213,6 +219,7 @@ export default function ChangePINCard({
             errors={errors}
             isLoading={isLoading}
             showKeypad={true}
+            disabled={isLoading}
           />
         </div>
       </div>

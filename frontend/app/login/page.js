@@ -164,6 +164,13 @@ export default function LoginPage() {
         // Clear the PIN so user can try again
         setPin('')
         setErrors(prev => ({ ...prev, pin: true }))
+        
+        // Close keypad if account is pending approval
+        if (result.error && result.error.toLowerCase().includes('pending approval')) {
+          setShowKeypad(false)
+          setUserInfo(null)
+        }
+        
         return
       }
 

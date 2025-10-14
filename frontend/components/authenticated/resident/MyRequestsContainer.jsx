@@ -81,6 +81,38 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
     }
   }
 
+  // Refresh only the requests (document cards)
+  const refreshRequests = async () => {
+    setLoading(true)
+    try {
+      const requestsResponse = await ApiClient.getMyDocumentRequests()
+      
+      if (requestsResponse.success && requestsResponse.data?.requests) {
+        const transformedRequests = requestsResponse.data.requests.map(request => ({
+          id: request.id,
+          documentId: request.document_id,
+          document: request.document_type,
+          purpose: request.purpose,
+          status: request.status_text,
+          requestDate: request.created_at,
+          completedDate: request.processed_at,
+          notes: request.notes,
+          remarks: request.remarks,
+          fee: parseFloat(request.fee || 0),
+          residentName: request.resident_name,
+          processedBy: request.processed_by
+        }))
+        setRequests(transformedRequests)
+      } else {
+        setRequests([])
+      }
+    } catch (error) {
+      console.error('Error refreshing requests:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Group requests by document type and get the most recent (active) request for each
   const getDocumentGroups = () => {
     const groups = {}
@@ -420,18 +452,66 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, index) => (
-          <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-              <div className="flex-1">
-                <div className="w-32 h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="w-24 h-3 bg-gray-200 rounded"></div>
-              </div>
+      <div className="space-y-3">
+        {/* Info Banner Skeleton */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 animate-pulse">
+          <div className="flex items-start space-x-2 sm:space-x-3">
+            <div className="w-4 h-4 bg-blue-200 rounded-full flex-shrink-0 mt-0.5"></div>
+            <div className="flex-1 space-y-2">
+              <div className="w-32 h-3 bg-blue-200 rounded"></div>
+              <div className="w-full h-3 bg-blue-200 rounded"></div>
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Timeline Container Skeleton */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          {/* Header Skeleton */}
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-100 animate-pulse">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="w-40 h-5 bg-gray-200 rounded mb-2"></div>
+                <div className="w-64 h-4 bg-gray-200 rounded"></div>
+              </div>
+              <div className="w-9 h-9 bg-gray-200 rounded-md flex-shrink-0"></div>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                <div className="w-40 h-4 bg-gray-200 rounded"></div>
+              </div>
+              <div className="w-full sm:w-64 h-9 bg-gray-200 rounded-md"></div>
+            </div>
+          </div>
+          
+          {/* Document Cards Skeleton */}
+          <div className="p-4 sm:p-6">
+            <div className="space-y-3">
+              {[...Array(3)].map((_, index) => (
+                <div key={index} className="bg-white rounded-lg border border-gray-100 shadow-sm animate-pulse">
+                  <div className="p-3 sm:p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-2">
+                          <div className="w-48 h-5 bg-gray-200 rounded"></div>
+                          <div className="w-20 h-5 bg-gray-200 rounded"></div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="w-full h-4 bg-gray-200 rounded"></div>
+                          <div className="w-3/4 h-4 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                      
+                      <div className="w-6 h-6 bg-gray-200 rounded-full flex-shrink-0"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -457,9 +537,19 @@ export default function MyRequestsContainer({ toastRef, selectedDocumentType: in
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
           <div className="flex flex-col space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Request Timeline</h3>
-              <h4 className="text-sm sm:text-base text-gray-500 mt-1">Track the status of your document requests and view timeline history.</h4>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Request Timeline</h3>
+                <h4 className="text-sm sm:text-base text-gray-500 mt-1">Track the status of your document requests and view timeline history.</h4>
+              </div>
+              <button
+                onClick={refreshRequests}
+                disabled={loading}
+                className="inline-flex items-center justify-center w-9 h-9 text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
+                title="Refresh Requests"
+              >
+                <i className="bi bi-arrow-clockwise text-md"></i>
+              </button>
             </div>
             
             <div className="flex flex-col gap-3">

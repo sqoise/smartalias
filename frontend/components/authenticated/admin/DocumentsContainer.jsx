@@ -91,9 +91,6 @@ export default function DocumentsContainer({
       // Use rawId for API calls (numeric database ID)
       const documentId = documentRequest.rawId || documentRequest.id
       await handleStatusChange(documentId, 'processing')
-      
-      // Show success toast
-      toastRef.current?.show('Document status changed to processing', 'success')
     } catch (error) {
       console.error('Error processing document:', error)
       
