@@ -86,6 +86,28 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
       { name: 'Announcements', href: '/resident/announcements', icon: 'bi-megaphone' },
       { name: 'My Profile', href: '/resident/profile', icon: 'bi-person' },
     ],
+    staff: [
+      { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
+      { 
+        name: 'Managed Services', 
+        icon: 'bi-file-earmark-text',
+        key: 'documents',
+        children: [
+          { name: 'Announcements', href: '/admin/announcements', icon: 'bi-megaphone' },
+          { name: 'Document Requests', href: '/admin/documents', icon: 'bi-file-earmark-plus' },
+          { name: 'Residents', href: '/admin/residents', icon: 'bi-people' },
+        ]
+      },
+      { 
+        name: 'Maintenance', 
+        href: '/admin/settings',
+        icon: 'bi-gear',
+        key: 'settings',
+        children: [
+          { name: 'User Management', href: '/admin/settings/user-management', icon: 'bi-person-gear' },
+        ]
+      },
+    ],
     admin: [
       { name: 'Dashboard', href: '/admin', icon: 'bi-speedometer2' },
       // { name: 'Households', href: '/admin/households', icon: 'bi-house' },
@@ -101,18 +123,19 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
       },
       { 
         name: 'Maintenance', 
+        href: '/admin/settings',
         icon: 'bi-gear',
         key: 'settings',
         children: [
-          { name: 'System Settings', href: '/admin/settings', icon: 'bi-sliders' },
-          { name: 'User Management', href: '/admin/settings/users', icon: 'bi-person-gear' },
-          { name: 'Backup & Restore', href: '/admin/settings/backup', icon: 'bi-cloud-download' }
+          { name: 'User Management', href: '/admin/settings/user-management', icon: 'bi-person-gear' },
+          // { name: 'Backup & Restore', href: '/admin/settings/backup', icon: 'bi-cloud-download' }
         ]
       },
-    ],
+    ]
   }
 
-  const items = menus[role] || menus.user
+  // For staff role, use the admin menu items
+  const items = role === 'staff' ? menus.admin : (menus[role] || menus.user)
 
   // Check if any menu item is currently active
   const hasActiveMenu = items.some(item => {
@@ -176,7 +199,7 @@ export default function Sidebar({ role = 'user', collapsed, setCollapsed, mobile
               <h2 className={`text-lg font-semibold text-gray-900 transition-all duration-200 ${
                 hasActiveMenu ? 'font-bold text-black' : ''
               }`}>SMARTLIAS</h2>
-              <p className="text-sm text-gray-500">{role === 'admin' ? 'Admin' : 'User'}</p>
+              <p className="text-sm text-gray-500">{role === 'resident' ? 'User' : 'Admin'}</p>
             </div>
           )}
         </div>

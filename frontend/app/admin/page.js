@@ -66,18 +66,21 @@ export default function AdminDashboard() {
             <i className="bi bi-arrow-right text-gray-400 group-hover:text-green-600"></i>
           </a>
 
-          <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50 cursor-not-allowed opacity-60">
+          <a 
+            href="/admin/documents" 
+            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all group cursor-pointer"
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <i className="bi bi-file-earmark-text text-gray-500"></i>
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200">
+                <i className="bi bi-file-earmark-text text-purple-600"></i>
               </div>
               <div>
-                <p className="font-medium text-gray-700">Applications</p>
-                <p className="text-sm text-gray-500">Coming soon...</p>
+                <p className="font-medium text-gray-900">Document Requests</p>
+                <p className="text-sm text-gray-500">Process applications</p>
               </div>
             </div>
-            <i className="bi bi-lock text-gray-400"></i>
-          </div>
+            <i className="bi bi-arrow-right text-gray-400 group-hover:text-purple-600"></i>
+          </a>
         </div>
       </div>
     </div>

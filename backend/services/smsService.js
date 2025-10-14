@@ -10,6 +10,51 @@ const config = require('../config/config')
 
 class SMSService {
   /**
+   * Send account activation SMS to resident
+   * @param {Object} resident - Resident data containing phone number and name
+   * @returns {Promise} Result of SMS sending
+   */
+  static async sendActivationSMS(resident) {
+    try {
+      const { mobile_number, first_name, username } = resident
+      
+      if (!mobile_number) {
+        throw new Error('No mobile number provided for SMS notification')
+      }
+
+      // Template for activation message
+      const message = `Hi ${first_name}, your SmartLias account (@${username}) has been activated! You can now login to access barangay services.`
+
+      logger.info('Sending activation SMS', { 
+        recipient: username,
+        mobile: mobile_number 
+      })
+
+      // TODO: Integrate with actual SMS gateway
+      // For now, just log the message
+      console.log('SMS Notification:', {
+        to: mobile_number,
+        message: message
+      })
+
+      return {
+        success: true,
+        message: 'SMS notification sent successfully'
+      }
+
+    } catch (error) {
+      logger.error('SMS Service Error:', { 
+        error: error.message,
+        type: 'activation_sms'
+      })
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
    * Get residents based on target groups
    * @param {Array} targetGroups - Array of target groups (e.g., ['all'], ['special_category:PWD'])
    * @returns {Array} Array of residents with phone numbers

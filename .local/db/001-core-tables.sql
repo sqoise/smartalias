@@ -30,7 +30,11 @@ CREATE TABLE "public"."users" (
     "failed_login_attempts" integer DEFAULT 0,
     "locked_until" timestamp,
     "last_login" timestamp,
-    "last_failed_login" timestamp
+    "last_failed_login" timestamp,
+    "is_active" integer DEFAULT 0,
+    "attachment_image" character varying(512),
+    "approved_by" integer,
+    "approved_at" timestamp
 );
 
 -- Special Categories table (Government Programs)
@@ -88,6 +92,8 @@ CREATE TABLE "public"."residents" (
 CREATE UNIQUE INDEX users_username_key ON public.users USING btree (username);
 CREATE INDEX idx_users_username ON public.users USING btree (username);
 CREATE INDEX idx_users_role ON public.users USING btree (role);
+CREATE INDEX idx_users_is_active ON public.users USING btree (is_active);
+CREATE INDEX idx_users_approved_by ON public.users USING btree (approved_by);
 
 -- Special Categories indexes
 CREATE UNIQUE INDEX special_categories_category_code_key ON public.special_categories USING btree (category_code);
@@ -121,6 +127,10 @@ ALTER TABLE ONLY "public"."residents" ADD CONSTRAINT "residents_special_category
 ALTER TABLE ONLY "public"."residents" ADD CONSTRAINT "residents_created_by_fkey" 
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL NOT DEFERRABLE;
 
+-- Users foreign keys
+ALTER TABLE ONLY "public"."users" ADD CONSTRAINT "users_approved_by_fkey" 
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL NOT DEFERRABLE;
+
 -- ============================================
 -- TABLE COMMENTS
 -- ============================================
@@ -146,6 +156,10 @@ COMMENT ON COLUMN "public"."users"."failed_login_attempts" IS 'Counter for faile
 COMMENT ON COLUMN "public"."users"."locked_until" IS 'Account lockout expiration time - NULL if not locked, 15 minutes from last failed attempt';
 COMMENT ON COLUMN "public"."users"."last_login" IS 'Timestamp of last successful login - used for security tracking';
 COMMENT ON COLUMN "public"."users"."last_failed_login" IS 'Timestamp of last failed login attempt - used for security tracking';
+COMMENT ON COLUMN "public"."users"."is_active" IS '0=pending approval, 1=approved and active - admin sets to 1 to grant access';
+COMMENT ON COLUMN "public"."users"."attachment_image" IS 'File path to resident ID document - format: <user_id>_access_<random8>.jpg';
+COMMENT ON COLUMN "public"."users"."approved_by" IS 'Admin user ID who approved the account - NULL if pending';
+COMMENT ON COLUMN "public"."users"."approved_at" IS 'Timestamp when account was approved - NULL if pending';
 
 -- Special Categories Table Comments
 COMMENT ON COLUMN "public"."special_categories"."id" IS 'Primary key - unique identifier for special categories';
@@ -207,11 +221,10 @@ INSERT INTO "household" ("household_name") VALUES
 ('Default Household');
 
 -- Insert Sample Users
-INSERT INTO "users" ("username", "password", "role", "is_password_changed") VALUES
-('seed.admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyVcj/YRZvzi', 1, 1),
-('admin.kapitan', '$2a$12$Yy4q25XA7XypnDLE.3rAu.OZ8030fKLHdTbgiZ.K0upvmxyjrVVsS', 1, 0),
-('jacob.manansala', '$2a$12$/8VHMaoBZ8YB1pxKYEv63u/ahlG8mqLnjMGq2ubGn/Sd/wfWJx1we', 3, 0),
-('john.lloyd.manansala', '$2a$12$knWIZVOvQ5LSkHSrikgfP.TPXsE9sAnWagqdG4pu3FLw2GYB2XDoK', 3, 0);
+INSERT INTO "users" ("username", "password", "role", "is_password_changed", "is_active", "approved_by", "approved_at") VALUES
+('admin.kapitan', '$2a$12$Yy4q25XA7XypnDLE.3rAu.OZ8030fKLHdTbgiZ.K0upvmxyjrVVsS', 1, 0, 1, 1, CURRENT_TIMESTAMP),
+('jacob.manansala', '$2a$12$/8VHMaoBZ8YB1pxKYEv63u/ahlG8mqLnjMGq2ubGn/Sd/wfWJx1we', 3, 0, 1, 2, CURRENT_TIMESTAMP),
+('john.lloyd.manansala', '$2a$12$knWIZVOvQ5LSkHSrikgfP.TPXsE9sAnWagqdG4pu3FLw2GYB2XDoK', 3, 0, 1, 2, CURRENT_TIMESTAMP);
 
 -- Insert Sample Residents
 INSERT INTO "residents" (

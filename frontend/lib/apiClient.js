@@ -37,6 +37,16 @@ class ApiClient {
       ...options,
     }
 
+    // Handle FormData - don't set Content-Type, let browser handle it
+    if (options.body instanceof FormData) {
+      delete defaultOptions.headers['Content-Type']
+    }
+
+    // Merge custom headers (for FormData, headers should be empty object)
+    if (options.headers) {
+      defaultOptions.headers = { ...defaultOptions.headers, ...options.headers }
+    }
+
     // Add JWT token if available
     const token = ApiClient.getStoredToken()
     if (token) {
@@ -64,19 +74,22 @@ class ApiClient {
       }
 
       // Check for authentication errors (401 Unauthorized or 403 Forbidden)
-      // BUT: Don't treat login endpoint failures as session expiration
+      // BUT: Don't treat login endpoint failures or permission denials as session expiration
       if (response.status === 401 || response.status === 403) {
-        // Special case: Login endpoint failures are NOT session expiration
-        // They are just failed login attempts (wrong credentials)
-        if (endpoint === '/auth/login') {
+        // Special cases that are NOT session expiration:
+        // 1. Login endpoint failures (wrong credentials)
+        // 2. Permission denied errors (403 with specific message)
+        if (endpoint === '/auth/login' || 
+            (response.status === 403 && data.error && 
+             (data.error.includes('Admin') || data.error.includes('access required')))) {
           return {
             success: false,
-            error: data.message || 'Invalid credentials',
-            status: response.status,
+            error: data.message || data.error || 'Access denied',
+            status: response.status
           }
         }
         
-        // For all other endpoints: treat as session expiration
+        // For all other 401/403: treat as session expiration
         // Clear token
         ApiClient.removeStoredToken()
         
@@ -288,6 +301,17 @@ class ApiClient {
    * Register new resident (public endpoint)
    */
   static async register(registrationData) {
+    // Handle FormData differently (for file uploads)
+    if (registrationData instanceof FormData) {
+      return await ApiClient.request('/auth/register', {
+        method: 'POST',
+        body: registrationData,
+        // Don't set Content-Type header for FormData - let browser set it with boundary
+        headers: {}
+      })
+    }
+    
+    // Handle regular JSON data
     return await ApiClient.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(registrationData),
@@ -746,6 +770,75 @@ class ApiClient {
    */
   static async getProcessingQueueSummary() {
     return await ApiClient.request('/document-requests/processing-queue')
+  }
+
+  // =================================================================
+  // USER MANAGEMENT API METHODS
+  // =================================================================
+
+  /**
+   * Get users with specific roles (admin/staff) for access control
+   */
+  static async getUsersWithRoles(roles = ['admin', 'staff']) {
+    const roleParams = roles.map(role => `roles=${encodeURIComponent(role)}`).join('&')
+    return await ApiClient.request(`/admin/users/with-roles?${roleParams}`)
+  }
+
+  /**
+   * Get pending access requests (inactive users from self-registration)
+   */
+  static async getPendingAccessRequests() {
+    return await ApiClient.request('/admin/users/pending-requests')
+  }
+
+  /**
+   * Revoke access for a user (change role back to resident)
+   */
+  static async revokeUserAccess(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/revoke-access`, {
+      method: 'PATCH'
+    })
+  }
+
+  /**
+   * Grant access to a user (promote to staff or admin)
+   */
+  static async grantUserAccess(userId, role) {
+    return await ApiClient.request(`/admin/users/${userId}/grant-access`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    })
+  }
+
+  /**
+   * Approve access request (activate user account and send SMS)
+   */
+  static async approveAccessRequest(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/approve-request`, {
+      method: 'PATCH'
+    })
+  }
+
+  /**
+   * Delete access request (remove user and resident data)
+   */
+  static async deleteAccessRequest(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/delete-request`, {
+      method: 'DELETE'
+    })
+  }
+
+  /**
+   * Get available users for granting staff access (admin only)
+   */
+  static async getAvailableUsersForAccess(search = '', page = 1, limit = 20) {
+    const params = new URLSearchParams()
+    if (search) params.append('search', search)
+    params.append('page', page.toString())
+    params.append('limit', limit.toString())
+    
+    const queryString = params.toString()
+    return await ApiClient.request(`/admin/users/available-for-access?${queryString}`)
   }
 }
 

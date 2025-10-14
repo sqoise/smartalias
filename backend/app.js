@@ -25,10 +25,11 @@ const app = express()
 // SECURITY MIDDLEWARE
 // ==========================================================================
 
-// Helmet for security headers
+// Helmet for security headers with proper configuration for static files
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for API server
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resources
 }))
 
 // CORS configuration - allow multiple origins for development
@@ -108,8 +109,21 @@ app.get('/api/health', (req, res) => {
 // STATIC FILE SERVING
 // ==========================================================================
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+// Serve static files from uploads directory with proper CORS headers
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for uploaded files
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin')
+  next()
+}, express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, path, stat) => {
+    // Additional headers for images
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin')
+    res.set('Cross-Origin-Embedder-Policy', 'unsafe-none')
+  }
+}))
 
 // ==========================================================================
 // API ROUTES

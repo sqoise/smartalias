@@ -3,6 +3,47 @@
 import { useState, useEffect } from 'react'
 import ApiClient from '../../../../lib/apiClient'
 
+// Helper functions to map activity types to icons and colors
+const getIconForActivityType = (type, activity) => {
+  switch (type) {
+    case 'document_request_new':
+      return 'bi-file-earmark-text'
+    case 'document_request_completed':
+      return 'bi-check-circle'
+    case 'document_request_other':
+      if (activity.includes('processing')) return 'bi-hourglass-split'
+      if (activity.includes('rejected')) return 'bi-x-circle'
+      if (activity.includes('ready')) return 'bi-clock'
+      return 'bi-file-earmark'
+    case 'announcement':
+      return activity.includes('published') ? 'bi-megaphone' : 'bi-plus-circle'
+    case 'resident':
+      return 'bi-person-plus'
+    default:
+      return 'bi-circle'
+  }
+}
+
+const getColorForActivityType = (type, activity) => {
+  switch (type) {
+    case 'document_request_new':
+      return 'text-blue-600'
+    case 'document_request_completed':
+      return 'text-green-600'
+    case 'document_request_other':
+      if (activity.includes('processing')) return 'text-blue-500'
+      if (activity.includes('rejected')) return 'text-red-600'
+      if (activity.includes('ready')) return 'text-purple-600'
+      return 'text-gray-600'
+    case 'announcement':
+      return activity.includes('published') ? 'text-orange-600' : 'text-blue-600'
+    case 'resident':
+      return 'text-green-600'
+    default:
+      return 'text-gray-500'
+  }
+}
+
 export default function ActivityCard() {
   const [activityData, setActivityData] = useState({
     loading: true,
@@ -10,67 +51,55 @@ export default function ActivityCard() {
     error: null
   })
 
-  useEffect(() => {
-    const loadActivity = async () => {
-      try {
-        setActivityData(prev => ({ ...prev, loading: true, error: null }))
-        
-        // Mock recent activity data - can be replaced with real API call
-        const mockActivity = [
-          {
-            id: 1,
-            type: 'registration',
-            description: 'New resident registered',
-            user: 'Maria Santos',
-            timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-            icon: 'bi-person-plus',
-            color: 'text-green-600'
-          },
-          {
-            id: 2,
-            type: 'request',
-            description: 'Barangay clearance requested',
-            user: 'Juan Dela Cruz',
-            timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-            icon: 'bi-file-earmark-text',
-            color: 'text-blue-600'
-          },
-          {
-            id: 3,
-            type: 'document',
-            description: 'Cedula document issued',
-            user: 'Admin User',
-            timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-            icon: 'bi-check-circle',
-            color: 'text-purple-600'
-          },
-          {
-            id: 4,
-            type: 'announcement',
-            description: 'New announcement posted',
-            user: 'Admin User',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-            icon: 'bi-megaphone',
-            color: 'text-orange-600'
-          }
-        ]
+  // Extract loadActivity function to reuse
+  const loadActivity = async () => {
+    try {
+      setActivityData(prev => ({ ...prev, loading: true, error: null }))
+      
+      // Fetch real activity data from backend
+      const response = await ApiClient.get('/dashboard/activity')
+      
+      if (response.success) {
+        // Transform backend data to match frontend format
+        const transformedActivity = response.data.map((item, index) => ({
+          id: item.referenceId || index + 1,
+          type: item.type,
+          description: item.activity,
+          user: item.details,
+          timestamp: new Date(item.timestamp),
+          icon: getIconForActivityType(item.type, item.activity),
+          color: getColorForActivityType(item.type, item.activity)
+        }))
         
         setActivityData({
           loading: false,
-          recent: mockActivity,
+          recent: transformedActivity,
           error: null
         })
-      } catch (error) {
-        console.error('Error loading activity:', error)
+      } else {
         setActivityData({
           loading: false,
           recent: [],
-          error: 'Failed to load recent activity'
+          error: response.message || 'Failed to load recent activity'
         })
       }
+    } catch (error) {
+      console.error('Error loading activity:', error)
+      setActivityData({
+        loading: false,
+        recent: [],
+        error: 'Failed to load recent activity'
+      })
     }
-    
+  }
+
+  useEffect(() => {
     loadActivity()
+    
+    // Set up auto-refresh every 30 seconds for live updates
+    const interval = setInterval(loadActivity, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const formatTimeAgo = (timestamp) => {
@@ -111,10 +140,23 @@ export default function ActivityCard() {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-        <button className="text-sm text-green-600 hover:text-green-700 font-medium">
-          View All
-        </button>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 rounded-full">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-xs text-green-700 font-medium">Live</span>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={loadActivity}
+            disabled={activityData.loading}
+            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            title="Refresh activity"
+          >
+            <i className={`bi bi-arrow-clockwise ${activityData.loading ? 'animate-spin' : ''}`}></i>
+          </button>
+        </div>
       </div>
       
       {activityData.error ? (

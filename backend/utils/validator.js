@@ -220,6 +220,8 @@ class Validator {
 
   // Validate resident data
   static validateResident(data) {
+    console.log('=== VALIDATOR DEBUG ===')
+    console.log('Validating data:', data)
     const errors = []
     
     // Required fields with format validation
@@ -323,8 +325,10 @@ class Validator {
       }
     }
     
-    // Mobile number validation (optional)
-    if (data.mobileNumber && data.mobileNumber.trim().length > 0) {
+    // Mobile number validation (required)
+    if (!data.mobileNumber || data.mobileNumber.trim().length === 0) {
+      errors.push('Mobile number is required')
+    } else {
       const cleanMobileNumber = data.mobileNumber.replace(/\s+/g, '')
       if (!/^09\d{9}$/.test(cleanMobileNumber)) {
         errors.push('Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)')

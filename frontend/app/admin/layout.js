@@ -42,7 +42,7 @@ export default function AdminLayout({ children }) {
         
         // Check if user has admin or staff role
         if (!isStaff(user.role)) {
-          router.push('/not-found')
+          router.push('/forbidden')
           return
         }
 
@@ -96,8 +96,8 @@ export default function AdminLayout({ children }) {
   return (
     <AuthProvider>
       <DashboardLayout 
-        header={<Header role="admin" userName={userInfo?.username || 'Admin'} title={getPageTitle()} />} 
-        sidebar={<Sidebar role="admin" />}
+        header={<Header role={userInfo?.role === 1 ? 'admin' : 'staff'} userName={userInfo?.username || 'User'} title={getPageTitle()} />} 
+        sidebar={<Sidebar role={userInfo?.role === 1 ? 'admin' : 'staff'} />}
       >
         {children}
       </DashboardLayout>

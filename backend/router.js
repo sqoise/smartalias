@@ -9,6 +9,7 @@ const fsSync = require('fs')
 const path = require('path')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 
 // Import utilities and middleware
 const config = require('./config/config')
@@ -27,7 +28,8 @@ const ChatbotRepository = require('./repositories/ChatbotRepository')
 const DocumentRequestRepository = require('./repositories/DocumentRequestRepository')
 const DocumentDetails = require('./utils/documentDetails')
 const SMSService = require('./services/smsService')
-const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken } = require('./middleware/authMiddleware')
+const FileUploadService = require('./services/fileUploadService')
+const { authenticateToken, requireAdmin, requireStaffOrAdmin, requireResident, authenticateChangePinToken, requireAdminForDelete } = require('./middleware/authMiddleware')
 const { authLimiter, passwordChangeLimiter, generalLimiter } = require('./config/rateLimit')
 
 // Import controllers
@@ -38,6 +40,10 @@ const { AUTH_MESSAGES, HTTP_STATUS_MESSAGES } = require('./config/constants')
 const { USER_ROLES } = require('./config/constants')
 
 const router = express.Router()
+
+// Initialize file upload service
+const fileUploadService = new FileUploadService()
+const uploadMiddleware = fileUploadService.getSingleUploadMiddleware('documentImage')
 
 // ==========================================================================
 // AUTHENTICATION ROUTES
@@ -100,6 +106,12 @@ router.post('/auth/login', authLimiter, async (req, res) => {
 
       logger.warn('Failed login attempt', { username, ip: req.ip, attempts: failedAttempts })
       return ApiResponse.unauthorized(res, 'Invalid PIN. Please try again.')
+    }
+
+    // Check if user account is active (pending approval)
+    if (user.is_active === 0) {
+      logger.warn('Login attempt with pending approval account', { username, user_id: user.id })
+      return ApiResponse.error(res, 'Account pending approval. We will notify you via SMS once activated.', 403)
     }
 
     // Check if resident account is active (for role 3 - Resident)
@@ -487,7 +499,9 @@ router.get('/residents/:id', generalLimiter, authenticateToken, async (req, res)
   }
 })
 
-// POST /api/residents - Create new resident (admin only)
+// POST /api/residents - Create new resident (ADMIN DASHBOARD ONLY)
+// NOTE: This endpoint creates IMMEDIATELY ACTIVE accounts (both user and resident)
+// For PUBLIC self-registration, use POST /api/auth/register which requires approval
 router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
   try {
     const residentData = req.body
@@ -532,21 +546,22 @@ router.post('/residents', generalLimiter, authenticateToken, requireAdmin, async
       return ApiResponse.error(res, 'Username already exists. Please try with different names.', 409)
     }
 
-    // Create user account first
+    // Create user account first (ACTIVE - admin-created users are immediately active)
     const userData = {
       username: username,
       passwordHash: hashedPassword,
       role: 'resident',
-      passwordChanged: false // User must change PIN on first login
+      passwordChanged: false, // User must change PIN on first login
+      isActive: 1 // ACTIVE - admin-created users are immediately active
     }
 
     const newUser = await UserRepository.create(userData)
 
-    // Create resident record
+    // Create resident record (ACTIVE - admin-created residents are immediately active)
     const residentDataWithUser = {
       ...sanitizedData,
       userId: newUser.id, // Use clean integer ID
-      isActive: 1,
+      isActive: 1, // ACTIVE - admin-created residents are immediately active
       createdBy: req.user.id // Use clean integer ID
     }
 
@@ -711,7 +726,7 @@ router.patch('/residents/:id/status', generalLimiter, authenticateToken, require
 })
 
 // DELETE /api/residents/:id - Delete resident (admin only)
-router.delete('/residents/:id', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/residents/:id', generalLimiter, authenticateToken, requireAdminForDelete, async (req, res) => {
   try {
     const { id } = req.params
 
@@ -747,8 +762,8 @@ router.delete('/residents/:id', generalLimiter, authenticateToken, requireAdmin,
   }
 })
 
-// POST /api/residents/:id/reset-pin - Reset resident PIN and generate new credentials (admin only)
-router.post('/residents/:id/reset-pin', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+// POST /api/residents/:id/reset-pin - Reset resident PIN and generate new credentials (admin or staff)
+router.post('/residents/:id/reset-pin', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const { id } = req.params
 
@@ -823,8 +838,8 @@ router.post('/residents/:id/reset-pin', generalLimiter, authenticateToken, requi
   }
 })
 
-// GET /api/residents/stats - Get resident statistics (admin only)
-router.get('/residents/stats', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+// GET /api/residents/stats - Get resident statistics (admin or staff only)
+router.get('/residents/stats', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const stats = await ResidentRepository.getStats()
 
@@ -848,7 +863,7 @@ router.get('/residents/stats', generalLimiter, authenticateToken, requireAdmin, 
 // ==========================================================================
 
 // GET /api/dashboard/lightweight - Get essential stats for initial load (admin only)
-router.get('/dashboard/lightweight', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/lightweight', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const stats = await DashboardRepository.getLightweightStats()
 
@@ -868,7 +883,7 @@ router.get('/dashboard/lightweight', generalLimiter, authenticateToken, requireA
 })
 
 // GET /api/dashboard/categories - Get resident categories breakdown (admin only)
-router.get('/dashboard/categories', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/categories', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const categories = await DashboardRepository.getResidentCategories()
 
@@ -888,7 +903,7 @@ router.get('/dashboard/categories', generalLimiter, authenticateToken, requireAd
 })
 
 // GET /api/dashboard/sms - Get SMS statistics and service status (admin only)
-router.get('/dashboard/sms', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/sms', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     // Get both SMS stats and service status
     const [smsStats, serviceStatus] = await Promise.all([
@@ -915,7 +930,7 @@ router.get('/dashboard/sms', generalLimiter, authenticateToken, requireAdmin, as
 })
 
 // GET /api/dashboard/stats - Get comprehensive dashboard statistics (admin only)
-router.get('/dashboard/stats', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/stats', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const stats = await DashboardRepository.getDashboardStats()
 
@@ -935,7 +950,7 @@ router.get('/dashboard/stats', generalLimiter, authenticateToken, requireAdmin, 
 })
 
 // GET /api/dashboard/activity - Get recent activity (admin only)
-router.get('/dashboard/activity', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/activity', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const activity = await DashboardRepository.getRecentActivity()
 
@@ -955,7 +970,7 @@ router.get('/dashboard/activity', generalLimiter, authenticateToken, requireAdmi
 })
 
 // GET /api/dashboard/health - Get system health status (admin only)
-router.get('/dashboard/health', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/health', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const health = await DashboardRepository.getSystemHealth()
 
@@ -975,7 +990,7 @@ router.get('/dashboard/health', generalLimiter, authenticateToken, requireAdmin,
 })
 
 // GET /api/dashboard/trends - Get growth trends for charts (admin only)
-router.get('/dashboard/trends', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/trends', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const trends = await DashboardRepository.getGrowthTrends()
 
@@ -995,7 +1010,7 @@ router.get('/dashboard/trends', generalLimiter, authenticateToken, requireAdmin,
 })
 
 // GET /api/dashboard/announcements/top - Get top performing announcements (admin only)
-router.get('/dashboard/announcements/top', generalLimiter, authenticateToken, requireAdmin, async (req, res) => {
+router.get('/dashboard/announcements/top', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const topAnnouncements = await DashboardRepository.getTopAnnouncements()
 
@@ -1019,7 +1034,7 @@ router.get('/dashboard/announcements/top', generalLimiter, authenticateToken, re
 // ==========================================================================
 
 // GET /api/admin/logs - Get list of log files (admin only)
-router.get('/admin/logs', generalLimiter, authenticateToken, requireAdmin, (req, res) => {
+router.get('/admin/logs', generalLimiter, authenticateToken, requireStaffOrAdmin, (req, res) => {
   try {
     const logFiles = logger.getLogFiles()
     
@@ -1038,7 +1053,7 @@ router.get('/admin/logs', generalLimiter, authenticateToken, requireAdmin, (req,
 })
 
 // GET /api/admin/logs/:filename - Get log file content (admin only)
-router.get('/admin/logs/:filename', generalLimiter, authenticateToken, requireAdmin, (req, res) => {
+router.get('/admin/logs/:filename', generalLimiter, authenticateToken, requireStaffOrAdmin, (req, res) => {
   try {
     const { filename } = req.params
     const { lines = 100 } = req.query
@@ -1072,7 +1087,7 @@ router.get('/admin/logs/:filename', generalLimiter, authenticateToken, requireAd
 })
 
 // DELETE /api/admin/logs - Clear all log files (admin only)
-router.delete('/admin/logs', generalLimiter, authenticateToken, requireAdmin, (req, res) => {
+router.delete('/admin/logs', generalLimiter, authenticateToken, requireAdminForDelete, (req, res) => {
   try {
     const cleared = logger.clearLogs()
     
@@ -1098,17 +1113,513 @@ router.delete('/admin/logs', generalLimiter, authenticateToken, requireAdmin, (r
 })
 
 // ==========================================================================
+// USER MANAGEMENT ROUTES (Admin Only)
+// ==========================================================================
+
+// GET /api/admin/users/with-roles - Get users with specific roles (admin or staff)
+router.get('/admin/users/with-roles', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    // Get users with specified roles, including resident information
+    const query = `
+      SELECT 
+        u.id,
+        u.username,
+        u.role,
+        u.is_active,
+        u.created_at,
+        r.first_name,
+        r.last_name,
+        r.middle_name,
+        r.mobile_number
+      FROM users u
+      LEFT JOIN residents r ON u.id = r.user_id
+      WHERE u.role IN (1, 2) AND u.is_active = 1
+      ORDER BY u.created_at DESC
+    `
+    
+    const result = await db.query(query)
+    
+    // Format response data
+    const users = result.rows.map(row => ({
+      id: row.id,
+      username: row.username,
+      role: row.role === 1 ? 'admin' : 'staff',
+      is_active: row.is_active,
+      first_name: row.first_name || '',
+      last_name: row.last_name || '',
+      middle_name: row.middle_name || '',
+      mobile_number: row.mobile_number || '',
+      created_at: row.created_at
+    }))
+
+    return ApiResponse.success(res, users, `Retrieved ${users.length} users`)
+
+  } catch (error) {
+    logger.error('Error getting users with roles', error)
+    return ApiResponse.error(res, 'Failed to retrieve users', 500)
+  }
+})
+
+// GET /api/admin/users/pending-requests - Get pending access requests (admin or staff)
+router.get('/admin/users/pending-requests', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    // Get inactive users (pending approval) with their resident information
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        u.is_active as user_active,
+        u.created_at,
+        u.attachment_image,
+        r.id as resident_id,
+        r.first_name,
+        r.last_name,
+        r.middle_name,
+        r.mobile_number,
+        r.address,
+        r.birth_date,
+        r.gender,
+        r.civil_status,
+        r.purok,
+        r.is_active as resident_active
+      FROM users u
+      INNER JOIN residents r ON u.id = r.user_id
+      WHERE u.is_active = 0 AND u.role = 3
+      ORDER BY u.created_at DESC
+    `
+    
+    const result = await db.query(query)
+    
+    // Format response data
+    const requests = result.rows.map(row => ({
+      id: row.resident_id,
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name || '',
+      last_name: row.last_name || '',
+      middle_name: row.middle_name || '',
+      mobile_number: row.mobile_number || '',
+      address: row.address || '',
+      birth_date: row.birth_date,
+      gender: row.gender,
+      civil_status: row.civil_status || '',
+      purok: row.purok,
+      attachment_image: row.attachment_image,
+      created_at: row.created_at,
+      user_active: row.user_active,
+      resident_active: row.resident_active
+    }))
+
+    return ApiResponse.success(res, requests, `Retrieved ${requests.length} pending requests`)
+
+  } catch (error) {
+    logger.error('Error getting pending access requests', error)
+    return ApiResponse.error(res, 'Failed to retrieve pending requests', 500)
+  }
+})
+
+// PATCH /api/admin/users/:id/revoke-access - Revoke user access (admin only)
+router.patch('/admin/users/:id/revoke-access', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    
+    if (!userId || isNaN(userId)) {
+      return ApiResponse.validationError(res, { id: ['Valid user ID is required'] }, 'Invalid user ID')
+    }
+
+    // Get user to verify exists
+    const user = await UserRepository.findById(userId)
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    // Prevent admin from revoking their own access
+    if (userId === req.user.id) {
+      return ApiResponse.error(res, 'You cannot revoke your own access', 403)
+    }
+
+    // Change user role back to resident (role = 3)
+    const updateQuery = `
+      UPDATE users 
+      SET role = 3, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $1
+      RETURNING username, role
+    `
+    
+    const result = await db.query(updateQuery, [userId])
+    
+    if (result.rows.length === 0) {
+      return ApiResponse.error(res, 'Failed to update user role', 500)
+    }
+
+    logger.info(`Access revoked for user ${result.rows[0].username} by ${req.user.username}`, {
+      userId: userId,
+      previousRole: user.role,
+      newRole: 3,
+      revokedBy: req.user.id
+    })
+
+    return ApiResponse.success(res, { 
+      username: result.rows[0].username,
+      newRole: 'resident'
+    }, 'Access revoked successfully')
+
+  } catch (error) {
+    logger.error('Error revoking user access', error)
+    return ApiResponse.error(res, 'Failed to revoke access', 500)
+  }
+})
+
+// PATCH /api/admin/users/:id/grant-access - Grant user access (admin only)
+router.patch('/admin/users/:id/grant-access', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    const { role } = req.body
+    
+    if (!userId || isNaN(userId)) {
+      return ApiResponse.validationError(res, { id: ['Valid user ID is required'] }, 'Invalid user ID')
+    }
+
+    if (!role || !['admin', 'staff'].includes(role)) {
+      return ApiResponse.validationError(res, { role: ['Role must be admin or staff'] }, 'Invalid role')
+    }
+
+    // Get user to verify exists
+    const user = await UserRepository.findById(userId)
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    // Convert role name to role ID
+    const roleMap = { 'admin': 1, 'staff': 2 }
+    const roleId = roleMap[role]
+
+    // Update user role
+    const updateQuery = `
+      UPDATE users 
+      SET role = $1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2
+      RETURNING username, role
+    `
+    
+    const result = await db.query(updateQuery, [roleId, userId])
+    
+    if (result.rows.length === 0) {
+      return ApiResponse.error(res, 'Failed to update user role', 500)
+    }
+
+    logger.info(`Access granted to user ${result.rows[0].username} by ${req.user.username}`, {
+      userId: userId,
+      previousRole: user.role,
+      newRole: roleId,
+      grantedBy: req.user.id
+    })
+
+    return ApiResponse.success(res, { 
+      username: result.rows[0].username,
+      newRole: role
+    }, `${role.charAt(0).toUpperCase() + role.slice(1)} access granted successfully`)
+
+  } catch (error) {
+    logger.error('Error granting user access', error)
+    return ApiResponse.error(res, 'Failed to grant access', 500)
+  }
+})
+
+// PATCH /api/admin/users/:id/approve-request - Approve access request (admin only)
+router.patch('/admin/users/:id/approve-request', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    
+    if (!userId || isNaN(userId)) {
+      return ApiResponse.validationError(res, { id: ['Valid user ID is required'] }, 'Invalid user ID')
+    }
+
+    // Get user to verify exists and is inactive
+    const user = await UserRepository.findById(userId)
+    if (!user) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    if (user.is_active === 1) {
+      return ApiResponse.error(res, 'User is already active', 400)
+    }
+
+    // Update user to active and resident to active with approval info
+    const updateUserQuery = `
+      UPDATE users 
+      SET is_active = 1, 
+          updated_at = CURRENT_TIMESTAMP,
+          approved_by = $2,
+          approved_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING username
+    `
+    
+    const updateResidentQuery = `
+      UPDATE residents 
+      SET is_active = 1, updated_at = CURRENT_TIMESTAMP 
+      WHERE user_id = $1
+      RETURNING mobile_number
+    `
+    
+    const userResult = await db.query(updateUserQuery, [userId, req.user.id])
+    const residentResult = await db.query(updateResidentQuery, [userId])
+    
+    if (userResult.rows.length === 0) {
+      return ApiResponse.error(res, 'Failed to activate user account', 500)
+    }
+
+    const username = userResult.rows[0].username
+    const mobileNumber = residentResult.rows.length > 0 ? residentResult.rows[0].mobile_number : null
+
+    // Send SMS notification if mobile number is available
+    if (mobileNumber) {
+      try {
+        const SMSService = require('../services/smsService')
+        await SMSService.sendActivationSMS({
+          mobile_number: mobileNumber,
+          username: username,
+          first_name: user.first_name
+        })
+        
+        logger.info(`SMS notification sent for approved account`, {
+          userId: userId,
+          username: username,
+          mobileNumber: mobileNumber
+        })
+      } catch (smsError) {
+        logger.error('Error sending SMS notification for approved account', smsError)
+        // Don't fail the request if SMS fails
+      }
+    }
+
+    logger.info(`Access request approved for user ${username} by ${req.user.username}`, {
+      userId: userId,
+      approvedBy: req.user.id
+    })
+
+    return ApiResponse.success(res, { 
+      username: username,
+      smsNotificationSent: !!mobileNumber
+    }, 'Access request approved and account activated')
+
+  } catch (error) {
+    logger.error('Error approving access request', error)
+    return ApiResponse.error(res, 'Failed to approve access request', 500)
+  }
+})
+
+// DELETE /api/admin/users/:id/delete-request - Delete access request (admin only)
+router.delete('/admin/users/:id/delete-request', generalLimiter, authenticateToken, requireAdminForDelete, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    
+    if (!userId || isNaN(userId)) {
+      return ApiResponse.validationError(res, { id: ['Valid user ID is required'] }, 'Invalid user ID')
+    }
+
+    // Get user and resident information before deletion
+    const getUserQuery = `
+      SELECT 
+        u.username, 
+        u.attachment_image,
+        r.first_name,
+        r.last_name
+      FROM users u
+      LEFT JOIN residents r ON u.id = r.user_id
+      WHERE u.id = $1
+    `
+    
+    const userInfo = await db.query(getUserQuery, [userId])
+    
+    if (userInfo.rows.length === 0) {
+      return ApiResponse.error(res, 'User not found', 404)
+    }
+
+    const { username, attachment_image, first_name, last_name } = userInfo.rows[0]
+
+    // Delete resident record first (foreign key constraint)
+    const deleteResidentQuery = `DELETE FROM residents WHERE user_id = $1`
+    await db.query(deleteResidentQuery, [userId])
+
+    // Delete user record
+    const deleteUserQuery = `DELETE FROM users WHERE id = $1`
+    const deleteResult = await db.query(deleteUserQuery, [userId])
+
+    if (deleteResult.rowCount === 0) {
+      return ApiResponse.error(res, 'Failed to delete user', 500)
+    }
+
+    // Clean up uploaded file if it exists
+    if (attachment_image) {
+      try {
+        const fileUploadService = new FileUploadService()
+        const filePath = path.join(__dirname, '../uploads', attachment_image)
+        await fileUploadService.deleteFile(filePath)
+        logger.info(`Deleted attachment file: ${attachment_image}`)
+      } catch (fileError) {
+        logger.error(`Error deleting attachment file: ${attachment_image}`, fileError)
+        // Don't fail the request if file deletion fails
+      }
+    }
+
+    logger.info(`Access request deleted by ${req.user.username}`, {
+      deletedUserId: userId,
+      deletedUsername: username,
+      deletedName: `${first_name} ${last_name}`,
+      deletedBy: req.user.id
+    })
+
+    return ApiResponse.success(res, { 
+      username: username,
+      name: `${first_name} ${last_name}`
+    }, 'Registration deleted successfully')
+
+  } catch (error) {
+    logger.error('Error deleting access request', error)
+    return ApiResponse.error(res, 'Failed to delete registration', 500)
+  }
+})
+
+// GET /api/admin/users/available-for-access - Get available users for granting staff access (admin or staff)
+router.get('/admin/users/available-for-access', generalLimiter, authenticateToken, requireStaffOrAdmin, async (req, res) => {
+  try {
+    const { search = '', page = 1, limit = 20 } = req.query
+    const offset = (parseInt(page) - 1) * parseInt(limit)
+    
+    // Get users with resident role (role=3) who are active (users.is_active=1) and don't already have staff/admin access
+    let query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        u.is_active as user_is_active,
+        r.id as resident_id,
+        r.first_name,
+        r.last_name,
+        r.middle_name,
+        r.mobile_number,
+        r.address,
+        r.purok
+      FROM users u
+      INNER JOIN residents r ON u.id = r.user_id
+      WHERE u.role = 3 AND u.is_active = 1
+    `
+    const params = []
+
+    if (search) {
+      query += ` AND (
+        LOWER(r.first_name) LIKE LOWER($1) OR 
+        LOWER(r.last_name) LIKE LOWER($1) OR
+        LOWER(u.username) LIKE LOWER($1)
+      )`
+      params.push(`%${search}%`)
+    }
+
+    query += ` ORDER BY r.last_name, r.first_name LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
+    params.push(parseInt(limit), offset)
+
+    const result = await db.query(query, params)
+    
+    // Count query for pagination
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM users u
+      INNER JOIN residents r ON u.id = r.user_id
+      WHERE u.role = 3 AND u.is_active = 1
+    `
+    const countParams = []
+    
+    if (search) {
+      countQuery += ` AND (
+        LOWER(r.first_name) LIKE LOWER($1) OR 
+        LOWER(r.last_name) LIKE LOWER($1) OR
+        LOWER(u.username) LIKE LOWER($1)
+      )`
+      countParams.push(`%${search}%`)
+    }
+    
+    const countResult = await db.query(countQuery, countParams)
+    
+    // Format response data - use user_id as the ID for grant access operations
+    const users = result.rows.map(row => ({
+      id: row.user_id,        // This is the users.id that grant-access endpoint expects
+      user_id: row.user_id,   // Also include as user_id for clarity
+      resident_id: row.resident_id,
+      username: row.username,
+      is_active: row.user_is_active,  // This is users.is_active
+      first_name: row.first_name || '',
+      last_name: row.last_name || '',
+      middle_name: row.middle_name || '',
+      mobile_number: row.mobile_number || '',
+      address: row.address || '',
+      purok: row.purok
+    }))
+
+    return ApiResponse.success(res, {
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(countResult.rows[0].total),
+        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / parseInt(limit))
+      }
+    }, `Retrieved ${users.length} available users`)
+
+  } catch (error) {
+    logger.error('Error getting available users for access', error)
+    return ApiResponse.error(res, 'Failed to retrieve available users', 500)
+  }
+})
+
+// ==========================================================================
 // RESIDENT SELF-REGISTRATION ROUTES
 // ==========================================================================
 
-// POST /api/auth/register - Resident self-registration (public endpoint)
-router.post('/auth/register', generalLimiter, async (req, res) => {
+// POST /api/auth/register - Resident self-registration (PUBLIC ENDPOINT ONLY)
+// NOTE: This endpoint is for PUBLIC self-registration with document upload and approval workflow
+// For ADMIN user creation, use POST /api/residents which creates immediately active accounts
+router.post('/auth/register', generalLimiter, uploadMiddleware, async (req, res) => {
   try {
     const registrationData = req.body
+
+    // Add console logging for immediate debugging
+    console.log('=== PUBLIC REGISTRATION ATTEMPT ===')
+    console.log('Has file:', !!req.file)
+    console.log('Data keys:', Object.keys(registrationData))
+    console.log('Registration data:', registrationData)
+
+    // Add detailed logging for debugging
+    logger.info('Registration attempt received', {
+      hasFile: !!req.file,
+      dataKeys: Object.keys(registrationData),
+      username: registrationData.username,
+      firstName: registrationData.firstName,
+      lastName: registrationData.lastName,
+      gender: registrationData.gender,
+      purok: registrationData.purok,
+      religion: registrationData.religion,
+      occupation: registrationData.occupation
+    })
 
     // Validate input
     const validation = Validator.validateResident(registrationData)
     if (!validation.isValid) {
+      logger.error('Registration validation failed', {
+        errors: validation.errors,
+        receivedData: {
+          firstName: registrationData.firstName,
+          lastName: registrationData.lastName,
+          birthDate: registrationData.birthDate,
+          gender: registrationData.gender,
+          civilStatus: registrationData.civilStatus,
+          address: registrationData.address,
+          purok: registrationData.purok,
+          mobileNumber: registrationData.mobileNumber,
+          religion: registrationData.religion,
+          occupation: registrationData.occupation
+        }
+      })
       Validator.logValidationError(req, validation, 'resident self-registration')
       return ApiResponse.validationError(res, validation.errors, 'Invalid registration data')
     }
@@ -1152,30 +1663,63 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
     const username = Validator.sanitizeInput(registrationData.username)
     const pin = registrationData.pin
 
+    // Validate document upload
+    if (!req.file) {
+      return ApiResponse.validationError(res, {
+        documentImage: ['Residency document is required']
+      }, 'Document upload is required for registration')
+    }
+
+    // Validate uploaded file
+    try {
+      fileUploadService.validateUploadedFile(req.file)
+    } catch (fileError) {
+      // Clean up uploaded file if validation fails
+      if (req.file && req.file.path) {
+        try {
+          await fileUploadService.deleteFile(req.file.path)
+        } catch (cleanupError) {
+          logger.error('Error cleaning up invalid file', cleanupError)
+        }
+      }
+      
+      logger.error('File validation failed', {
+        error: fileError.message,
+        filename: req.file?.filename
+      })
+      
+      return ApiResponse.validationError(res, {
+        documentImage: [fileError.message]
+      }, 'Invalid document upload')
+    }
+
     // Check if username already exists
     const existingUser = await UserRepository.findByUsername(username)
     if (existingUser) {
+      // Clean up uploaded file if username exists
+      await fileUploadService.deleteFile(req.file.path)
       return ApiResponse.error(res, 'Username already exists. Please choose a different username.', 409)
     }
 
     // Hash the PIN
     const hashedPassword = await bcrypt.hash(pin, config.BCRYPT_ROUNDS)
 
-    // Create user account first
+    // Create user account (INACTIVE - public registration requires admin approval)
     const userData = {
       username: username,
       passwordHash: hashedPassword,
       role: 'resident',
-      passwordChanged: true // User chose their own PIN, no need to change
+      passwordChanged: true, // User chose their own PIN, no need to change
+      isActive: 0 // INACTIVE - public registration requires admin approval
     }
 
-    const newUser = await UserRepository.create(userData)
+    const newUser = await UserRepository.create(userData, req.file.filename)
 
-    // Create resident record
+    // Create resident record (INACTIVE - requires admin approval like user account)
     const residentDataWithUser = {
       ...sanitizedData,
       userId: newUser.id, // Use clean integer ID
-      isActive: 1,
+      isActive: 0, // INACTIVE - resident record requires admin approval
       selfRegistered: true // Flag to indicate self-registration
     }
 
@@ -1187,14 +1731,24 @@ router.post('/auth/register', generalLimiter, async (req, res) => {
       username: username 
     })
 
-    // Return success without credentials (user already knows their own credentials)
+    // Return success with pending approval message
     return ApiResponse.success(res, {
       resident: newResident,
-      message: 'Registration successful! You can now login with your username and PIN.'
-    }, 'Registration completed successfully', 201)
+      message: 'Registration successful! Your account is pending approval. We will notify you via SMS once activated.'
+    }, 'Registration completed successfully - pending approval', 201)
 
   } catch (error) {
     logger.error('Error in resident self-registration', error)
+    
+    // Clean up uploaded file if it exists
+    if (req.file) {
+      try {
+        await fileUploadService.deleteFile(req.file.path)
+      } catch (cleanupError) {
+        logger.error('Error cleaning up uploaded file in catch block', cleanupError)
+      }
+    }
+    
     return ApiResponse.error(res, 'Registration failed. Please try again.', 500)
   }
 })
@@ -1369,8 +1923,8 @@ router.get('/announcements/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// POST /api/announcements - Create new announcement (Admin only)
-router.post('/announcements', authenticateToken, requireAdmin, async (req, res) => {
+// POST /api/announcements - Create new announcement (Admin or Staff)
+router.post('/announcements', authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const {
       title,
@@ -1484,8 +2038,8 @@ router.post('/announcements', authenticateToken, requireAdmin, async (req, res) 
   }
 })
 
-// PUT /api/announcements/:id - Update announcement (Admin only)
-router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+// PUT /api/announcements/:id - Update announcement (Admin or Staff)
+router.put('/announcements/:id', authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const announcementId = parseInt(req.params.id)
     // Extract fields from request body
@@ -1675,7 +2229,7 @@ router.put('/announcements/:id', authenticateToken, requireAdmin, async (req, re
 })
 
 // DELETE /api/announcements/:id - Delete announcement (Admin only)
-router.delete('/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/announcements/:id', authenticateToken, requireAdminForDelete, async (req, res) => {
   try {
     const announcementId = parseInt(req.params.id)
     
@@ -1698,7 +2252,7 @@ router.delete('/announcements/:id', authenticateToken, requireAdmin, async (req,
 })
 
 // GET /api/announcements/:id/sms-status - Get SMS delivery status for announcement (Admin only)
-router.get('/announcements/:id/sms-status', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/announcements/:id/sms-status', authenticateToken, requireStaffOrAdmin, async (req, res) => {
   try {
     const announcementId = parseInt(req.params.id)
     
@@ -2892,7 +3446,7 @@ router.get('/chatbot/conversations/:sessionId', generalLimiter, ChatbotControlle
 // POST /api/chatbot/conversations/:sessionId/end - End conversation (public/authenticated)
 router.post('/chatbot/conversations/:sessionId/end', generalLimiter, ChatbotController.endConversation)
 
-// GET /api/chatbot/ai-status - Get AI service status (admin only)
-router.get('/chatbot/ai-status', generalLimiter, authenticateToken, requireAdmin, ChatbotController.getAIStatus)
+// GET /api/chatbot/ai-status - Get AI service status (admin and staff)
+router.get('/chatbot/ai-status', generalLimiter, authenticateToken, requireStaffOrAdmin, ChatbotController.getAIStatus)
 
 module.exports = router

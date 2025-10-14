@@ -14,6 +14,25 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
   const [showPublishModal, setShowPublishModal] = React.useState(false)
   const [smsStatus, setSmsStatus] = React.useState(null) // { total: 0, sent: 0, failed: 0 }
+  const [currentUser, setCurrentUser] = React.useState(null)
+
+  // Fetch current user for role checking
+  React.useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await ApiClient.get('/auth/me')
+        if (response.success) {
+          setCurrentUser(response.data)
+          console.log('Current user role:', response.data.role) // Debug log
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error)
+      }
+    }
+    if (open) {
+      fetchCurrentUser()
+    }
+  }, [open])
 
   // Load announcement data when panel opens
   React.useEffect(() => {
@@ -480,20 +499,25 @@ export default function AnnouncementDetailView({ open, onClose, announcement, on
                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
                           </div>
                         </div>
-                        <div className="relative group">
-                          <button
-                            onClick={() => setShowDeleteModal(true)}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-md bg-white text-gray-600 border border-gray-300 hover:bg-red-500 hover:text-white hover:border-red-500 focus:ring-2 focus:ring-red-500 transition-colors cursor-pointer"
-                          >
-                            <i className="bi bi-trash text-base" />
-                          </button>
-                          {/* Custom Tailwind Tooltip - Delete */}
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 whitespace-nowrap">
-                            Delete
-                            {/* Tooltip Arrow */}
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                        {/* Delete button - Admin only */}
+                        {console.log('Rendering delete button, role check:', currentUser?.role === 1)}  {/* Debug log */}
+                        {currentUser?.role === 1 && (
+                          <div className="relative group">
+                            <button
+                              onClick={() => setShowDeleteModal(true)}
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-md bg-white text-gray-600 border border-gray-300 hover:bg-red-500 hover:text-white hover:border-red-500 focus:ring-2 focus:ring-red-500 transition-colors cursor-pointer"
+                              title="Delete announcement (Admin only)"
+                            >
+                              <i className="bi bi-trash text-base" />
+                            </button>
+                            {/* Custom Tailwind Tooltip - Delete */}
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 whitespace-nowrap">
+                              Delete
+                              {/* Tooltip Arrow */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     )}
                   </div>

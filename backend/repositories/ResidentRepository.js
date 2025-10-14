@@ -296,18 +296,23 @@ class ResidentRepository {
     // Transform data for database compatibility
     const dbData = this._transformForDB(data)
     
+    // Use isActive value from data if provided, otherwise default to 1 (active)
+    // Self-registration: explicitly set to 0 (inactive, needs approval)
+    // Admin creation: explicitly set to 1 (active immediately)
+    const isActive = data.isActive !== undefined ? data.isActive : 1
+    
     const result = await db.query(`
       INSERT INTO residents (
         user_id, last_name, first_name, middle_name, suffix, birth_date, gender,
         civil_status, home_number, mobile_number, email, address, purok,
         religion, occupation, special_category_id, notes, is_active, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 1, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       dbData.userId, dbData.lastName, dbData.firstName, dbData.middleName, dbData.suffix,
       dbData.birthDate, dbData.gender, dbData.civilStatus, dbData.homeNumber, dbData.mobileNumber,
       dbData.email, dbData.address, dbData.purok, dbData.religion, dbData.occupation,
-      dbData.specialCategoryId, dbData.notes
+      dbData.specialCategoryId, dbData.notes, isActive
     ])
     return this.enrichWithAge(result.rows[0])
   }

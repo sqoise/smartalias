@@ -12,6 +12,21 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
   // Current user state for role checking
   const [currentUser, setCurrentUser] = React.useState(null)
 
+  // Load current user info
+  React.useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const response = await ApiClient.get('/auth/me')
+        if (response.success) {
+          setCurrentUser(response.data)
+        }
+      } catch (error) {
+        console.error('Error loading user info:', error)
+      }
+    }
+    loadUserInfo()
+  }, [])
+
   // Status management (existing)
   const [currentStatus, setCurrentStatus] = React.useState(children?.is_active || 0)
   const [isUpdating, setIsUpdating] = React.useState(false)

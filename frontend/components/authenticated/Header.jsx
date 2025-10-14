@@ -19,14 +19,14 @@ export default function Header({
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const computedTitle = title ?? (role === 'admin' ? 'Admin Dashboard' : 'Resident Dashboard')
+  const computedTitle = title ?? (role === 'admin' || role === 'staff' ? 'Admin Dashboard' : 'Resident Dashboard')
 
   // Role-based header styling
   const getHeaderClasses = () => {
     if (role === 'resident') {
       return "border-b relative z-30 h-12"
     }
-    // Default admin styling
+    // Default admin/staff styling
     return "bg-green-800 border-b border-green-700 relative z-30 h-12"
   }
 

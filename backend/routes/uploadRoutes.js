@@ -152,4 +152,218 @@ router.post('/file/:type', authenticateToken, (req, res, next) => {
   })
 })
 
+// ============================================
+// DOCUMENT VERIFICATION ROUTES
+// ============================================
+
+const fileUploadService = require('../services/fileUploadService')
+const UserRepository = require('../repositories/UserRepository')
+const { requireAdmin } = require('../middleware/authMiddleware')
+const { apiResponse } = require('../utils/apiResponse')
+const logger = require('../config/logger')
+
+/**
+ * Upload residency document for verification
+ * POST /api/upload/residency-document
+ */
+router.post('/residency-document', authenticateToken, (req, res) => {
+  const upload = fileUploadService.getSingleUploadMiddleware('attachment_image')
+  
+  upload(req, res, async (err) => {
+    try {
+      // Handle multer errors
+      if (err) {
+        const errorMessage = fileUploadService.handleUploadError(err)
+        logger.warn('File upload failed', { 
+          error: errorMessage, 
+          userId: req.user?.userId 
+        })
+        return res.status(400).json(apiResponse.error(errorMessage))
+      }
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json(apiResponse.error('No file uploaded'))
+      }
+
+      // Validate the uploaded file
+      try {
+        fileUploadService.validateUploadedFile(req.file)
+      } catch (validationError) {
+        return res.status(400).json(apiResponse.error(validationError.message))
+      }
+
+      // Update user's attachment in database
+      const userId = req.user.userId
+      const attachmentPath = req.file.filename
+
+      const updatedUser = await UserRepository.updateAttachment(userId, attachmentPath)
+
+      logger.info('Residency document uploaded successfully', {
+        userId: userId,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      })
+
+      res.json(apiResponse.success({
+        message: 'Residency document uploaded successfully. Your account is now pending admin approval.',
+        filename: req.file.filename,
+        isActive: updatedUser.is_active
+      }))
+
+    } catch (error) {
+      logger.error('Error processing document upload', { 
+        error: error.message, 
+        userId: req.user?.userId 
+      })
+
+      // Clean up uploaded file if database update failed
+      if (req.file) {
+        try {
+          fileUploadService.deleteFileByName(req.file.filename)
+        } catch (cleanupError) {
+          logger.error('Failed to cleanup file after error', { 
+            filename: req.file.filename, 
+            error: cleanupError.message 
+          })
+        }
+      }
+
+      res.status(500).json(apiResponse.error('Failed to process document upload'))
+    }
+  })
+})
+
+/**
+ * Get pending users for admin approval
+ * GET /api/upload/pending-users
+ */
+router.get('/pending-users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pendingUsers = await UserRepository.getPendingUsers()
+
+    logger.info('Fetched pending users for approval', { 
+      count: pendingUsers.length, 
+      adminId: req.user.userId 
+    })
+
+    res.json(apiResponse.success({
+      pendingUsers: pendingUsers,
+      count: pendingUsers.length
+    }))
+
+  } catch (error) {
+    logger.error('Error fetching pending users', { 
+      error: error.message, 
+      adminId: req.user?.userId 
+    })
+    res.status(500).json(apiResponse.error('Failed to fetch pending users'))
+  }
+})
+
+/**
+ * Approve user account
+ * POST /api/upload/approve-user/:userId
+ */
+router.post('/approve-user/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId)
+    const adminId = req.user.userId
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json(apiResponse.error('Invalid user ID'))
+    }
+
+    const approvedUser = await UserRepository.approveUser(userId, adminId)
+
+    logger.info('User account approved', { 
+      userId: userId, 
+      adminId: adminId, 
+      username: approvedUser.username 
+    })
+
+    res.json(apiResponse.success({
+      message: 'User account approved successfully. SMS notification sent.',
+      user: {
+        id: approvedUser.id,
+        username: approvedUser.username,
+        isActive: approvedUser.is_active,
+        resident: approvedUser.resident
+      }
+    }))
+
+  } catch (error) {
+    logger.error('Error approving user', { 
+      error: error.message, 
+      userId: req.params.userId, 
+      adminId: req.user?.userId 
+    })
+    res.status(500).json(apiResponse.error('Failed to approve user'))
+  }
+})
+
+/**
+ * Delete user account
+ * DELETE /api/upload/delete-user/:userId
+ */
+router.delete('/delete-user/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId)
+    const adminId = req.user.userId
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json(apiResponse.error('Invalid user ID'))
+    }
+
+    const deletedUser = await UserRepository.deleteUser(userId, adminId)
+
+    logger.info('User account deleted', { 
+      userId: userId, 
+      adminId: adminId, 
+      username: deletedUser.username
+    })
+
+    res.json(apiResponse.success({
+      message: 'User account deleted successfully',
+      user: {
+        id: deletedUser.id,
+        username: deletedUser.username,
+        deleted: deletedUser.deleted
+      }
+    }))
+
+  } catch (error) {
+    logger.error('Error deleting user', { 
+      error: error.message, 
+      userId: req.params.userId, 
+      adminId: req.user?.userId 
+    })
+    res.status(500).json(apiResponse.error('Failed to delete user'))
+  }
+})
+
+/**
+ * Get approval statistics for admin dashboard
+ * GET /api/upload/stats
+ */
+router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const stats = await UserRepository.getApprovalStats()
+
+    res.json(apiResponse.success({
+      pending: parseInt(stats.pending) || 0,
+      approved: parseInt(stats.approved) || 0,
+      total: parseInt(stats.total) || 0
+    }))
+
+  } catch (error) {
+    logger.error('Error fetching approval stats', { 
+      error: error.message, 
+      adminId: req.user?.userId 
+    })
+    res.status(500).json(apiResponse.error('Failed to fetch approval statistics'))
+  }
+})
+
 module.exports = router

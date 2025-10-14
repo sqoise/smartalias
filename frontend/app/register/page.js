@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [hasAcceptedPrivacy, setHasAcceptedPrivacy] = useState(false)
+  const [registrationSuccessful, setRegistrationSuccessful] = useState(false)
   const [formData, setFormData] = useState({
     // Name fields
     lastName: '',
@@ -48,6 +49,7 @@ export default function RegisterPage() {
     religion: '',
     occupation: '',
     specialCategory: '',
+    documentImage: null, // File object for document upload
     
     // Account credentials
     username: '',
@@ -78,6 +80,8 @@ export default function RegisterPage() {
     
     return { CODE_TO_ID_MAP, ID_TO_CODE_MAP }
   }
+
+
 
   // ============================================
   // CHECK IF ALREADY AUTHENTICATED
@@ -135,6 +139,38 @@ export default function RegisterPage() {
   // ============================================
   // VALIDATION FUNCTIONS
   // ============================================
+  
+
+
+  // Document image validation helper
+  const validateDocumentImage = (file) => {
+    const errors = []
+    
+    if (!file) {
+      errors.push('Document image is required')
+      return errors
+    }
+    
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+    if (!allowedTypes.includes(file.type)) {
+      errors.push('Only JPEG, JPG, and PNG files are allowed')
+    }
+    
+    // Check file size (3MB = 3 * 1024 * 1024 bytes)
+    const maxSize = 3 * 1024 * 1024
+    if (file.size > maxSize) {
+      errors.push('File size must be less than 3MB')
+    }
+    
+    // Check minimum file size (prevent tiny files)
+    const minSize = 1024 // 1KB
+    if (file.size < minSize) {
+      errors.push('File is too small, please upload a valid document image')
+    }
+    
+    return errors
+  }
   
   // Step-based validation
   const validateCurrentStep = () => {
@@ -202,9 +238,11 @@ export default function RegisterPage() {
         newErrors.address = 'Address must be at least 20 characters long'
       }
       
-      // Mobile number validation (optional but must be valid if provided)
+      // Mobile number validation (required)
       const mobileNumber = sanitizeInput(formData.mobileNumber)
-      if (mobileNumber) {
+      if (!mobileNumber) {
+        newErrors.mobileNumber = 'Mobile number is required'
+      } else {
         const cleanMobile = mobileNumber.replace(/\s+/g, '')
         if (!/^09\d{9}$/.test(cleanMobile)) {
           newErrors.mobileNumber = 'Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)'
@@ -280,6 +318,18 @@ export default function RegisterPage() {
       // Confirm PIN validation
       if (!formData.confirmPin) newErrors.confirmPin = 'Please confirm your PIN'
       else if (formData.pin !== formData.confirmPin) newErrors.confirmPin = 'PINs do not match'
+      
+      // Document Image validation (required)
+      if (!formData.documentImage) {
+        newErrors.documentImage = 'Residency document is required'
+      } else {
+        const documentErrors = validateDocumentImage(formData.documentImage)
+        if (documentErrors.length > 0) {
+          newErrors.documentImage = documentErrors[0]
+        }
+      }
+      
+
     }
     
     setErrors(newErrors)
@@ -340,20 +390,43 @@ export default function RegisterPage() {
   
   // Handle input changes
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, files } = e.target
     
-    // For PIN fields, only allow numbers and limit to 6 digits
-    let processedValue = value
-    if (name === 'pin' || name === 'confirmPin') {
-      processedValue = value.replace(/\D/g, '').slice(0, 6)
+    // Handle file inputs
+    if (type === 'file') {
+      const file = files[0]
+      
+      // Validate file if selected
+      if (file) {
+        const fileErrors = validateDocumentImage(file)
+        if (fileErrors.length > 0) {
+          setErrors(prev => ({
+            ...prev,
+            [name]: fileErrors[0] // Show first error
+          }))
+          e.target.value = '' // Clear the input
+          return
+        }
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: file || null
+      }))
+    } else {
+      // For PIN fields, only allow numbers and limit to 6 digits
+      let processedValue = value
+      if (name === 'pin' || name === 'confirmPin') {
+        processedValue = value.replace(/\D/g, '').slice(0, 6)
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: processedValue
+      }))
     }
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: processedValue
-    }))
-    
-    // Clear error for this field when user starts typing
+    // Clear error for this field when user starts typing/selecting
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -415,45 +488,64 @@ export default function RegisterPage() {
         // Continue anyway, let the backend handle it
       }
       
-      // Prepare registration data with all required fields
-      const registrationData = {
-        // Credentials
-        username: sanitizedUsername,
-        pin: formData.pin,
-        
-        // Personal Information (Step 1)
-        firstName: sanitizeInput(formData.firstName),
-        middleName: sanitizeInput(formData.middleName),
-        lastName: sanitizeInput(formData.lastName),
-        suffix: formData.suffix ? parseInt(formData.suffix, 10) : null,
-        
-        // Personal Details (Step 2)
-        birthDate: formData.birthDate,
-        gender: formData.gender ? parseInt(formData.gender, 10) : null,
-        civilStatus: formData.civilStatus,
-        
-        // Contact Information (Step 2)
-        homeNumber: sanitizeInput(formData.homeNumber),
-        mobileNumber: sanitizeInput(formData.mobileNumber),
-        email: sanitizeInput(formData.email),
-        address: sanitizeInput(formData.address),
-        purok: formData.purok ? parseInt(formData.purok, 10) : null,
-        
-        // Additional Information (Step 3)
-        religion: formData.religion,
-        occupation: formData.occupation,
-        specialCategory: formData.specialCategory ? 
-          (() => {
-            const { CODE_TO_ID_MAP } = createCategoryMaps(specialCategories)
-            return CODE_TO_ID_MAP[formData.specialCategory] || null
-          })() : null
-        // Note: notes field is only for admin use, not public registration
+      // Prepare registration data with FormData for file upload
+      const formDataToSend = new FormData()
+      
+      // Credentials
+      formDataToSend.append('username', sanitizedUsername)
+      formDataToSend.append('pin', formData.pin)
+      
+      // Personal Information (Step 1)
+      formDataToSend.append('firstName', sanitizeInput(formData.firstName))
+      formDataToSend.append('middleName', sanitizeInput(formData.middleName))
+      formDataToSend.append('lastName', sanitizeInput(formData.lastName))
+      if (formData.suffix) {
+        formDataToSend.append('suffix', parseInt(formData.suffix, 10))
       }
       
-      // Call backend API
-      const response = await ApiClient.register(registrationData)
+      // Personal Details (Step 2)
+      formDataToSend.append('birthDate', formData.birthDate)
+      if (formData.gender) {
+        formDataToSend.append('gender', parseInt(formData.gender, 10))
+      }
+      formDataToSend.append('civilStatus', formData.civilStatus)
+      
+      // Contact Information (Step 2)
+      if (formData.homeNumber) {
+        formDataToSend.append('homeNumber', sanitizeInput(formData.homeNumber))
+      }
+      if (formData.mobileNumber) {
+        formDataToSend.append('mobileNumber', sanitizeInput(formData.mobileNumber))
+      }
+      if (formData.email) {
+        formDataToSend.append('email', sanitizeInput(formData.email))
+      }
+      formDataToSend.append('address', sanitizeInput(formData.address))
+      if (formData.purok) {
+        formDataToSend.append('purok', parseInt(formData.purok, 10))
+      }
+      
+      // Additional Information (Step 3)
+      formDataToSend.append('religion', formData.religion)
+      formDataToSend.append('occupation', formData.occupation)
+      if (formData.specialCategory) {
+        const { CODE_TO_ID_MAP } = createCategoryMaps(specialCategories)
+        const categoryId = CODE_TO_ID_MAP[formData.specialCategory]
+        if (categoryId) {
+          formDataToSend.append('specialCategory', categoryId)
+        }
+      }
+      
+      // Document Image (Step 4)
+      if (formData.documentImage) {
+        formDataToSend.append('documentImage', formData.documentImage)
+      }
+      
+      // Call backend API with FormData
+      const response = await ApiClient.register(formDataToSend)
       
       // Success - show message and redirect to login
+      setRegistrationSuccessful(true)
       handleAlert(response.message || 'Registration successful! Redirecting to login...', 'success')
       
       // Redirect to login after 2 seconds
@@ -515,7 +607,7 @@ export default function RegisterPage() {
             onBack={handleBack}
             currentStep={currentStep}
             stepTitle={getStepTitle(currentStep)}
-            isLoading={isLoading}
+            isLoading={isLoading || registrationSuccessful}
             errors={errors}
             specialCategories={specialCategories}
             isLoadingCategories={isLoadingCategories}

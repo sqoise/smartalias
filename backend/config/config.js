@@ -22,7 +22,7 @@ const config = {
       ],
   
   // Authentication Configuration
-  JWT_SECRET: process.env.JWT_SECRET || null,
+  JWT_SECRET: process.env.JWT_SECRET || 'smartlias-development-secret-key-2025',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '12h',
   
   // Security Configuration

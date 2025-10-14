@@ -223,7 +223,7 @@ export default function RegisterCard({
         {/* Contact Number */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Mobile Number <span className="text-gray-400 font-normal">(Optional)</span>
+            Mobile Number <span className="text-red-500">*</span>
           </label>
           <input
             type="tel"
@@ -405,6 +405,8 @@ export default function RegisterCard({
             <p className="text-xs text-red-600 mt-1">{errors.specialCategory}</p>
           )}
         </div>
+
+
       </div>
     </div>
   )
@@ -412,6 +414,35 @@ export default function RegisterCard({
   // Step 4: Account Information
   const renderStep4 = () => (
     <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2">
+        {/* Document Upload */}
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Proof of Residency Document <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="file"
+              name="documentImage"
+              onChange={onInputChange}
+              accept="image/jpeg,image/jpg,image/png"
+              className={`w-full rounded-md px-3 py-1.5 text-sm border transition-all duration-200 ${
+                errors.documentImage ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:ring-1 focus:outline-none bg-white hover:border-gray-400 h-9 cursor-pointer file:mr-3 file:px-3 file:py-1 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200`}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <i className="bi bi-upload text-gray-400 text-xs"></i>
+            </div>
+          </div>
+          {errors.documentImage ? (
+            <p className="text-xs text-red-600 mt-1">{errors.documentImage}</p>
+          ) : (
+            <p className="text-xs text-gray-500 mt-1">
+              Upload a clear photo of your Valid ID, proof of residency such as (Electricity Bill, Voter Registration Card, Internet Bill, Car Registration, Proof of Address, Student ID, Bank Statement, Etc.,) - JPEG, JPG, PNG only, max 3MB
+            </p>
+          )}
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Username */}
         <div>
@@ -479,6 +510,8 @@ export default function RegisterCard({
           )}
         </div>
       </div>
+
+      
     </div>
   )
 

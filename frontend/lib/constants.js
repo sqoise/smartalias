@@ -134,6 +134,7 @@ export const APP_CONFIG = {
   // API Configuration
   API: {
     BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000/api',
+    UPLOADS_URL: process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:9000/uploads',
     TIMEOUT: 10000, // 10 seconds
   },
 

@@ -314,42 +314,42 @@ class DashboardRepository {
    */
   /**
    * Get recent activity (separate endpoint for lazy loading)
-   * Uses simple queries with post-processing for better maintainability
+   * Shows all document requests regardless of status for testing
    */
   static async getRecentActivity() {
     try {
-      // Simple queries instead of complex UNION
-      const [residentsResult, announcementsResult] = await Promise.all([
-        db.query(`
-          SELECT 
-            'resident' as type,
-            CONCAT(first_name, ' ', last_name) as details,
-            created_at,
-            id as reference_id
-          FROM residents 
-          WHERE is_active = 1
-          ORDER BY created_at DESC 
-          LIMIT 5
-        `),
-        db.query(`
-          SELECT 
-            'announcement' as type,
-            title as details,
-            published_at,
-            created_at,
-            id as reference_id
-          FROM announcements 
-          ORDER BY 
-            CASE 
-              WHEN published_at IS NOT NULL THEN published_at
-              ELSE created_at
-            END DESC 
-          LIMIT 5
-        `)
-      ])
+      // Get all document requests (no status or date filter for testing)
+      const documentRequestsResult = await db.query(`
+        SELECT 
+          CASE 
+            WHEN dr.status = 0 THEN 'document_request_new'
+            WHEN dr.status = 1 THEN 'document_request_processing'
+            WHEN dr.status = 2 THEN 'document_request_rejected'
+            WHEN dr.status = 3 THEN 'document_request_ready'
+            WHEN dr.status = 4 THEN 'document_request_completed'
+            ELSE 'document_request_other'
+          END as type,
+          CONCAT(r.first_name, ' ', r.last_name, ' - ', dc.title) as details,
+          CASE 
+            WHEN dr.status = 4 THEN dr.updated_at
+            ELSE dr.created_at
+          END as timestamp,
+          dr.id as reference_id,
+          dr.status as status_info
+        FROM document_requests dr
+        JOIN users u ON dr.user_id = u.id
+        JOIN residents r ON u.id = r.id
+        JOIN document_catalog dc ON dr.document_id = dc.id
+        ORDER BY 
+          CASE 
+            WHEN dr.status = 4 THEN dr.updated_at
+            ELSE dr.created_at
+          END DESC 
+        LIMIT 4
+      `)
 
-      // Post-process in JavaScript for flexibility
-      return this.processRecentActivity(residentsResult.rows, announcementsResult.rows)
+      // Process all document requests
+      return this.processRecentActivity(documentRequestsResult.rows)
 
     } catch (error) {
       logger.error('Error fetching recent activity:', error)
@@ -358,39 +358,46 @@ class DashboardRepository {
   }
 
   /**
-   * Process recent activity data in JavaScript (post-processing)
+   * Process recent activity data for all document request statuses
    */
-  static processRecentActivity(residents, announcements) {
+  static processRecentActivity(documentRequests) {
     const activities = []
 
-    // Process residents
-    residents.forEach(resident => {
+    // Process all document request statuses
+    documentRequests.forEach(request => {
+      let activityText = 'Document request'
+      
+      switch (request.status_info) {
+        case 0:
+          activityText = 'New application submitted'
+          break
+        case 1:
+          activityText = 'Document processing'
+          break
+        case 2:
+          activityText = 'Document rejected'
+          break
+        case 3:
+          activityText = 'Document ready for pickup'
+          break
+        case 4:
+          activityText = 'Document completed'
+          break
+        default:
+          activityText = 'Document updated'
+      }
+
       activities.push({
-        type: resident.type,
-        activity: 'New resident registered',
-        details: resident.details,
-        timestamp: resident.created_at,
-        referenceId: resident.reference_id
+        type: request.type,
+        activity: activityText,
+        details: request.details,
+        timestamp: request.timestamp,
+        referenceId: request.reference_id
       })
     })
 
-    // Process announcements
-    announcements.forEach(announcement => {
-      activities.push({
-        type: announcement.type,
-        activity: announcement.published_at ? 'Announcement published' : 'Announcement created',
-        details: announcement.details.length > 50 ? 
-          announcement.details.substring(0, 47) + '...' : 
-          announcement.details,
-        timestamp: announcement.published_at || announcement.created_at,
-        referenceId: announcement.reference_id
-      })
-    })
-
-    // Sort by timestamp and limit to 5 most recent
+    // Already sorted by timestamp in the SQL query, just return the activities
     return activities
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 5)
   }
 
   /**

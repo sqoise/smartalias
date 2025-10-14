@@ -39,10 +39,10 @@ function NavigationHeader() {
 
   const handleDashboardClick = () => {
     // Redirect based on user role
-    if (userRole === USER_ROLES.ADMIN) {
-      router.push('/admin')
-    } else {
+    if (userRole === USER_ROLES.RESIDENT) {
       router.push('/resident')
+    } else {
+      router.push('/admin')
     }
   }
 

@@ -8,6 +8,7 @@ const config = require('../config/config')
 const logger = require('../config/logger')
 const { USER_ROLES } = require('../config/constants')
 const UserRepository = require('../repositories/UserRepository')
+const db = require('../config/db')
 
 // Verify JWT token and ensure it's a valid authentication token (not change-pin token)
 const authenticateToken = async (req, res, next) => {
@@ -67,6 +68,39 @@ const authenticateToken = async (req, res, next) => {
         })
       }
 
+      // Check if user account is active (for residents check both users and residents tables)
+      if (dbUser.role === 3) { // Resident role
+        if (dbUser.is_active !== 1) {
+          logger.warn('Inactive user attempting access', { 
+            username: user.username,
+            ip: req.ip 
+          })
+          return res.status(403).json({
+            success: false,
+            error: 'Account pending approval. Please wait for admin approval.',
+            requiresApproval: true
+          })
+        }
+
+        // Check if resident record is also active
+        const residentCheck = await db.query(
+          'SELECT is_active FROM residents WHERE user_id = $1',
+          [dbUser.id]
+        )
+        
+        if (residentCheck.rows.length === 0 || residentCheck.rows[0].is_active !== 1) {
+          logger.warn('User with inactive resident record attempting access', { 
+            username: user.username,
+            ip: req.ip 
+          })
+          return res.status(403).json({
+            success: false,
+            error: 'Resident record not active. Please contact administrator.',
+            residentInactive: true
+          })
+        }
+      }
+
       req.user = user
       next()
     } catch (error) {
@@ -122,6 +156,24 @@ const requireResident = (req, res, next) => {
     return res.status(403).json({
       success: false,
       error: 'Resident access required'
+    })
+  }
+  next()
+}
+
+// Require admin role for destructive operations
+const requireAdminForDelete = (req, res, next) => {
+  if (!req.user || req.user.role !== USER_ROLES.ADMIN) {
+    logger.warn('Unauthorized delete operation attempt', { 
+      user: req.user?.username || 'unknown',
+      role: req.user?.role || 'none',
+      ip: req.ip,
+      method: req.method,
+      path: req.path
+    })
+    return res.status(403).json({
+      success: false,
+      error: 'Admin privileges required for delete operations'
     })
   }
   next()
@@ -196,4 +248,5 @@ module.exports = {
   requireResident,
   optionalAuth,
   authenticateChangePinToken,
+  requireAdminForDelete,
 }
