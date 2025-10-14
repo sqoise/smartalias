@@ -533,13 +533,58 @@ class ResidentRepository {
 
 
 
+  /**
+   * Delete resident (hard delete - permanently remove from both residents and users tables)
+   * WARNING: This will cascade delete the user account as well
+   */
   static async _deleteDB(id) {
+    const pool = db.getClient()
+    if (!pool) {
+      throw new Error('Database connection not available')
+    }
+    
+    const client = await pool.connect()
     try {
-      const result = await db.query('DELETE FROM residents WHERE id = $1 RETURNING id', [id])
-      return result.rows.length > 0
+      await client.query('BEGIN')
+      
+      // First, get the user_id from the resident record
+      const residentResult = await client.query(
+        'SELECT user_id FROM residents WHERE id = $1',
+        [id]
+      )
+      
+      if (residentResult.rows.length === 0) {
+        await client.query('ROLLBACK')
+        return false
+      }
+      
+      const userId = residentResult.rows[0].user_id
+      
+      // Delete from residents table first (foreign key constraint)
+      await client.query('DELETE FROM residents WHERE id = $1', [id])
+      
+      // Then delete from users table if user_id exists
+      if (userId) {
+        await client.query('DELETE FROM users WHERE id = $1', [userId])
+        logger.info('Deleted resident and associated user account', { 
+          residentId: id, 
+          userId 
+        })
+      } else {
+        logger.info('Deleted resident without user account', { residentId: id })
+      }
+      
+      await client.query('COMMIT')
+      return true
     } catch (error) {
-      logger.error('Error deleting resident from database', { id, error: error.message })
+      await client.query('ROLLBACK')
+      logger.error('Error deleting resident from database', { 
+        id, 
+        error: error.message 
+      })
       throw error
+    } finally {
+      client.release()
     }
   }
 
@@ -659,8 +704,15 @@ class ResidentRepository {
     return this.enrichWithAge(residents[index])
   }
 
+  /**
+   * Delete resident from JSON (hard delete - also removes from users.json)
+   */
   static async _deleteJSON(id) {
     try {
+      const fs = require('fs').promises
+      const path = require('path')
+      
+      // Load residents
       const residents = await this._loadResidentsJSON()
       const index = residents.findIndex(r => r.id === parseInt(id))
       
@@ -668,9 +720,28 @@ class ResidentRepository {
         return false
       }
       
+      const resident = residents[index]
+      const userId = resident.user_id
+      
       // Remove resident from array (hard delete)
       residents.splice(index, 1)
       await this._saveResidentsJSON(residents)
+      
+      // Also remove from users.json if user_id exists
+      if (userId) {
+        const usersPath = path.join(__dirname, '../data/users.json')
+        const usersData = JSON.parse(await fs.readFile(usersPath, 'utf-8'))
+        const userIndex = usersData.findIndex(u => u.id === userId)
+        
+        if (userIndex !== -1) {
+          usersData.splice(userIndex, 1)
+          await fs.writeFile(usersPath, JSON.stringify(usersData, null, 2))
+          logger.info('Deleted resident and associated user from JSON', { 
+            residentId: id, 
+            userId 
+          })
+        }
+      }
       
       return true
     } catch (error) {

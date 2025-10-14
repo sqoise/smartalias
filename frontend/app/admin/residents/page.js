@@ -100,7 +100,19 @@ export default function ResidentsPage() {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      // Call API to update status in database
+      // Special case: If 'deleted', just remove from local state and reload
+      if (newStatus === 'deleted') {
+        const numericId = parseInt(id, 10)
+        setResidentsData(prev => prev.filter(r => parseInt(r.id, 10) !== numericId))
+        setSelectedResident(null)
+        
+        // Optionally reload to ensure consistency
+        await loadResidents()
+        
+        return { success: true }
+      }
+      
+      // Normal status update (0 or 1)
       const response = await ApiClient.updateResidentStatus(id, newStatus)
       
       if (response && response.success) {

@@ -337,7 +337,7 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
           username: credentials.username,
           pin: credentials.pin
         })
-        setShowCredentials(false) // Don't auto-expand credentials - let user click to view
+        setShowCredentials(true) // Expand credentials by default
         setShowConfirmation(true)
         
         // Call onSubmit callback if provided (for parent component to refresh data)
@@ -968,46 +968,47 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
           The resident account has been created and activated successfully.
         </p>
         
-        {/* Simple Credentials Section */}
+        {/* Expandable Credentials Section */}
         {addedResident && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Login Credentials</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Username:</span>
-                <span className="font-mono text-gray-900 bg-white px-2 py-1 rounded border">{addedResident.username}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">PIN:</span>
-                <span className="font-mono text-gray-900 bg-white px-2 py-1 rounded border">{addedResident.pin}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-              <span className="text-xs text-gray-500">
-                <i className="bi bi-info-circle mr-1"></i>
-                Resident must change PIN on first login
-              </span>
+          <div className="mb-6 flex justify-center">
+            <div className="w-[100%]">
               <button
-                onClick={handleCopyCredentials}
-                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                  copied 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
-                title={copied ? "Copied!" : "Copy credentials to clipboard"}
+                onClick={() => setShowCredentials(!showCredentials)}
+                className="w-full p-2 bg-gray-100 border-dashed border border-gray-300 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
               >
-                {copied ? (
-                  <>
-                    <i className="bi bi-check mr-1"></i>
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-copy mr-1"></i>
-                    Copy
-                  </>
-                )}
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-medium text-gray-800">Temporary Credentials</h4>
+                  <i className={`bi bi-chevron-${showCredentials ? 'up' : 'down'} text-gray-600 transition-transform duration-200 text-sm`}></i>
+                </div>
               </button>
+              
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                showCredentials ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'
+              }`}>
+                <div className="px-2 py-1.5 bg-gray-100 border-l border-r border-b border-gray-300 border-dashed">
+                  <div className="flex items-center justify-between">
+                    <div className="text-gray-700 space-y-1 text-left">
+                      <div className="text-xs"><span className="font-medium">Username:</span> {addedResident.username}</div>
+                      <div className="text-xs"><span className="font-medium">PIN:</span> {addedResident.pin}</div>
+                    </div>
+                    <button
+                      onClick={handleCopyCredentials}
+                      className={`ml-2 p-1 rounded-md transition-colors cursor-pointer ${
+                        copied 
+                          ? 'text-gray-600' 
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                      title={copied ? "Copied!" : "Copy credentials to clipboard"}
+                    >
+                      {copied ? (
+                        <span className="text-xs font-medium">Copied!</span>
+                      ) : (
+                        <i className="bi bi-copy text-xs"></i>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1019,13 +1020,6 @@ export default function AddResidentsView({ open, onClose, onSubmit, loading = fa
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 transition-colors cursor-pointer"
           >
             Close
-          </button>
-          <button
-            onClick={handleAddAnother}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors cursor-pointer"
-          >
-            <i className="bi bi-plus-lg mr-1.5"></i>
-            Add Another
           </button>
         </div>
       </div>

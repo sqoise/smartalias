@@ -560,7 +560,7 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
         setShowDeleteConfirm(false)
         onClose && onClose()
         
-        // Trigger parent component refresh
+        // Trigger parent component refresh by passing 'deleted' signal
         if (onStatusUpdate && typeof onStatusUpdate === 'function') {
           await onStatusUpdate(children.id, 'deleted')
         }
