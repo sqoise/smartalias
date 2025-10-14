@@ -194,26 +194,24 @@ class ChatbotController {
 
       // Get or create conversation
       let conversation = await ChatbotRepository.getConversationBySession(sessionId)
+      
       if (!conversation) {
         conversation = await ChatbotRepository.createConversation(userId, sessionId)
-        
-        // Send initial privacy disclaimer for new conversations
-        const disclaimerMessage = await ChatbotController.getPrivacyDisclaimer()
-        await ChatbotRepository.saveMessage(conversation.id, 'bot', disclaimerMessage, null, 'system', 'disclaimer')
-        
-        // Return disclaimer as the first response
-        return ApiResponse.success(res, {
-          answer: disclaimerMessage,
-          source: 'system',
-          method: 'disclaimer',
-          faqId: null,
-          processingTime: Date.now() - startTime,
-          isNewConversation: true
-        })
+        // Note: Privacy disclaimer is shown on frontend - no need to save it here
       }
 
       // Save user message (sanitized)
       const sanitizedQuery = ChatbotController.sanitizeChatMessage(query.trim())
+      
+      // Log sanitization for debugging
+      if (sanitizedQuery !== query.trim()) {
+        logger.info('PII detected and redacted in user message', {
+          original: query.trim().substring(0, 50) + '...',
+          sanitized: sanitizedQuery.substring(0, 50) + '...',
+          conversationId: conversation.id
+        })
+      }
+      
       await ChatbotRepository.saveMessage(conversation.id, 'user', sanitizedQuery)
 
       // STEP 1: Try rule-based search (PostgreSQL + Fuse.js)
@@ -333,14 +331,18 @@ class ChatbotController {
         
         if (aiService.isAvailable()) {
           try {
+            // Sanitize query before sending to AI to protect user privacy
+            // AI should never see actual names, phone numbers, etc.
+            const sanitizedQuery = ChatbotController.sanitizeChatMessage(query.trim())
+            
             logger.info('Attempting AI generation with enhanced context', { 
-              query: query.trim(),
+              query: sanitizedQuery, // Log sanitized version
               contextFAQs: contextFAQs.length,
               conversationId: conversation.id
             })
             
-            // Get enhanced context including chat history
-            const aiContext = await ChatbotRepository.buildAIContext(query.trim(), conversation.id)
+            // Get enhanced context including chat history (use sanitized query)
+            const aiContext = await ChatbotRepository.buildAIContext(sanitizedQuery, conversation.id)
             
             // Add FAQ context
             aiContext.faqs = [...(aiContext.faqs || []), ...contextFAQs]
@@ -352,7 +354,7 @@ class ChatbotController {
               'balita', 'abiso', 'paalala', 'sked', 'programa', 'gawain', 'aktibidad'
             ];
             const isAnnouncementRelated = announcementKeywords.some(keyword => 
-              query.toLowerCase().includes(keyword.toLowerCase())
+              sanitizedQuery.toLowerCase().includes(keyword.toLowerCase())
             );
             
             if (isAnnouncementRelated) {
@@ -360,7 +362,7 @@ class ChatbotController {
                 const recentAnnouncements = await ChatbotRepository.getRecentAnnouncements(3)
                 aiContext.recentAnnouncements = recentAnnouncements
                 logger.info('Added recent announcements to AI context', { 
-                  query: query.trim(),
+                  query: sanitizedQuery,
                   announcementsCount: recentAnnouncements.length
                 })
               } catch (announcementError) {
@@ -424,16 +426,17 @@ class ChatbotController {
                 'Solo Parent ID applications are processed through MSWD with barangay endorsement and supporting documents'
               ]
             
-            const aiAnswer = await aiService.generateAnswer(query.trim(), aiContext)
+            // Use sanitized query when calling AI (AI never sees real names)
+            const aiAnswer = await aiService.generateAnswer(sanitizedQuery, aiContext)
             const responseTime = Date.now() - startTime
             const provider = aiService.primaryProvider
             
-            // Filter AI response for PII protection
-            const filteredAnswer = ChatbotController.filterAIResponse(aiAnswer)
+            // No need to filter AI response anymore since AI never received user's name
+            // AI will generate natural responses like "Hello! How can I help?" instead of "Hello, Robert!"
             
             response = {
               type: 'ai',
-              answer: filteredAnswer,
+              answer: aiAnswer, // Use AI response directly - it's clean and natural
               source: `${provider}-ai`,
               method: `ai-${provider}`,
               aiGenerated: true,
@@ -496,11 +499,16 @@ class ChatbotController {
         }
       }
 
-      // Save bot response
+      // Save bot response (NO sanitization - bot responses are safe)
+      // Only user messages are sanitized to protect user privacy
+      const botResponseText = typeof response.answer === 'string' 
+        ? response.answer
+        : JSON.stringify(response)
+      
       await ChatbotRepository.saveMessage(
         conversation.id,
         'bot',
-        typeof response.answer === 'string' ? response.answer : JSON.stringify(response),
+        botResponseText,
         faqId
       )
 
@@ -585,6 +593,28 @@ class ChatbotController {
   static async generateFallbackResponse(query) {
     // Check query intent
     const lowerQuery = query.toLowerCase()
+
+    // Greeting queries
+    if (lowerQuery.match(/^(hi|hello|hey|kumusta|kamusta|musta|good morning|good afternoon|good evening)$/i)) {
+      return {
+        type: 'fallback',
+        answer: `Kumusta! Welcome to SmartLIAS - your digital platform for Barangay Lias services.
+
+I can help you with:
+• How to register for SmartLIAS account
+• Document requests and requirements
+• Account approval and login issues
+• Barangay services and programs
+• Office hours and contact information
+
+What would you like to know?`,
+        suggestions: [
+          { id: null, question: 'How do I register for SmartLIAS account?' },
+          { id: null, question: 'What documents can I request?' },
+          { id: null, question: 'How long does account approval take?' }
+        ]
+      }
+    }
 
     // Document-related queries
     if (lowerQuery.match(/document|request|certificate|clearance|permit/)) {
@@ -837,69 +867,93 @@ class ChatbotController {
 
   /**
    * Sanitize chat messages before storing or sending to AI
+   * Redacts sensitive personal information for privacy protection
    * Uses safe replacement patterns that won't conflict with AI context
    */
   static sanitizeChatMessage(message) {
-    return message
-      // Remove phone numbers (11-digit mobile, 7-digit landline)
-      .replace(/\b(09\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '***PHONE***')
-      // Remove email addresses
-      .replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '***EMAIL***')
-      // Remove dates that might be birth dates
-      .replace(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, '***DATE***')
-      .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, '***DATE***')
-      // Remove potential addresses with street numbers
-      .replace(/\b\d+\s+[A-Za-z\s]+(street|st\.?|avenue|ave\.?|road|rd\.?)\b/gi, '***ADDRESS***')
-      // Remove potential ID numbers
-      .replace(/\b\d{4}-\d{4}-\d{4}\b/g, '***ID***')
-      .replace(/\b\d{12,}\b/g, '***NUMBER***')
-      // Preserve the general intent while removing specifics
+    if (!message) return message
+    
+    let sanitized = message
+    
+    // Remove phone numbers (11-digit mobile, 7-digit landline, international format)
+    sanitized = sanitized.replace(/\b(09\d{9}|\+639\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '[PHONE_REDACTED]')
+    
+    // Remove email addresses
+    sanitized = sanitized.replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '[EMAIL_REDACTED]')
+    
+    // Remove dates that might be birth dates (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
+    sanitized = sanitized.replace(/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\b/g, '[DATE_REDACTED]')
+    sanitized = sanitized.replace(/\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/g, '[DATE_REDACTED]')
+    
+    // Remove names after common phrases (I'm, I am, my name is, ako si, etc.)
+    sanitized = sanitized.replace(/\b(I'm|I am|my name is|ako si|pangalan ko ay|tawag sakin ay|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/gi, '$1 [NAME_REDACTED]')
+    
+    // Remove names in greetings (Hi Robert, Hello Maria, etc.)
+    sanitized = sanitized.replace(/\b(hi|hello|hey|kumusta)\s+([A-Z][a-z]+)\b/gi, '$1 [NAME_REDACTED]')
+    
+    // Remove standalone capitalized names (single or multiple words)
+    sanitized = sanitized.replace(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g, (match) => {
+      // Don't redact common words that are capitalized
+      const commonWords = ['SmartLIAS', 'Barangay', 'Lias', 'Philippines', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      if (commonWords.includes(match)) return match
+      // If it's a 2-3 word capitalized phrase, likely a name
+      if (match.split(' ').length >= 2) return '[NAME_REDACTED]'
+      return match
+    })
+    
+    // Remove potential addresses with street numbers
+    sanitized = sanitized.replace(/\b\d+\s+[A-Za-z\s]+(street|st\.?|avenue|ave\.?|road|rd\.?|boulevard|blvd\.?)\b/gi, '[ADDRESS_REDACTED]')
+    
+    // Remove potential ID numbers (SSS, TIN, UMID patterns)
+    sanitized = sanitized.replace(/\b\d{2}-\d{7}-\d{1}\b/g, '[SSS_REDACTED]')  // SSS format
+    sanitized = sanitized.replace(/\b\d{3}-\d{3}-\d{3}-\d{3}\b/g, '[TIN_REDACTED]')  // TIN format
+    sanitized = sanitized.replace(/\b\d{4}-\d{7}-\d{1}\b/g, '[UMID_REDACTED]')  // UMID format
+    sanitized = sanitized.replace(/\b\d{4}-\d{4}-\d{4}\b/g, '[ID_REDACTED]')  // Generic ID format
+    
+    // Remove long number sequences (12+ digits) that might be IDs
+    sanitized = sanitized.replace(/\b\d{12,}\b/g, '[NUMBER_REDACTED]')
+    
+    // Remove potential barangay ID formats
+    sanitized = sanitized.replace(/\b[A-Z]{2,4}-\d{4,8}\b/g, '[ID_REDACTED]')
+    
+    return sanitized
   }
 
   /**
+   * DEPRECATED: No longer needed since we sanitize user query before sending to AI
+   * 
+   * The AI never receives user's actual name, so it can't echo it back.
+   * This prevents awkward "[NAME_REDACTED]" messages in the UI.
+   * 
+   * Previous approach: Filter AI response → "Hello, [NAME_REDACTED]!"
+   * Current approach: Sanitize input → AI responds naturally → "Hello! How can I help?"
+   */
+  
+  /**
    * Filter AI responses to prevent accidental PII disclosure
+   * Applies same redaction patterns as sanitizeChatMessage for consistency
    */
   static filterAIResponse(response) {
     if (!response) return response
     
     return response
       // Remove any phone numbers that might have leaked through
-      .replace(/\b(09\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '***CONTACT***')
+      .replace(/\b(09\d{9}|\+639\d{9}|\d{3}-\d{4}|\+63\d{10})\b/g, '[PHONE_REDACTED]')
       // Remove email addresses
-      .replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '***EMAIL***')
+      .replace(/\b[\w\.-]+@[\w\.-]+\.\w+\b/g, '[EMAIL_REDACTED]')
       // Remove specific dates
-      .replace(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, '***DATE***')
-      .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, '***DATE***')
-      // Remove potential names in responses (be conservative)
-      .replace(/\b(Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+\b/g, '***NAME***')
-  }
-
-  /**
-   * Get privacy disclaimer message for new conversations
-   */
-  static async getPrivacyDisclaimer() {
-    return `🔒 **Privacy Notice & Data Protection**
-
-Hi! I'm Ka-Lias, your AI assistant for Barangay Lias. Before we start, please read this important privacy notice:
-
-**⚠️ DO NOT SHARE:**
-• Your full name, address, or personal details
-• Phone numbers, email addresses, or contact information  
-• Birth dates, ID numbers, or government IDs
-• Family member names or personal information
-• Sensitive documents or private matters
-
-**✅ I CAN HELP WITH:**
-• General barangay services and procedures
-• Document requirements and fees
-• Office hours and contact information
-• Government programs and announcements
-• Public information and guidelines
-
-**🛡️ Your Privacy:**
-Our conversation is logged for service improvement, but personal information is automatically removed for your protection. For matters requiring personal details, please visit our office.
-
-How can I help you with barangay services today?`
+      .replace(/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\b/g, '[DATE_REDACTED]')
+      .replace(/\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/g, '[DATE_REDACTED]')
+      // Remove potential names in responses
+      .replace(/\b(Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+\b/g, '[NAME_REDACTED]')
+      .replace(/\b([A-Z][a-z]+\s){1,3}[A-Z][a-z]+\b/g, '[NAME_REDACTED]')
+      // Remove ID numbers
+      .replace(/\b\d{2}-\d{7}-\d{1}\b/g, '[SSS_REDACTED]')
+      .replace(/\b\d{3}-\d{3}-\d{3}-\d{3}\b/g, '[TIN_REDACTED]')
+      .replace(/\b\d{4}-\d{7}-\d{1}\b/g, '[UMID_REDACTED]')
+      .replace(/\b\d{4}-\d{4}-\d{4}\b/g, '[ID_REDACTED]')
+      .replace(/\b\d{12,}\b/g, '[NUMBER_REDACTED]')
+      .replace(/\b[A-Z]{2,4}-\d{4,8}\b/g, '[ID_REDACTED]')
   }
 }
 

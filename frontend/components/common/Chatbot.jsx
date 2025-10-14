@@ -19,7 +19,16 @@ const parseMarkdown = (text) => {
 }
 
 export default function Chatbot({ isOpen, onClose }) {
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState([{
+    type: 'bot',
+    text: `**PRIVACY NOTICE**\n\nKumusta! I'm Ka-Lias, your SmartLIAS AI assistant.\n\n**DO NOT SHARE:**\n• Personal details, phone numbers, addresses\n• ID numbers, birth dates, family info\n• Sensitive or confidential information\n\n**I CAN HELP WITH:**\n• Document requests and requirements\n• Barangay services and procedures\n• Office hours and contact info\n• Announcements and general inquiries\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?`,
+    timestamp: new Date(),
+    suggestions: [
+      { question: 'What are the office hours?' },
+      { question: 'How do I register for SmartLIAS account?' },
+      { question: 'How do I request documents?' }
+    ]
+  }])
   const [inputText, setInputText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
@@ -72,22 +81,11 @@ export default function Chatbot({ isOpen, onClose }) {
           timestamp: new Date(msg.created_at)
         }))
         setMessages(formattedMessages)
-      } else {
-        // Show welcome message for new conversations
-        setMessages([{
-          type: 'bot',
-          text: 'Kumusta! 👋 Welcome to SmartLIAS - ang digital platform ng Barangay Lias. Makakatulong ako sa:\n\n• Document Requests and requirements\n• My Requests status tracking\n• Announcements and updates\n• Profile management\n• Office hours at contact info\n• SmartLIAS navigation help\n• At marami pang iba!\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?',
-          timestamp: new Date()
-        }])
       }
+      // If no messages, keep the initial privacy notice from useState
     } catch (error) {
       console.error('Error loading conversation history:', error)
-      // Show welcome message on error - don't fail silently
-      setMessages([{
-        type: 'bot',
-        text: 'Kumusta! 👋 Welcome to SmartLIAS - ang digital platform ng Barangay Lias. Makakatulong ako sa:\n\n• Document Requests and requirements\n• My Requests status tracking\n• Announcements and updates\n• Profile management\n• Office hours at contact info\n• SmartLIAS navigation help\n• At marami pang iba!\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?',
-        timestamp: new Date()
-      }])
+      // Keep initial privacy notice from useState on error
     } finally {
       setIsLoadingHistory(false)
     }
@@ -173,11 +171,18 @@ export default function Chatbot({ isOpen, onClose }) {
       }
       setSessionId(newSession)
       
-      // Clear messages and show welcome message for new session
+      // Clear messages and show privacy notice for new session
       setMessages([{
         type: 'bot',
-        text: 'Kumusta! 👋 Welcome to SmartLIAS - ang digital platform ng Barangay Lias. Makakatulong ako sa:\n\n• Document Requests and requirements\n• My Requests status tracking\n• Announcements and updates\n• Profile management\n• Office hours at contact info\n• SmartLIAS navigation help\n• At marami pang iba!\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?',
-        timestamp: new Date()
+        text: `**PRIVACY NOTICE**\n\nKumusta! I'm Ka-Lias, your SmartLIAS AI assistant.\n\n**DO NOT SHARE:**\n• Personal details, phone numbers, addresses\n• ID numbers, birth dates, family info\n• Sensitive or confidential information\n\n**I CAN HELP WITH:**\n• Document requests and requirements\n• Barangay services and procedures\n• Office hours and contact info\n• Announcements and general inquiries\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?`,
+        timestamp: new Date(),
+        suggestions: [
+          { question: 'How do I register for SmartLIAS account?' },
+          { question: 'What documents can I request?' },
+          { question: 'How long does account approval take?' },
+          { question: 'How do I request documents through SmartLIAS?' },
+          { question: 'What are the office hours?' }
+        ]
       }])
       
       // Focus input for new conversation
@@ -193,7 +198,7 @@ export default function Chatbot({ isOpen, onClose }) {
       
       setMessages([{
         type: 'bot',
-        text: 'Kumusta! 👋 Welcome to SmartLIAS - ang digital platform ng Barangay Lias. Makakatulong ako sa:\n\n• Document Requests and requirements\n• My Requests status tracking\n• Announcements and updates\n• Profile management\n• Office hours at contact info\n• SmartLIAS navigation help\n• At marami pang iba!\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?',
+        text: `**PRIVACY NOTICE**\n\nKumusta! I'm Ka-Lias, your SmartLIAS AI assistant.\n\n**DO NOT SHARE:**\n• Personal details, phone numbers, addresses\n• ID numbers, birth dates, family info\n• Sensitive or confidential information\n\n**I CAN HELP WITH:**\n• Document requests and requirements\n• Barangay services and procedures\n• Office hours and contact info\n• Announcements and general inquiries\n\nYou can ask me in English, Tagalog, or Taglish!\nAno ang gusto mong malaman?`,
         timestamp: new Date()
       }])
     }

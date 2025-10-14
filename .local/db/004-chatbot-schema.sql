@@ -14,7 +14,7 @@
 
 -- Drop existing tables
 DROP TABLE IF EXISTS chat_messages CASCADE;
-DROP TABLE IF EXISTS conversations CASCADE;
+DROP TABLE IF EXISTS chat_conversations CASCADE;
 DROP TABLE IF EXISTS faqs CASCADE;
 DROP TABLE IF EXISTS faq_categories CASCADE;
 
@@ -53,10 +53,11 @@ CREATE TABLE faqs (
 );
 
 -- Conversations Table (Chat Sessions)
-CREATE TABLE conversations (
+CREATE TABLE chat_conversations (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, -- NULL for anonymous users
     session_id VARCHAR(255) NOT NULL UNIQUE, -- Frontend-generated session identifier
+    is_active INTEGER DEFAULT 1, -- 1=active conversation, 0=ended/archived
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP DEFAULT NULL, -- NULL = active conversation
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -66,7 +67,7 @@ CREATE TABLE conversations (
 -- Chat Messages Table (Individual Messages)
 CREATE TABLE chat_messages (
     id SERIAL PRIMARY KEY,
-    conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+    conversation_id INTEGER REFERENCES chat_conversations(id) ON DELETE CASCADE,
     message_type VARCHAR(10) NOT NULL CHECK (message_type IN ('user', 'bot')),
     message_text TEXT NOT NULL,
     
@@ -98,10 +99,11 @@ CREATE INDEX idx_faqs_helpful_count ON faqs(helpful_count);
 CREATE INDEX idx_faqs_created_by ON faqs(created_by);
 
 -- Conversations indexes
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_session_id ON conversations(session_id);
-CREATE INDEX idx_conversations_started_at ON conversations(started_at);
-CREATE INDEX idx_conversations_ended_at ON conversations(ended_at);
+CREATE INDEX idx_chat_conversations_user_id ON chat_conversations(user_id);
+CREATE INDEX idx_chat_conversations_session_id ON chat_conversations(session_id);
+CREATE INDEX idx_chat_conversations_is_active ON chat_conversations(is_active);
+CREATE INDEX idx_chat_conversations_started_at ON chat_conversations(started_at);
+CREATE INDEX idx_chat_conversations_ended_at ON chat_conversations(ended_at);
 
 -- Chat Messages indexes
 CREATE INDEX idx_chat_messages_conversation_id ON chat_messages(conversation_id);
@@ -117,7 +119,7 @@ CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at);
 
 COMMENT ON TABLE faq_categories IS 'Categories for organizing FAQ items (Documents, Services, Contact Info, etc.)';
 COMMENT ON TABLE faqs IS 'Frequently Asked Questions with answers and keyword matching for chatbot';
-COMMENT ON TABLE conversations IS 'Chat conversation sessions - groups related messages together';
+COMMENT ON TABLE chat_conversations IS 'Chat conversation sessions - groups related messages together';
 COMMENT ON TABLE chat_messages IS 'Individual chat messages from users and bot responses with metadata';
 
 -- ============================================
@@ -149,17 +151,18 @@ COMMENT ON COLUMN faqs.created_at IS 'FAQ creation timestamp';
 COMMENT ON COLUMN faqs.updated_at IS 'Last modification timestamp';
 
 -- Conversations Table Comments
-COMMENT ON COLUMN conversations.id IS 'Primary key - unique identifier for chat conversations';
-COMMENT ON COLUMN conversations.user_id IS 'Links to users table - NULL for anonymous/guest users';
-COMMENT ON COLUMN conversations.session_id IS 'Frontend-generated session identifier for tracking';
-COMMENT ON COLUMN conversations.started_at IS 'When the conversation began';
-COMMENT ON COLUMN conversations.ended_at IS 'When conversation ended - NULL for active sessions';
-COMMENT ON COLUMN conversations.created_at IS 'Conversation record creation timestamp';
-COMMENT ON COLUMN conversations.updated_at IS 'Last modification timestamp';
+COMMENT ON COLUMN chat_conversations.id IS 'Primary key - unique identifier for chat conversations';
+COMMENT ON COLUMN chat_conversations.user_id IS 'Links to users table - NULL for anonymous/guest users';
+COMMENT ON COLUMN chat_conversations.session_id IS 'Frontend-generated session identifier for tracking';
+COMMENT ON COLUMN chat_conversations.is_active IS '1=active conversation, 0=ended/archived';
+COMMENT ON COLUMN chat_conversations.started_at IS 'When the conversation began';
+COMMENT ON COLUMN chat_conversations.ended_at IS 'When conversation ended - NULL for active sessions';
+COMMENT ON COLUMN chat_conversations.created_at IS 'Conversation record creation timestamp';
+COMMENT ON COLUMN chat_conversations.updated_at IS 'Last modification timestamp';
 
 -- Chat Messages Table Comments
 COMMENT ON COLUMN chat_messages.id IS 'Primary key - unique identifier for chat messages';
-COMMENT ON COLUMN chat_messages.conversation_id IS 'Links to conversations table - groups messages together';
+COMMENT ON COLUMN chat_messages.conversation_id IS 'Links to chat_conversations table - groups messages together';
 COMMENT ON COLUMN chat_messages.message_type IS 'Type of message: user (from resident) or bot (from AI)';
 COMMENT ON COLUMN chat_messages.message_text IS 'The actual message content/text';
 COMMENT ON COLUMN chat_messages.faq_id IS 'Links to faqs table if response came from FAQ - NULL for AI/fallback';
@@ -233,7 +236,7 @@ INSERT INTO faqs (category_id, question, answer, keywords, is_active, created_by
 -- Reset sequences
 SELECT setval('faq_categories_id_seq', (SELECT MAX(id) FROM faq_categories));
 SELECT setval('faqs_id_seq', (SELECT MAX(id) FROM faqs));
-SELECT setval('conversations_id_seq', 1);
+SELECT setval('chat_conversations_id_seq', 1);
 SELECT setval('chat_messages_id_seq', 1);
 
 -- ============================================

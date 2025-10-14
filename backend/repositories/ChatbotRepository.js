@@ -529,7 +529,7 @@ class ChatbotRepository {
         f.view_count,
         f.helpful_count,
         f.not_helpful_count,
-        f.display_order
+        c.display_order as category_display_order
       FROM faqs f
       JOIN faq_categories c ON f.category_id = c.id
       WHERE f.is_active = 1
@@ -541,7 +541,7 @@ class ChatbotRepository {
       params.push(categoryId)
     }
 
-    query += ` ORDER BY f.display_order ASC, f.id ASC`
+    query += ` ORDER BY c.display_order ASC, f.id ASC`
 
     const result = await db.query(query, params)
     
@@ -588,6 +588,9 @@ class ChatbotRepository {
    * Search FAQs by query string with dynamic data processing
    */
   static async searchFAQs(searchQuery) {
+    // For very short queries (1-2 characters), use exact word matching only
+    const isShortQuery = searchQuery.trim().length <= 2
+    
     const query = `
       SELECT 
         f.id,
@@ -609,16 +612,17 @@ class ChatbotRepository {
       AND (
         to_tsvector('english', f.question) @@ plainto_tsquery('english', $1) OR
         to_tsvector('english', f.keywords) @@ plainto_tsquery('english', $1) OR
-        to_tsvector('english', f.answer) @@ plainto_tsquery('english', $1) OR
-        f.question ILIKE $2 OR
-        f.keywords ILIKE $2 OR
-        f.answer ILIKE $2
+        ${isShortQuery 
+          ? "f.keywords ~* ('\\y' || $1 || '\\y')"  // Word boundary match for short queries
+          : "to_tsvector('english', f.answer) @@ plainto_tsquery('english', $1) OR f.question ILIKE $2 OR f.keywords ILIKE $2 OR f.answer ILIKE $2"
+        }
       )
       ORDER BY relevance DESC, f.view_count DESC
       LIMIT 10
     `
-    const likePattern = `%${searchQuery}%`
-    const result = await db.query(query, [searchQuery, likePattern])
+    
+    const params = isShortQuery ? [searchQuery] : [searchQuery, `%${searchQuery}%`]
+    const result = await db.query(query, params)
     
     // Process dynamic content for all results
     for (const faq of result.rows) {
