@@ -30,12 +30,26 @@ class Database {
     try {
       const { Pool } = require('pg')
       
-      this.pg = new Pool({
-        connectionString: config.DATABASE_URL,
-        max: 20, // Maximum number of clients in the pool
+      // Parse DATABASE_URL to extract components
+      const url = new URL(config.DATABASE_URL)
+      
+      // Configuration with explicit options (prevents IPv6 issues)
+      const poolConfig = {
+        host: url.hostname,
+        port: parseInt(url.port) || 5432,
+        database: url.pathname.slice(1), // Remove leading slash
+        user: url.username,
+        password: url.password,
+        max: 20,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 2000,
-      })
+        connectionTimeoutMillis: 5000,
+        // Enable SSL for Supabase, disable for local
+        ssl: url.hostname.includes('supabase.co') 
+          ? { rejectUnauthorized: false } 
+          : false,
+      }
+      
+      this.pg = new Pool(poolConfig)
 
       // Test connection
       const client = await this.pg.connect()
