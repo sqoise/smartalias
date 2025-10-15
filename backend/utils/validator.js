@@ -1,0 +1,458 @@
+/**
+ * I  // Sanitize input to prevent XSS and injection attacks
+  // Preserves special name characters like ñ, ', -
+  static sanitizeInput(input) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .replace(/[<>&]/g, '') // Remove XSS dangerous characters but keep quotes, apostrophes, hyphens
+      .slice(0, 100) // Limit length to prevent buffer overflow
+  }dation Utilities
+ * Centralized validation functions for API inputs
+ */
+
+const logger = require('../config/logger')
+
+class Validator {
+  // Sanitize input to prevent XSS and injection attacks
+  static sanitizeInput(input) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .slice(0, 100) // Limit length to prevent buffer overflow
+  }
+
+  // Sanitize longer content (like announcements) with higher character limit
+  static sanitizeContent(input, maxLength = 2000) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .replace(/[<>&]/g, '') // Remove XSS dangerous characters but keep quotes and apostrophes
+      .slice(0, maxLength) // Allow longer content up to 2000 characters
+  }
+
+  // Format text to proper Title Case (CamelCase for names and addresses)
+  static formatTitleCase(input) {
+    if (!input || typeof input !== 'string') return ''
+    
+    return input
+      .trim()
+      .toLowerCase()
+      .split(' ')
+      .map(word => {
+        // Handle common prefixes and particles that should remain lowercase
+        const lowercaseWords = ['de', 'del', 'dela', 'delos', 'las', 'los', 'san', 'santa', 'ng', 'sa', 'na', 'at', 'ang', 'mga']
+        const firstWord = word === input.trim().toLowerCase().split(' ')[0]
+        
+        if (!firstWord && lowercaseWords.includes(word)) {
+          return word
+        }
+        
+        // Capitalize first letter of each word
+        return word.charAt(0).toUpperCase() + word.slice(1)
+      })
+      .join(' ')
+      .replace(/\s+/g, ' ') // Remove extra spaces
+      .trim()
+  }
+
+  // Validate username
+  static validateUsername(username) {
+    const errors = []
+    
+    if (!username) {
+      errors.push('Username is required')
+    } else if (username.length < 3) {
+      errors.push('Username must be at least 3 characters')
+    } else if (username.length > 50) {
+      errors.push('Username must be less than 50 characters')
+    } else if (!/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/.test(username)) {
+      errors.push('Username must be in format: name.name (e.g., firstname.lastname, word123.word)')
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate PIN (6 digits)
+  static validatePin(pin) {
+    const errors = []
+    
+    if (!pin) {
+      errors.push('PIN is required')
+    } else if (typeof pin !== 'string' && typeof pin !== 'number') {
+      errors.push('PIN must be a string or number')
+    } else {
+      const pinStr = pin.toString()
+      if (pinStr.length !== 6) {
+        errors.push('PIN must be exactly 6 digits')
+      } else if (!/^\d{6}$/.test(pinStr)) {
+        errors.push('PIN must contain only numbers')
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate content (for announcements, descriptions, etc.)
+  static validateContent(content, minLength = 30, maxLength = 2000) {
+    const errors = []
+    
+    if (!content || typeof content !== 'string') {
+      errors.push('Content is required')
+    } else {
+      const trimmed = content.trim()
+      if (trimmed.length < minLength) {
+        errors.push(`Content must be at least ${minLength} characters`)
+      } else if (trimmed.length > maxLength) {
+        errors.push(`Content must not exceed ${maxLength} characters`)
+      }
+      
+      // Check for prohibited test content (SMS providers often block these)
+      const lowerContent = trimmed.toLowerCase()
+      if (lowerContent.includes('test')) {
+        errors.push('Content cannot contain the word "TEST" as it may be blocked by SMS providers')
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate alphanumeric notes field
+  static validateAlphanumericNotes(notes) {
+    const errors = []
+    
+    if (notes !== null && notes !== undefined && notes !== '') {
+      if (typeof notes !== 'string') {
+        errors.push('Notes must be a string')
+      } else {
+        const trimmed = notes.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric characters, spaces, and basic punctuation
+          const alphanumericRegex = /^[a-zA-Z0-9\s.,!?()-]+$/
+          if (!alphanumericRegex.test(trimmed)) {
+            errors.push('Notes can only contain letters, numbers, spaces, and basic punctuation (.,!?()-)')
+          }
+          
+          if (trimmed.length > 500) {
+            errors.push('Notes must not exceed 500 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate birth date (minimum 12 years old, maximum 200 years old)
+  static validateBirthDate(birthDate) {
+    const errors = []
+    
+    if (!birthDate) {
+      errors.push('Birth date is required')
+    } else {
+      const birth = new Date(birthDate)
+      const today = new Date()
+      
+      if (isNaN(birth.getTime())) {
+        errors.push('Invalid birth date format')
+      } else {
+        // Calculate age
+        const age = today.getFullYear() - birth.getFullYear()
+        const monthDiff = today.getMonth() - birth.getMonth()
+        const dayDiff = today.getDate() - birth.getDate()
+        
+        // Adjust age if birthday hasn't occurred this year
+        const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age
+        
+        if (birth > today) {
+          errors.push('Birth date cannot be in the future')
+        } else if (actualAge < 12) {
+          errors.push('Resident must be at least 12 years old')
+        } else if (actualAge > 200) {
+          errors.push('Age cannot exceed 200 years')
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+      age: errors.length === 0 ? Math.floor((new Date() - new Date(birthDate)) / (365.25 * 24 * 60 * 60 * 1000)) : null
+    }
+  }
+
+  // Validate business name field
+  static validateBusinessName(businessName) {
+    const errors = []
+    
+    if (businessName !== null && businessName !== undefined && businessName !== '') {
+      if (typeof businessName !== 'string') {
+        errors.push('Business name must be a string')
+      } else {
+        const trimmed = businessName.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric characters, spaces, and basic punctuation (similar to notes)
+          const businessNameRegex = /^[a-zA-Z0-9\s.,!?()-]+$/
+          if (!businessNameRegex.test(trimmed)) {
+            errors.push('Business name can only contain letters, numbers, spaces, and basic punctuation (.,!?()-)')
+          }
+          
+          if (trimmed.length > 200) {
+            errors.push('Business name must not exceed 200 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate address field with more special characters allowed
+  static validateAddress(address) {
+    const errors = []
+    
+    if (address !== null && address !== undefined && address !== '') {
+      if (typeof address !== 'string') {
+        errors.push('Address must be a string')
+      } else {
+        const trimmed = address.trim()
+        if (trimmed.length > 0) {
+          // Allow alphanumeric, spaces, and common address characters
+          // Including: period, comma, apostrophe, hyphen, slash, hash, parentheses, colon
+          const addressRegex = /^[a-zA-Z0-9\s.,'\-\/#():]+$/
+          if (!addressRegex.test(trimmed)) {
+            errors.push('Address can only contain letters, numbers, spaces, and common address characters (.,\'-/#():)')
+          }
+          
+          if (trimmed.length > 300) {
+            errors.push('Address must not exceed 300 characters')
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate resident data
+  static validateResident(data) {
+    console.log('=== VALIDATOR DEBUG ===')
+    console.log('Validating data:', data)
+    const errors = []
+    
+    // Required fields with format validation
+    if (!data.firstName || data.firstName.trim().length === 0) {
+      errors.push('First name is required')
+    } else if (data.firstName.trim().length > 50) {
+      errors.push('First name must be less than 50 characters')
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.firstName.trim())) {
+      errors.push('First name can only contain letters, spaces, apostrophes, hyphens, and periods')
+    }
+    
+    if (!data.lastName || data.lastName.trim().length === 0) {
+      errors.push('Last name is required')
+    } else if (data.lastName.trim().length > 50) {
+      errors.push('Last name must be less than 50 characters')
+    } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.lastName.trim())) {
+      errors.push('Last name can only contain letters, spaces, apostrophes, hyphens, and periods')
+    }
+    
+    // Middle name validation (optional but must be valid format if provided)
+    if (data.middleName && data.middleName.trim().length > 0) {
+      if (data.middleName.trim().length > 50) {
+        errors.push('Middle name must be less than 50 characters')
+      } else if (!/^[a-zA-ZñÑáéíóúÁÉÍÓÚ'\-\s\.]+$/.test(data.middleName.trim())) {
+        errors.push('Middle name can only contain letters, spaces, apostrophes, hyphens, and periods')
+      }
+    }
+    
+    // Birth date validation
+    if (!data.birthDate) {
+      errors.push('Birth date is required')
+    } else {
+      const birthDate = new Date(data.birthDate)
+      const today = new Date()
+      const minDate = new Date()
+      minDate.setFullYear(today.getFullYear() - 200) // Maximum 200 years old
+      const maxDate = new Date()
+      maxDate.setFullYear(today.getFullYear() - 12) // Minimum 12 years old
+      
+      if (isNaN(birthDate.getTime())) {
+        errors.push('Invalid birth date format')
+      } else if (birthDate > today) {
+        errors.push('Birth date cannot be in the future')
+      } else if (birthDate > maxDate) {
+        errors.push('Resident must be at least 12 years old')
+      } else if (birthDate < minDate) {
+        errors.push('Age cannot exceed 200 years')
+      }
+    }
+    
+    // Gender validation
+    if (!data.gender) {
+      errors.push('Gender is required')
+    } else {
+      const gender = parseInt(data.gender)
+      if (![1, 2].includes(gender)) {
+        errors.push('Gender must be 1 (Male) or 2 (Female)')
+      }
+    }
+    
+    // Civil status validation
+    if (!data.civilStatus) {
+      errors.push('Civil status is required')
+    } else {
+      const validCivilStatuses = ['Single', 'Married', 'Widowed', 'Separated']
+      if (!validCivilStatuses.includes(data.civilStatus)) {
+        errors.push('Invalid civil status')
+      }
+    }
+    
+    // Address validation (required with minimum length)
+    if (!data.address || data.address.trim().length === 0) {
+      errors.push('Address is required')
+    } else {
+      const addressLength = data.address.trim().length
+      if (addressLength < 20) {
+        errors.push('Address must be at least 20 characters long')
+      } else if (addressLength > 200) {
+        errors.push('Address must be less than 200 characters')
+      }
+    }
+    
+    // Purok validation
+    if (!data.purok) {
+      errors.push('Purok is required')
+    } else {
+      const purok = parseInt(data.purok)
+      if (![1, 2, 3, 4, 5, 6, 7].includes(purok)) {
+        errors.push('Purok must be between 1 and 7')
+      }
+    }
+    
+    // Suffix validation (optional)
+    if (data.suffix) {
+      const suffix = parseInt(data.suffix)
+      if (![1, 2, 3, 4, 5, 6].includes(suffix)) {
+        errors.push('Invalid suffix option')
+      }
+    }
+    
+    // Email validation (optional)
+    if (data.email && data.email.trim().length > 0) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(data.email)) {
+        errors.push('Please enter a valid email address')
+      }
+    }
+    
+    // Mobile number validation (required)
+    if (!data.mobileNumber || data.mobileNumber.trim().length === 0) {
+      errors.push('Mobile number is required')
+    } else {
+      const cleanMobileNumber = data.mobileNumber.replace(/\s+/g, '')
+      if (!/^09\d{9}$/.test(cleanMobileNumber)) {
+        errors.push('Enter valid 11-digit mobile (e.g., 09XX XXX XXXX)')
+      }
+    }
+    
+    // Home number validation (optional)
+    if (data.homeNumber && data.homeNumber.trim().length > 0) {
+      const cleanHomeNumber = data.homeNumber.replace(/\s+/g, '')
+      if (!/^\d{8}$/.test(cleanHomeNumber)) {
+        errors.push('Enter valid 8-digit landline (e.g., 8000 0000)')
+      }
+    }
+    
+    // Religion validation (optional)
+    if (data.religion) {
+      const validReligions = ['ROMAN_CATHOLIC', 'PROTESTANT', 'IGLESIA_NI_CRISTO', 'ISLAM', 'BUDDHIST', 'OTHERS']
+      if (!validReligions.includes(data.religion)) {
+        errors.push('Invalid religion option')
+      }
+    }
+    
+    // Occupation validation (optional)
+    if (data.occupation) {
+      const validOccupations = ['EMPLOYED', 'SELF_EMPLOYED', 'UNEMPLOYED', 'RETIRED', 'OTHERS']
+      if (!validOccupations.includes(data.occupation)) {
+        errors.push('Invalid occupation option')
+      }
+    }
+    
+    // Special category validation (optional) - Basic validation, detailed validation in controller
+    if (data.special_category_id !== undefined && data.special_category_id !== null && data.special_category_id !== '') {
+      const categoryId = parseInt(data.special_category_id)
+      if (isNaN(categoryId) || categoryId <= 0) {
+        errors.push('Invalid special category option')
+      }
+    }
+    
+    // Notes validation (optional)
+    if (data.notes && data.notes.trim().length > 500) {
+      errors.push('Notes must be less than 500 characters')
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Validate pagination parameters
+  static validatePagination(page, limit) {
+    const errors = []
+    const pageNum = parseInt(page) || 1
+    const limitNum = parseInt(limit) || 10
+    
+    if (pageNum < 1) {
+      errors.push('Page must be a positive number')
+    }
+    
+    if (limitNum < 1 || limitNum > 100) {
+      errors.push('Limit must be between 1 and 100')
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+      page: pageNum,
+      limit: limitNum
+    }
+  }
+
+  // Log validation errors
+  static logValidationError(req, validation, field) {
+    if (!validation.isValid) {
+      logger.warn(`Validation failed for ${field}`, {
+        ip: req.ip,
+        user: req.user?.username || 'anonymous',
+        errors: validation.errors
+      })
+    }
+  }
+}
+
+module.exports = Validator

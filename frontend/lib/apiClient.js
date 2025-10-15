@@ -1,0 +1,850 @@
+'use client'
+
+import { APP_CONFIG } from './constants'
+
+/**
+ * API Client - Frontend to Backend Connector
+ * Handles all HTTP communication with the Express.js backend
+ * Backend handles data source switching (mock vs real data)
+ */
+
+const API_CONFIG = {
+  BASE_URL: APP_CONFIG.API.BASE_URL,
+  TIMEOUT: APP_CONFIG.API.TIMEOUT,
+}
+
+/**
+ * API Client - Frontend to Backend Connector
+ * Handles all HTTP communication with the Express.js backend
+ * Backend handles data source switching (mock vs real data)
+ */
+
+class ApiClient {
+  // Session expired callback - can be set by components
+  static onSessionExpired = null
+
+  /**
+   * Generic HTTP request handler
+   */
+  static async request(endpoint, options = {}) {
+    const url = `${API_CONFIG.BASE_URL}${endpoint}`
+    
+    const defaultOptions = {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    }
+
+    // Handle FormData - don't set Content-Type, let browser handle it
+    if (options.body instanceof FormData) {
+      delete defaultOptions.headers['Content-Type']
+    }
+
+    // Merge custom headers (for FormData, headers should be empty object)
+    if (options.headers) {
+      defaultOptions.headers = { ...defaultOptions.headers, ...options.headers }
+    }
+
+    // Add JWT token if available
+    const token = ApiClient.getStoredToken()
+    if (token) {
+      defaultOptions.headers.Authorization = `Bearer ${token}`
+    }
+
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT)
+
+      const response = await fetch(url, {
+        ...defaultOptions,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type')
+      let data
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json()
+      } else {
+        data = { message: await response.text() }
+      }
+
+      // Check for authentication errors (401 Unauthorized or 403 Forbidden)
+      // BUT: Don't treat login endpoint failures or permission denials as session expiration
+      if (response.status === 401 || response.status === 403) {
+        // Special cases that are NOT session expiration:
+        // 1. Login endpoint failures (wrong credentials)
+        // 2. Permission denied errors (403 with specific message)
+        if (endpoint === '/auth/login' || 
+            (response.status === 403 && data.error && 
+             (data.error.includes('Admin') || data.error.includes('access required')))) {
+          return {
+            success: false,
+            error: data.message || data.error || 'Access denied',
+            status: response.status
+          }
+        }
+        
+        // For all other 401/403: treat as session expiration
+        // Clear token
+        ApiClient.removeStoredToken()
+        
+        // Trigger session expired handler if set
+        if (ApiClient.onSessionExpired) {
+          // Call handler without redirecting immediately
+          // Let the modal component handle the redirect
+          ApiClient.onSessionExpired()
+        } else {
+          // If no handler, redirect to login directly
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+        }
+        
+        return {
+          success: false,
+          error: data.message || 'Session expired',
+          status: response.status,
+          sessionExpired: true,
+        }
+      }
+
+      // Return consistent response format
+      if (response.ok) {
+        return {
+          success: true,
+          data: data.data || data,
+          message: data.message || 'Success',
+          ...data,
+        }
+      } else {
+        return {
+          success: false,
+          error: data.message || data.error || `HTTP ${response.status}`,
+          status: response.status,
+        }
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'Request timeout. Please try again.',
+        }
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Network error. Please check your API connection.',
+      }
+    }
+  }
+
+  /**
+   * Simple GET request wrapper
+   */
+  static async get(endpoint) {
+    return await ApiClient.request(endpoint, { method: 'GET' })
+  }
+
+  // ============================================
+  // TOKEN MANAGEMENT
+  // ============================================
+  
+  static getStoredToken() {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('authToken')
+    }
+    return null
+  }
+
+  static setStoredToken(token) {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token)
+    }
+  }
+
+  static removeStoredToken() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken')
+    }
+  }
+
+  /**
+   * TEST METHOD: Simulate session expiration
+   * This will trigger the session expired modal
+   */
+  static testSessionExpiration() {
+    console.log('Testing session expiration...')
+    if (ApiClient.onSessionExpired) {
+      ApiClient.removeStoredToken()
+      ApiClient.onSessionExpired()
+    } else {
+      console.warn('No session expired handler registered')
+    }
+  }
+
+  // ============================================
+  // AUTHENTICATION ENDPOINTS
+  // ============================================
+
+  /**
+   * User login
+   */
+  static async login(username, pin) {
+    const response = await ApiClient.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, pin }),
+    })
+
+    // Store token on successful login
+    // Backend returns token in response.data.token
+    if (response.success && response.data && response.data.token) {
+      ApiClient.setStoredToken(response.data.token)
+    }
+
+    return response
+  }
+
+  /**
+   * User logout
+   */
+  static async logout() {
+    const response = await ApiClient.request('/auth/logout', {
+      method: 'POST',
+    })
+
+    // Always clear local token
+    ApiClient.removeStoredToken()
+    
+    return response
+  }
+
+  /**
+   * Get current user session
+   */
+  static async getSession() {
+    const token = ApiClient.getStoredToken()
+    
+    if (!token) {
+      return {
+        success: false,
+        error: 'No authentication token found',
+      }
+    }
+
+    return await ApiClient.request('/auth/me')
+  }
+
+  /**
+   * Get current user info (for validating token and getting user details)
+   */
+  static async getCurrentUser() {
+    const token = ApiClient.getStoredToken()
+    
+    if (!token) {
+      return {
+        success: false,
+        error: 'No authentication token found',
+      }
+    }
+
+    return await ApiClient.request('/auth/me')
+  }
+
+  /**
+   * Change user PIN/password (requires current PIN)
+   */
+  static async changePassword(currentPin, newPin) {
+    return await ApiClient.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        currentPin,
+        newPin,
+      }),
+    })
+  }
+
+  /**
+   * Validate change password token
+   * Used to verify token from URL parameter is valid and not expired
+   */
+  static async validateChangePasswordToken(token) {
+    return await ApiClient.request('/auth/validate-change-token', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+      }),
+    })
+  }
+
+  /**
+   * Change PIN for first-time users (no current PIN required)
+   * Used when is_password_changed = 0
+   * @param {string} token - JWT token from URL parameter
+   * @param {string} newPin - New 6-digit PIN
+   */
+  static async changePasswordFirstTime(token, newPin) {
+    return await ApiClient.request('/auth/change-password-first-time', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+        newPin,
+      }),
+    })
+  }
+
+  /**
+   * Register new resident (public endpoint)
+   */
+  static async register(registrationData) {
+    // Handle FormData differently (for file uploads)
+    if (registrationData instanceof FormData) {
+      return await ApiClient.request('/auth/register', {
+        method: 'POST',
+        body: registrationData,
+        // Don't set Content-Type header for FormData - let browser set it with boundary
+        headers: {}
+      })
+    }
+    
+    // Handle regular JSON data
+    return await ApiClient.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(registrationData),
+    })
+  }
+
+  /**
+   * Check if username exists (for login flow)
+   */
+  static async checkUser(username) {
+    return await ApiClient.request('/auth/check-user', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    })
+  }
+
+  // ============================================
+  // RESIDENTS ENDPOINTS
+  // ============================================
+
+  /**
+   * Get all residents (admin only)
+   * Backend returns ALL residents, frontend filters by status
+   */
+  static async getResidents() {
+    return await ApiClient.request('/residents')
+  }
+
+  /**
+   * Search residents (admin only)
+   */
+  static async searchResidents(query, statusFilter) {
+    const params = new URLSearchParams()
+    if (query) params.append('search', query)
+    if (statusFilter) params.append('status', statusFilter)
+    
+    const queryString = params.toString()
+    const endpoint = queryString ? `/residents?${queryString}` : '/residents'
+    
+    return await ApiClient.request(endpoint)
+  }
+
+  /**
+   * Get special categories for dropdowns (authenticated users)
+   */
+  static async getSpecialCategories() {
+    return await ApiClient.request('/residents/special-categories')
+  }
+
+  /**
+   * Get special categories for registration (public endpoint)
+   */
+  static async getPublicSpecialCategories() {
+    return await ApiClient.request('/public/special-categories')
+  }  /**
+   * Get resident by ID
+   */
+  static async getResident(id) {
+    return await ApiClient.request(`/residents/${id}`)
+  }
+
+  /**
+   * Create new resident (admin only)
+   */
+  static async createResident(residentData) {
+    return await ApiClient.request('/residents', {
+      method: 'POST',
+      body: JSON.stringify(residentData),
+    })
+  }
+
+  /**
+   * Update resident (admin only)
+   */
+  static async updateResident(id, residentData) {
+    return await ApiClient.request(`/residents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(residentData),
+    })
+  }
+
+  /**
+   * Update resident status (staff or admin)
+   */
+  static async updateResidentStatus(id, isActive) {
+    // Parse ID to remove any leading zeros and ensure it's a valid number
+    const numericId = parseInt(id, 10)
+    
+    if (isNaN(numericId)) {
+      throw new Error(`Invalid resident ID: ${id}`)
+    }
+    
+    return await ApiClient.request(`/residents/${numericId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    })
+  }
+
+  /**
+   * Delete resident (admin only)
+   */
+  static async deleteResident(id) {
+    return await ApiClient.request(`/residents/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Reset resident PIN (admin only)
+   * Generates new temporary credentials
+   */
+  static async resetResidentPin(residentId) {
+    return await ApiClient.request(`/residents/${residentId}/reset-pin`, {
+      method: 'POST',
+    })
+  }
+
+  // ============================================
+  // SERVICE REQUESTS ENDPOINTS (Future)
+  // ============================================
+
+  /**
+   * Get service requests
+   */
+  static async getServiceRequests() {
+    return await ApiClient.request('/requests')
+  }
+
+  /**
+   * Create service request
+   */
+  static async createServiceRequest(requestData) {
+    return await ApiClient.request('/requests', {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+    })
+  }
+
+  // ============================================
+  // ADMIN ENDPOINTS (Future)
+  // ============================================
+
+  /**
+   * Get admin dashboard data
+   */
+  static async getAdminDashboard() {
+    return await ApiClient.request('/admin/dashboard')
+  }
+
+  /**
+   * Get account security status (admin only)
+   */
+  static async getAccountStatus(username) {
+    return await ApiClient.request(`/admin/account-status?username=${encodeURIComponent(username)}`)
+  }
+
+  /**
+   * Unlock user account (admin only)
+   */
+  static async unlockAccount(username) {
+    return await ApiClient.request('/admin/unlock-account', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    })
+  }
+
+  // ============================================
+  // ANNOUNCEMENTS ENDPOINTS
+  // ============================================
+
+  /**
+   * Create announcement (admin only)
+   */
+  static async createAnnouncement(announcementData) {
+    return await ApiClient.request('/announcements', {
+      method: 'POST',
+      body: JSON.stringify(announcementData),
+    })
+  }
+
+  /**
+   * Get all announcements (admin only)
+   */
+  static async getAnnouncements() {
+    return await ApiClient.request('/announcements')
+  }
+
+  /**
+   * Get published announcements with pagination support (public endpoint, no auth required)
+   */
+  static async getPublishedAnnouncements(limit = 5, offset = 0) {
+    const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() })
+    return await ApiClient.request(`/announcements/public?${params.toString()}`)
+  }
+
+  // ============================================
+  // CHATBOT ENDPOINTS
+  // ============================================
+
+  /**
+   * Get FAQ categories
+   */
+  static async getChatbotCategories() {
+    return await ApiClient.request('/chatbot/categories')
+  }
+
+  /**
+   * Get FAQs (optionally filtered by category)
+   */
+  static async getChatbotFAQs(categoryId = null) {
+    const endpoint = categoryId ? `/chatbot/faqs?categoryId=${categoryId}` : '/chatbot/faqs'
+    return await ApiClient.request(endpoint)
+  }
+
+  /**
+   * Get specific FAQ by ID
+   */
+  static async getChatbotFAQ(faqId) {
+    return await ApiClient.request(`/chatbot/faqs/${faqId}`)
+  }
+
+  /**
+   * Search FAQs
+   */
+  static async searchChatbotFAQs(query) {
+    return await ApiClient.request(`/chatbot/search?q=${encodeURIComponent(query)}`)
+  }
+
+  /**
+   * Process chatbot query
+   */
+  static async processChatbotQuery(query, sessionId) {
+    return await ApiClient.request('/chatbot/query', {
+      method: 'POST',
+      body: JSON.stringify({ query, sessionId }),
+    })
+  }
+
+  /**
+   * Submit FAQ feedback
+   */
+  static async submitFAQFeedback(faqId, helpful) {
+    return await ApiClient.request(`/chatbot/faqs/${faqId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ helpful }),
+    })
+  }
+
+  /**
+   * Get conversation history
+   */
+  static async getChatbotConversation(sessionId) {
+    return await ApiClient.request(`/chatbot/conversations/${sessionId}`)
+  }
+
+  /**
+   * End conversation
+   */
+  static async endChatbotConversation(sessionId) {
+    return await ApiClient.request(`/chatbot/conversations/${sessionId}/end`, {
+      method: 'POST',
+    })
+  }
+
+  // ============================================
+  // DOCUMENT REQUEST ENDPOINTS
+  // ============================================
+
+  /**
+   * Get document catalog with optional filtering
+   */
+  static async getDocumentCatalog(activeOnly = true) {
+    const params = `?active_only=${activeOnly}`
+    return await ApiClient.request(`/document-catalog${params}`)
+  }
+
+  /**
+   * Search document requests (with filtering, pagination, sorting)
+   * For residents: automatically filters to their requests only
+   * For admin/staff: can see all requests with optional filters
+   */
+  static async searchDocumentRequests(filters = {}) {
+    const defaultFilters = {
+      status: 'all',
+      document_type: 'all',
+      search: '',
+      date_range: 'all',
+      page: 1,
+      limit: 25,
+      sort_field: 'created_at',
+      sort_direction: 'desc'
+    }
+
+    const searchParams = { ...defaultFilters, ...filters }
+
+    return await ApiClient.request('/document-requests/search', {
+      method: 'POST',
+      body: JSON.stringify(searchParams),
+    })
+  }
+
+  /**
+   * Get user's document requests (simplified method for residents)
+   */
+  static async getMyDocumentRequests(status = 'all') {
+    return await ApiClient.searchDocumentRequests({
+      status,
+      page: 1,
+      limit: 100  // Get all user's requests
+    })
+  }
+
+  /**
+   * Create a new document request
+   */
+  static async createDocumentRequest(requestData) {
+    return await ApiClient.request('/document-requests', {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+    })
+  }
+
+  /**
+   * Get specific document request details
+   */
+  static async getDocumentRequest(requestId) {
+    return await ApiClient.request(`/document-requests/${requestId}`)
+  }
+
+  /**
+   * Update document request status (admin/staff only)
+   */
+  static async updateDocumentRequestStatus(requestId, status, notes = '') {
+    return await ApiClient.request(`/document-requests/${requestId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, notes }),
+    })
+  }
+
+  /**
+   * Check if user has ongoing requests for a specific document type
+   * Returns true if there are pending/processing requests for the document
+   */
+  static async checkOngoingDocumentRequest(documentId) {
+    const response = await ApiClient.searchDocumentRequests({
+      status: 'all',
+      page: 1,
+      limit: 100
+    })
+
+    if (response.success && response.data?.requests) {
+      const ongoingStatuses = ['pending', 'processing', 'ready']
+      const ongoingRequest = response.data.requests.find(request => 
+        request.document_id === documentId && 
+        ongoingStatuses.includes(request.status_text)
+      )
+      return {
+        hasOngoing: !!ongoingRequest,
+        request: ongoingRequest || null
+      }
+    }
+
+    return { hasOngoing: false, request: null }
+  }
+
+  /**
+   * Get document request statistics (admin/staff only)
+   * @param {Object} options - Filter options
+   * @param {string} options.dateRange - '7days', '30days', '90days', or 'all'
+   * @param {string} options.documentType - Filter by document type
+   * @param {string} options.groupBy - 'document_type', 'status', 'daily'
+   * @param {boolean} options.includeTrends - Include trend data
+   */
+  static async getDocumentRequestStats(options = {}) {
+    const {
+      dateRange = '7days',
+      documentType = null,
+      groupBy = null,
+      includeTrends = false
+    } = options
+
+    return await ApiClient.request('/document-requests/stats', {
+      method: 'POST',
+      body: JSON.stringify({
+        date_range: dateRange,
+        document_type: documentType,
+        group_by: groupBy,
+        include_trends: includeTrends
+      })
+    })
+  }
+
+  // ================================
+  // DOCUMENT REQUEST PROCESSING ENDPOINTS
+  // ================================
+
+  /**
+   * Get pending document requests for processing (admin/staff only)
+   * @param {Object} options - Query options
+   * @param {number} options.limit - Number of requests to fetch
+   * @param {number} options.offset - Offset for pagination
+   * @param {string} options.priority - 'oldest', 'newest', 'urgent'
+   */
+  static async getPendingDocumentRequests(options = {}) {
+    const {
+      limit = 50,
+      offset = 0,
+      priority = 'oldest'
+    } = options
+
+    const queryParams = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+      priority
+    })
+
+    return await ApiClient.request(`/document-requests/pending?${queryParams}`)
+  }
+
+  /**
+   * Process a single document request (admin/staff only)
+   * @param {number} requestId - Document request ID
+   * @param {string} action - 'process', 'reject', or 'ready'
+   * @param {string} remarks - Optional remarks/notes
+   */
+  static async processDocumentRequest(requestId, action, remarks = '') {
+    return await ApiClient.request('/document-requests/process', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: requestId,
+        action,
+        remarks
+      })
+    })
+  }
+
+  /**
+   * Process multiple document requests in batch (admin/staff only)
+   * @param {Array} requests - Array of request objects
+   * @param {string} defaultAction - Default action for requests without specific action
+   * @param {string} defaultRemarks - Default remarks for requests without specific remarks
+   */
+  static async batchProcessDocumentRequests(requests, defaultAction = null, defaultRemarks = '') {
+    return await ApiClient.request('/document-requests/batch-process', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests,
+        default_action: defaultAction,
+        default_remarks: defaultRemarks
+      })
+    })
+  }
+
+  /**
+   * Get processing queue summary (admin/staff only)
+   */
+  static async getProcessingQueueSummary() {
+    return await ApiClient.request('/document-requests/processing-queue')
+  }
+
+  // =================================================================
+  // USER MANAGEMENT API METHODS
+  // =================================================================
+
+  /**
+   * Get users with specific roles (admin/staff) for access control
+   */
+  static async getUsersWithRoles(roles = ['admin', 'staff']) {
+    const roleParams = roles.map(role => `roles=${encodeURIComponent(role)}`).join('&')
+    return await ApiClient.request(`/admin/users/with-roles?${roleParams}`)
+  }
+
+  /**
+   * Get pending access requests (inactive users from self-registration)
+   */
+  static async getPendingAccessRequests() {
+    return await ApiClient.request('/admin/users/pending-requests')
+  }
+
+  /**
+   * Revoke access for a user (change role back to resident)
+   */
+  static async revokeUserAccess(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/revoke-access`, {
+      method: 'PATCH'
+    })
+  }
+
+  /**
+   * Grant access to a user (promote to staff or admin)
+   */
+  static async grantUserAccess(userId, role) {
+    return await ApiClient.request(`/admin/users/${userId}/grant-access`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    })
+  }
+
+  /**
+   * Approve access request (activate user account and send SMS)
+   */
+  static async approveAccessRequest(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/approve-request`, {
+      method: 'PATCH'
+    })
+  }
+
+  /**
+   * Delete access request (remove user and resident data)
+   */
+  static async deleteAccessRequest(userId) {
+    return await ApiClient.request(`/admin/users/${userId}/delete-request`, {
+      method: 'DELETE'
+    })
+  }
+
+  /**
+   * Get available users for granting staff access (admin only)
+   */
+  static async getAvailableUsersForAccess(search = '', page = 1, limit = 20) {
+    const params = new URLSearchParams()
+    if (search) params.append('search', search)
+    params.append('page', page.toString())
+    params.append('limit', limit.toString())
+    
+    const queryString = params.toString()
+    return await ApiClient.request(`/admin/users/available-for-access?${queryString}`)
+  }
+}
+
+// Expose ApiClient to window for testing
+if (typeof window !== 'undefined') {
+  window.ApiClient = ApiClient
+}
+
+export default ApiClient

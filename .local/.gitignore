@@ -1,0 +1,15 @@
+# Local PostgreSQL development files
+*.log
+*.sql.backup
+backup_*.sql
+
+# Environment files
+.env
+
+# Docker volumes
+postgres_data/
+pgadmin_data/
+
+# Temporary files
+*.tmp
+*.temp

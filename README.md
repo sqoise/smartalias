@@ -1,53 +1,209 @@
 
 
-# smartlias (Barangay Lias Management System)
+# SmartLias (Barangay Lias Management System)
 
+A modern full-stack web application for Barangay management built with **separated frontend-backend architecture**.
 
-A modern management system for Barangay Lias built with Next.js and Supabase.
+## Architecture
 
-## Getting Started
+```
+SmartLias/
+├── frontend/          # Next.js React Application (Port 3000)
+├── backend/           # Express.js API Server (Port 9000)
+├── Makefile          # Development & Build Commands
+├── WIKI.md           # Detailed Architecture Documentation
+└── README.md         # This file
+```
 
-### Quick Setup
+## Features
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd smartlias
-   ```
+### Frontend (Next.js)
+- **Modern UI**: Built with React and Tailwind CSS
+- **Server-Side Rendering**: Better SEO and performance
+- **Component-Based**: Reusable UI components
+- **Responsive Design**: Works on all devices
+- **Role-Based Access**: Admin and user interfaces
 
-2. **Run the setup script**
-   ```bash
-   make setup
-   ```
-   This will automatically install Node.js, npm, create the Next.js app, install dependencies, and set up the project structure.
+### Backend (Express.js)
+- **RESTful API**: Clean and organized endpoints
+- **Authentication**: JWT-based user authentication
+- **Database Integration**: Supabase PostgreSQL
+- **Security**: Rate limiting, CORS, input validation
+- **Middleware**: Organized business logic
 
-3. **Configure environment variables**
-   - Open `.env.local` and fill in your Supabase credentials:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   ```
+## Quick Start
 
-4. **Start development server**
-   ```bash
-   make dev
-   ```
-   The application will be available at `http://localhost:3000`
-
-### Available Make Commands
-
-- `make setup` - Initial project setup
-- `make dev` - Start development server
-- `make build` - Build for production
-- `make start` - Start production server
-- `make clean` - Clean and reinstall dependencies
-
-### Manual Setup (Alternative)
-
-If you prefer to run the setup script directly:
+### 1. Clone Repository
 ```bash
-chmod +x .local/scripts/setup-blms.sh
-./.local/scripts/setup-blms.sh
+git clone <repository-url>
+cd smartlias
+```
+
+### 2. Setup Project
+```bash
+make setup
+```
+This installs dependencies for both frontend and backend.
+
+### 3. Start Development
+```bash
+make dev
+```
+Starts both servers:
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:9000
+- **Health Check**: http://localhost:9000/health
+Starts both servers:
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:9000
+- **Health Check**: http://localhost:9000/health
+
+## Available Commands
+
+```bash
+# Development
+make dev              # Start both frontend and backend
+make dev-frontend     # Start only frontend (port 3000)
+make dev-backend      # Start only backend (port 5000)
+
+# Setup & Installation
+make setup           # Complete project setup
+make install-all     # Install all dependencies
+
+# Production Build
+make build           # Build both for production
+make start           # Start production servers
+
+# Maintenance
+make clean           # Clean all build files
+make test            # Run tests
+make help            # Show all commands
+```
+
+## Project Structure
+
+### Frontend (`/frontend`)
+```
+frontend/
+├── src/
+│   ├── components/    # Reusable UI components
+│   ├── pages/        # Next.js pages (app directory)
+│   ├── layouts/      # Page layout components
+│   ├── hooks/        # Custom React hooks
+│   ├── services/     # API communication
+│   ├── lib/          # Utility functions
+│   ├── data/         # Static data (demo)
+│   └── styles/       # CSS and styling
+├── public/           # Static assets
+├── package.json      # Frontend dependencies
+└── .env.development  # Frontend environment variables
+```
+
+### Backend (`/backend`)
+```
+backend/
+├── routes/           # API route definitions
+├── controllers/      # Business logic handlers
+├── models/           # Data models
+├── middleware/       # Express middleware
+├── config/           # Configuration files
+├── utils/            # Helper functions
+├── server.js         # Application entry point
+├── package.json      # Backend dependencies
+└── .env.development  # Backend environment variables
+```
+
+## Environment Setup
+
+### Separate Environment Files
+This project uses **separate environment files** for frontend and backend services:
+
+**Frontend Environment** (`frontend/.env.development`):
+```bash
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Frontend Configuration  
+NEXT_PUBLIC_API_BASE_URL=http://localhost:9000/api
+NEXT_PUBLIC_APP_NAME=SmartLias
+NEXT_PUBLIC_APP_VERSION=1.0.0
+```
+
+**Backend Environment** (`backend/.env.development`):
+```bash
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+
+# Database Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=7d
+
+# Security
+BCRYPT_SALT_ROUNDS=12
+```
+
+**How it works:**
+- **Frontend**: Loads `frontend/.env.development` automatically when NODE_ENV=development
+- **Backend**: Loads `backend/.env.development` directly
+- **Separation**: Each service manages its own configuration independently
+
+## Development Workflow
+
+1. **Start Development**: `make dev`
+2. **Frontend Development**: Modify files in `/frontend/src`
+3. **Backend Development**: Modify files in `/backend`
+4. **API Testing**: Use http://localhost:9000/health
+5. **Database**: Configure Supabase connection in backend
+
+## Documentation
+
+- **[WIKI.md](./WIKI.md)** - Detailed architecture documentation
+- **Frontend**: Next.js documentation at https://nextjs.org/docs
+- **Backend**: Express.js documentation at https://expressjs.com
+
+## Development Philosophy
+
+This project demonstrates **modern full-stack development practices**:
+
+- **Separated Concerns**: Frontend focuses on UI, backend handles data
+- **API-First Design**: RESTful endpoints for clear communication
+- **Scalable Architecture**: Each layer can be developed and deployed independently
+- **Developer Experience**: Simple commands to run complex operations
+
+Perfect for thesis defense demonstrating real-world application architecture!
+
+### Admin Account
+- **Username**: admin
+- **Password**: password123
+
+### User Account  
+- **Username**: user
+- **Password**: password123
+
+## Project Structure
+
+```
+smartlias/
+├── app/                    # Next.js app directory
+│   ├── login/             # Login page
+│   ├── change-password/   # Password change functionality
+│   └── admin/             # Admin-only pages
+├── components/            # Reusable React components
+├── data/                  # Sample JSON data files
+│   ├── users.json        # Demo user accounts
+│   └── residents.json    # Demo residents data
+├── lib/                   # Utility libraries
+│   ├── frontend-auth.js  # Authentication utilities
+│   └── constants.js      # Application constants
+└── public/               # Static assets
 ```
 
 ## Git Basics Guide
