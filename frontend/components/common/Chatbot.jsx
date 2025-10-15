@@ -146,6 +146,10 @@ export default function Chatbot({ isOpen, onClose }) {
       }])
     } finally {
       setIsLoading(false)
+      // Refocus input field after message is sent
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
     }
   }
 

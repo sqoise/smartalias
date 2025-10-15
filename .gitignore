@@ -1,7 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # .local
-# */package-lock.json
+# Package lock files (causes conflicts in team environments)
+package-lock.json
+*/package-lock.json
 
 # dependencies
 node_modules/
