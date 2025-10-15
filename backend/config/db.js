@@ -33,7 +33,18 @@ class Database {
       // Parse DATABASE_URL to extract components
       const url = new URL(config.DATABASE_URL)
       
-      // Configuration with explicit options (prevents IPv6 issues)
+      // Log connection attempt details
+      logger.info('Attempting PostgreSQL connection', {
+        host: url.hostname,
+        port: url.port || 5432,
+        database: url.pathname.slice(1),
+        user: url.username,
+        ssl: url.hostname.includes('supabase.co')
+      })
+      console.log(`Database: Connecting to ${url.hostname}:${url.port || 5432}`)
+      console.log(`Database: SSL ${url.hostname.includes('supabase.co') ? 'enabled' : 'disabled'}`)
+      
+      // Configuration with explicit options
       const poolConfig = {
         host: url.hostname,
         port: parseInt(url.port) || 5432,
@@ -70,12 +81,26 @@ class Database {
     } catch (error) {
       logger.error('PostgreSQL connection failed', { 
         error: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall,
+        address: error.address,
+        port: error.port,
         connectionString: config.DATABASE_URL?.substring(0, 50) + '...'
       })
       console.error(`PostgreSQL connection failed: ${error.message}`)
+      console.error(`Error code: ${error.code || 'N/A'}`)
+      console.error(`Error syscall: ${error.syscall || 'N/A'}`)
+      if (error.address) {
+        console.error(`Attempted address: ${error.address}:${error.port}`)
+      }
       
       // Provide specific error guidance
-      if (error.message.includes('password authentication failed')) {
+      if (error.message.includes('ENETUNREACH') || error.code === 'ENETUNREACH') {
+        console.error('Issue: Network unreachable (likely IPv6 routing problem)')
+        console.error('Solution: Check if DATABASE_URL uses correct connection string')
+        console.error('Try using Supabase connection pooler or IPv4-only endpoint')
+      } else if (error.message.includes('password authentication failed')) {
         console.error('Issue: Incorrect username or password')
         console.error('Solution: Check your DATABASE_URL credentials')
       } else if (error.message.includes('database') && error.message.includes('does not exist')) {
