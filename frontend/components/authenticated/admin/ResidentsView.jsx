@@ -1172,26 +1172,33 @@ export default function ResidentsView({ open, onClose, children, onStatusUpdate,
                         <div className="text-xs text-gray-500 mb-1">Record ID</div>
                         <div className="text-xs font-mono text-blue-600">resident_id_{String(children.id).padStart(5, '0')}</div>
                       </div>
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Created Date & Time</div>
-                        <div className="text-xs text-gray-900">
-                          {children.created_at ? new Date(children.created_at).toLocaleString() : '-'}
-                        </div>
-                      </div>
                       {children.username && (
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Username</div>
                           <div className="text-xs font-mono text-gray-900">{children.username}</div>
                         </div>
                       )}
-                      {children.role && (
+                      {children.approved_by && (
                         <div>
-                          <div className="text-xs text-gray-500 mb-1">User Role</div>
+                          <div className="text-xs text-gray-500 mb-1">Approved By</div>
+                          <div className="text-xs font-mono text-gray-900">{children.approved_by}</div>
+                        </div>
+                      )}
+                      {children.approved_at && (
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Approved At</div>
                           <div className="text-xs text-gray-900">
-                            {children.role === 1 ? 'Admin' : children.role === 2 ? 'Staff' : children.role === 3 ? 'Resident' : 'Unknown'}
+                            {new Date(children.approved_at).toLocaleString()}
                           </div>
                         </div>
                       )}
+
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Created At</div>
+                        <div className="text-xs text-gray-900">
+                          {children.user_created_at ? new Date(children.user_created_at).toLocaleString() : '-'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

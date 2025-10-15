@@ -970,6 +970,18 @@ router.get('/dashboard/activity', generalLimiter, authenticateToken, requireStaf
   try {
     const activity = await DashboardRepository.getRecentActivity()
 
+    // Debug: Log all activities with timestamps
+    console.log('=== ALL ACTIVITIES ===')
+    activity.forEach((act, idx) => {
+      console.log(`Activity ${idx + 1}:`, {
+        type: act.type,
+        details: act.details.substring(0, 50),
+        timestamp: act.timestamp,
+        timestampISO: act.timestamp instanceof Date ? act.timestamp.toISOString() : act.timestamp
+      })
+    })
+    console.log('=== END ===')
+
     res.json({
       success: true,
       data: activity,

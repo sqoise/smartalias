@@ -24,7 +24,7 @@ class UserRepository {
         u.is_active,
         u.attachment_image,
         u.approved_by,
-        u.approved_at,
+        u.approved_at AT TIME ZONE 'UTC' AS approved_at,
         approver.username as approved_by_username
       FROM users u 
       LEFT JOIN users approver ON u.approved_by = approver.id
@@ -50,7 +50,7 @@ class UserRepository {
         u.is_active,
         u.attachment_image,
         u.approved_by,
-        u.approved_at,
+        u.approved_at AT TIME ZONE 'UTC' AS approved_at,
         approver.username as approved_by_username
       FROM users u 
       LEFT JOIN users approver ON u.approved_by = approver.id
@@ -204,7 +204,7 @@ class UserRepository {
           u.id,
           u.username,
           u.attachment_image,
-          u.created_at,
+          u.created_at AT TIME ZONE 'UTC' AS created_at,
           r.first_name,
           r.last_name,
           r.middle_name,

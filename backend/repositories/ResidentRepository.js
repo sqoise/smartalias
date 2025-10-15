@@ -229,7 +229,20 @@ class ResidentRepository {
     // If resident has a user_id, fetch user credentials for lazy loading
     if (resident.userId) {
       try {
-        const userQuery = `SELECT username, is_password_changed, created_at FROM users WHERE id = $1`
+        // Join with users table to get approver's username if approved_by is set
+        const userQuery = `
+          SELECT 
+            u.username,
+            u.role,
+            u.is_password_changed, 
+            u.created_at AT TIME ZONE 'UTC' AS created_at,
+            u.approved_by,
+            u.approved_at AT TIME ZONE 'UTC' AS approved_at,
+            approver.username AS approved_by_username
+          FROM users u
+          LEFT JOIN users approver ON u.approved_by = approver.id
+          WHERE u.id = $1
+        `
         const userResult = await db.query(userQuery, [resident.userId])
         
         if (userResult.rows.length > 0) {
@@ -237,8 +250,15 @@ class ResidentRepository {
           // Add user info to resident API data
           const apiData = resident.toApiFormat()
           apiData.username = user.username
+          apiData.role = user.role
           apiData.is_password_changed = user.is_password_changed
           apiData.user_created_at = user.created_at
+          
+          // Add approval information only if approved_at is not null
+          if (user.approved_at) {
+            apiData.approved_by = user.approved_by_username
+            apiData.approved_at = user.approved_at
+          }
           
           // Note: Temporary PIN cannot be retrieved after creation (it's hashed)
           // Credentials are only shown once during account creation in AddResidentsView

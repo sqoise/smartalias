@@ -32,26 +32,27 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resources
 }))
 
-// CORS configuration - allow multiple origins for development
+// ===== CORS CONFIGURATION (Simplified: Bearer tokens, no cookies) =====
+// Removed dynamic PREVIEW_ORIGIN_PATTERN matching. Only explicit ALLOWED_ORIGINS are honored.
+// Optional preview origin regex example (Netlify style preview subdomains):
+// To re-enable dynamic preview origins, add the pattern to your environment and
+// restore the matching logic. Keep this commented unless you intentionally need it.
+// PREVIEW_ORIGIN_PATTERN=^https:\/\/[a-z0-9-]+--yourapp-preview\\.netlify\\.app$
 const allowedOrigins = config.ALLOWED_ORIGINS
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true)
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      console.warn('CORS blocked origin:', origin)
-      console.warn('Allowed origins:', allowedOrigins)
-      callback(new Error('Not allowed by CORS'))
-    }
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true) // curl / mobile / same-origin
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    logger.warn('CORS blocked origin', { origin, allowedOrigins })
+    return callback(new Error('CORS_NOT_ALLOWED'))
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: false, // We use Authorization header, no cookies -> simpler
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','Accept']
 }))
+
+logger.info('CORS configuration loaded', { allowedOrigins, credentials: false })
 
 // ==========================================================================
 // GENERAL MIDDLEWARE
@@ -109,17 +110,9 @@ app.get('/api/health', (req, res) => {
 // STATIC FILE SERVING
 // ==========================================================================
 
-// Serve static files from uploads directory with proper CORS headers
-app.use('/uploads', (req, res, next) => {
-  // Set CORS headers for uploaded files
-  res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin')
-  next()
-}, express.static(path.join(__dirname, '../uploads'), {
-  setHeaders: (res, path, stat) => {
-    // Additional headers for images
+// Serve static files from uploads directory (CORS handled globally above)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin')
     res.set('Cross-Origin-Embedder-Policy', 'unsafe-none')
   }

@@ -198,7 +198,7 @@ export const APP_CONFIG = {
   API: {
     BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000/api',
     UPLOADS_URL: process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:9000/uploads',
-    TIMEOUT: 10000, // 10 seconds
+    TIMEOUT: 20000, // 10 seconds
   },
 
   // Development Origins - allowed domains for development

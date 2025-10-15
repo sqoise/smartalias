@@ -319,18 +319,20 @@ class DashboardRepository {
   static async getRecentActivity() {
     try {
       // Get recent user activations/approvals
+      // Cast timestamps to timestamptz to ensure proper timezone handling
       const userActivationsResult = await db.query(`
         SELECT 
           'user_activation' as type,
           CONCAT(r.first_name, ' ', r.last_name, ' - Account activated and approved') as details,
-          u.updated_at as timestamp,
+          (u.approved_at AT TIME ZONE 'UTC') as timestamp,
           u.id as reference_id,
           1 as status_info
         FROM users u
         JOIN residents r ON u.id = r.id
         WHERE u.is_active = 1 
-          AND u.updated_at >= NOW() - INTERVAL '7 days'
-        ORDER BY u.updated_at DESC
+          AND u.approved_at IS NOT NULL
+          AND u.approved_at >= NOW() - INTERVAL '7 days'
+        ORDER BY u.approved_at DESC
         LIMIT 2
       `)
 
@@ -339,7 +341,7 @@ class DashboardRepository {
         SELECT 
           'announcement' as type,
           CONCAT(a.title, ' - Announcement published') as details,
-          a.published_at as timestamp,
+          (a.published_at AT TIME ZONE 'UTC') as timestamp,
           a.id as reference_id,
           2 as status_info
         FROM announcements a
@@ -362,8 +364,8 @@ class DashboardRepository {
           END as type,
           CONCAT(r.first_name, ' ', r.last_name, ' - ', dc.title) as details,
           CASE 
-            WHEN dr.status = 4 THEN dr.updated_at
-            ELSE dr.created_at
+            WHEN dr.status = 4 THEN (dr.updated_at AT TIME ZONE 'UTC')
+            ELSE (dr.created_at AT TIME ZONE 'UTC')
           END as timestamp,
           dr.id as reference_id,
           dr.status as status_info
@@ -440,6 +442,7 @@ class DashboardRepository {
         type: activity.type,
         activity: activityText,
         details: activity.details,
+        // Keep raw timestamp; normalization handled post-repository layer
         timestamp: activity.timestamp,
         referenceId: activity.reference_id
       })

@@ -4,6 +4,7 @@
  */
 
 require('dotenv').config()
+const path = require('path')
 
 const config = {
   // Server Configuration
@@ -37,12 +38,9 @@ const config = {
   POSTGRES_DB: process.env.POSTGRES_DB || 'smartliasdb',
   POSTGRES_USER: process.env.POSTGRES_USER || 'smartlias_user',
   POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'smartlias_password',
+
+  // Local or Supabase
   DATABASE_URL: process.env.DATABASE_URL || null,
-  
-  // Supabase Configuration (Production)
-  SUPABASE_URL: process.env.SUPABASE_URL || null,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || null,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || null,
   
   // Data Source Configuration (removed mock data)
   // Always use PostgreSQL database
@@ -62,6 +60,12 @@ const config = {
   // IProg SMS Configuration (Primary Philippine SMS Provider)
   IPROG_API_TOKEN: process.env.IPROG_API_TOKEN,
   IPROG_SMS_PROVIDER: parseInt(process.env.IPROG_SMS_PROVIDER) || 0, // 0 or 1
+
+  // File Upload / Local Storage (no object storage yet)
+  // Directory can be absolute or relative to project root (backend/..)
+  UPLOADS_DIR: process.env.UPLOADS_DIR || 'uploads',
+  // Public base URL where files are served (used when constructing absolute URLs)
+  UPLOADS_PUBLIC_URL: process.env.UPLOADS_PUBLIC_URL || 'http://localhost:9000/uploads',
   
   // Development flags
   isDevelopment: process.env.NODE_ENV === 'development',

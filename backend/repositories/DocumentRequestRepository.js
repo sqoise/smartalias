@@ -142,12 +142,12 @@ class DocumentRequestRepository {
           dr.details,
           dr.remarks,
           dr.status,
-          dr.created_at,
-          dr.updated_at,
+          dr.created_at AT TIME ZONE 'UTC' AS created_at,
+          dr.updated_at AT TIME ZONE 'UTC' AS updated_at,
           dr.processed_by,
-          dr.processed_at,
-          (SELECT created_at FROM document_requests_logs WHERE request_id = dr.id AND new_status = 2 ORDER BY created_at DESC LIMIT 1) as rejected_at,
-          (SELECT created_at FROM document_requests_logs WHERE request_id = dr.id AND new_status = 4 ORDER BY created_at DESC LIMIT 1) as completed_at,
+          dr.processed_at AT TIME ZONE 'UTC' AS processed_at,
+          (SELECT created_at AT TIME ZONE 'UTC' FROM document_requests_logs WHERE request_id = dr.id AND new_status = 2 ORDER BY created_at DESC LIMIT 1) as rejected_at,
+          (SELECT created_at AT TIME ZONE 'UTC' FROM document_requests_logs WHERE request_id = dr.id AND new_status = 4 ORDER BY created_at DESC LIMIT 1) as completed_at,
           CASE 
             WHEN dr.status = 0 THEN 'pending'
             WHEN dr.status = 1 THEN 'processing'
@@ -389,13 +389,13 @@ class DocumentRequestRepository {
           dr.details,
           dr.remarks,
           dr.status,
-          dr.created_at,
-          dr.updated_at,
+          dr.created_at AT TIME ZONE 'UTC' AS created_at,
+          dr.updated_at AT TIME ZONE 'UTC' AS updated_at,
           dr.processed_by,
-          dr.processed_at,
+          dr.processed_at AT TIME ZONE 'UTC' AS processed_at,
           dc.fee,
-          (SELECT created_at FROM document_requests_logs WHERE request_id = dr.id AND new_status = 2 ORDER BY created_at DESC LIMIT 1) as rejected_at,
-          (SELECT created_at FROM document_requests_logs WHERE request_id = dr.id AND new_status = 4 ORDER BY created_at DESC LIMIT 1) as completed_at,
+          (SELECT created_at AT TIME ZONE 'UTC' FROM document_requests_logs WHERE request_id = dr.id AND new_status = 2 ORDER BY created_at DESC LIMIT 1) as rejected_at,
+          (SELECT created_at AT TIME ZONE 'UTC' FROM document_requests_logs WHERE request_id = dr.id AND new_status = 4 ORDER BY created_at DESC LIMIT 1) as completed_at,
           CASE 
             WHEN dr.status = 0 THEN 'pending'
             WHEN dr.status = 1 THEN 'processing'

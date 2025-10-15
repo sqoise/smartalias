@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const path = require('path')
 
+const isDev = process.env.NODE_ENV === 'development'
+
 const nextConfig = {
   // Disable Strict Mode to prevent double-rendering in development
   reactStrictMode: false,
@@ -8,6 +10,7 @@ const nextConfig = {
   // Production optimizations
   output: 'standalone', // For containerized deployments
   poweredByHeader: false, // Security: hide Next.js version
+  // Removed experimental.appDir (app directory is stable in Next 15+ and key now warns)
   
   // Configure webpack to resolve shared constants
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
@@ -18,12 +21,6 @@ const nextConfig = {
     }
 
     return config
-  },
-
-  // Configure path mapping for better imports
-  experimental: {
-    // Enable external directory imports (for shared folder)
-    externalDir: true,
   },
 
   // Environment-specific configuration

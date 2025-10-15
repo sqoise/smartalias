@@ -107,7 +107,7 @@ export default function CategoriesChart() {
                     </div>
                   </div>
                   <span className="text-xs font-medium text-gray-500 min-w-[35px] text-right">
-                    {percentage.toFixed(1)}%
+                    {percentage}%
                   </span>
                   <span className="text-sm font-medium text-gray-900 min-w-[30px] text-right">
                     {category.count}

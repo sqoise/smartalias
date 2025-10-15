@@ -13,7 +13,6 @@ export default function PageLoadingV2({ isLoading = true }) {
   const [shouldRender, setShouldRender] = useState(false)
 
   useEffect(() => {
-    console.log('PageLoadingV2 rendered, isLoading:', isLoading)
     
     if (isLoading) {
       // Show and start animating when loading begins

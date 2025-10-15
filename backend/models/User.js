@@ -143,7 +143,7 @@ class User {
    * @returns {Promise<string>} Hashed password
    */
   static async hashPassword(password) {
-    return await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS)
+    return await bcrypt.hash(password, config.BCRYPT_ROUNDS)
   }
 
   /**

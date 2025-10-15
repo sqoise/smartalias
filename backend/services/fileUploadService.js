@@ -8,10 +8,15 @@ const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
 const logger = require('../config/logger')
+const config = require('../config/config')
 
 class FileUploadService {
   constructor() {
-    this.uploadDir = path.join(__dirname, '../../uploads/')
+    // Support absolute or relative UPLOADS_DIR. If relative, resolve from project root (one level up from backend folder)
+    const configuredDir = config.UPLOADS_DIR || 'uploads'
+    this.uploadDir = path.isAbsolute(configuredDir)
+      ? configuredDir
+      : path.join(__dirname, '../../', configuredDir)
     this.maxFileSize = 3 * 1024 * 1024 // 3MB - optimal for document photos
     this.allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
     this.allowedExtensions = ['.jpg', '.jpeg', '.png']
@@ -29,6 +34,8 @@ class FileUploadService {
         fs.mkdirSync(this.uploadDir, { recursive: true })
         logger.info('Created uploads directory', { path: this.uploadDir })
       }
+      // Always log which directory is being used (once per instantiation)
+      logger.info('Using uploads directory', { path: this.uploadDir })
     } catch (error) {
       logger.error('Failed to create uploads directory', { error: error.message, path: this.uploadDir })
       throw new Error('Upload directory initialization failed')
