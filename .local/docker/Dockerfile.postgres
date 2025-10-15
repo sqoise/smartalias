@@ -1,0 +1,15 @@
+FROM postgres:16-alpine
+
+# Set environment variables
+ENV POSTGRES_DB=smartliasdb
+ENV POSTGRES_USER=smartlias_user
+ENV POSTGRES_PASSWORD=smartlias_password
+
+# Create directory for initialization scripts
+RUN mkdir -p /docker-entrypoint-initdb.d
+
+# Expose PostgreSQL port
+EXPOSE 5432
+
+# Set default command
+CMD ["postgres"]

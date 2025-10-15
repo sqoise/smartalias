@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartlias_postgres
+    environment:
+      POSTGRES_DB: smartliasdb
+      POSTGRES_USER: smartlias_user
+      POSTGRES_PASSWORD: smartlias_password
+      TZ: Asia/Manila
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/smartliasdb_pg.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    command: postgres -c timezone=Asia/Manila
+
+  adminer:
+    image: adminer:latest
+    container_name: smartlias_adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+volumes:
+  postgres_data:
