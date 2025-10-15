@@ -97,7 +97,7 @@ class DashboardRepository {
 
     } catch (error) {
       logger.error('Error fetching resident categories:', error)
-      return { regular: 0, pwd: 0, senior: 0, solo_parent: 0 }
+      return { regular: 0, pwd: 0, senior: 0, solo_parent: 0, indigent: 0 }
     }
   }
 
@@ -106,7 +106,7 @@ class DashboardRepository {
    * Calculates age-based senior citizen status dynamically
    */
   static processResidentCategories(residents) {
-    const categories = { regular: 0, pwd: 0, senior: 0, solo_parent: 0 }
+    const categories = { regular: 0, pwd: 0, senior: 0, solo_parent: 0, indigent: 0 }
     
     residents.forEach(resident => {
       const age = this.calculateAge(resident.birth_date)
@@ -118,6 +118,8 @@ class DashboardRepository {
         categories.pwd++
       } else if (resident.category_code === 'SOLO_PARENT') {
         categories.solo_parent++
+      } else if (resident.category_code === 'INDIGENT') {
+        categories.indigent++
       } else {
         categories.regular++
       }

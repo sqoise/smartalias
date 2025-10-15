@@ -25,8 +25,9 @@ export default function CategoriesChart() {
           const residentTypes = [
             { name: 'Regular', count: data.regular || 0, color: 'bg-blue-600' },
             { name: 'Senior Citizens', count: data.senior || 0, color: 'bg-green-600' },
-            { name: 'PWD', count: data.pwd || 0, color: 'bg-purple-600' },
-            { name: 'Solo Parent', count: data.solo_parent || 0, color: 'bg-orange-500' }
+            { name: 'PWD', count: data.pwd || 0, color: 'bg-sky-500' },
+            { name: 'Solo Parent', count: data.solo_parent || 0, color: 'bg-orange-500' },
+            { name: 'Indigent', count: data.indigent || 0, color: 'bg-red-800' }
           ]
           
           setChartData({
@@ -61,7 +62,7 @@ export default function CategoriesChart() {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div className="h-4 bg-gray-300 rounded w-48 mb-4 animate-pulse"></div>
         <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-gray-300 rounded animate-pulse"></div>
               <div className="h-3 bg-gray-300 rounded flex-1 animate-pulse"></div>

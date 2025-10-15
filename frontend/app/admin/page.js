@@ -36,10 +36,10 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <a 
             href="/admin/residents" 
-            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all group cursor-pointer"
+            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:shadow-sm transition-all group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <i className="bi bi-people text-blue-600"></i>
               </div>
               <div>
@@ -47,15 +47,15 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500">View and edit records</p>
               </div>
             </div>
-            <i className="bi bi-arrow-right text-gray-400 group-hover:text-blue-600"></i>
+            <i className="bi bi-arrow-right text-gray-400 group-hover:text-gray-600"></i>
           </a>
 
           <a 
             href="/admin/announcements" 
-            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all group cursor-pointer"
+            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:shadow-sm transition-all group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <i className="bi bi-megaphone text-green-600"></i>
               </div>
               <div>
@@ -63,15 +63,15 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500">Create and manage</p>
               </div>
             </div>
-            <i className="bi bi-arrow-right text-gray-400 group-hover:text-green-600"></i>
+            <i className="bi bi-arrow-right text-gray-400 group-hover:text-gray-600"></i>
           </a>
 
           <a 
             href="/admin/documents" 
-            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all group cursor-pointer"
+            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:shadow-sm transition-all group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <i className="bi bi-file-earmark-text text-purple-600"></i>
               </div>
               <div>
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500">Process applications</p>
               </div>
             </div>
-            <i className="bi bi-arrow-right text-gray-400 group-hover:text-purple-600"></i>
+            <i className="bi bi-arrow-right text-gray-400 group-hover:text-gray-600"></i>
           </a>
         </div>
       </div>
