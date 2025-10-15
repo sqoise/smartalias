@@ -22,6 +22,15 @@ const apiRouter = require('./router')
 const app = express()
 
 // ==========================================================================
+// TRUST PROXY CONFIGURATION (Required for Render/Cloud Platforms)
+// ==========================================================================
+
+// Trust proxy only from Render's infrastructure (more secure than 'true')
+// This allows Express to trust X-Forwarded-* headers from reverse proxies
+// while preventing IP spoofing attacks
+app.set('trust proxy', 1) // Trust the first proxy (Render's load balancer)
+
+// ==========================================================================
 // SECURITY MIDDLEWARE
 // ==========================================================================
 

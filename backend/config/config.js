@@ -64,8 +64,6 @@ const config = {
   // File Upload / Local Storage (no object storage yet)
   // Directory can be absolute or relative to project root (backend/..)
   UPLOADS_DIR: process.env.UPLOADS_DIR || 'uploads',
-  // Public base URL where files are served (used when constructing absolute URLs)
-  UPLOADS_PUBLIC_URL: process.env.UPLOADS_PUBLIC_URL || 'http://localhost:9000/uploads',
   
   // Development flags
   isDevelopment: process.env.NODE_ENV === 'development',
